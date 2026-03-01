@@ -1,0 +1,18 @@
+{
+  "projects": {
+    "default": "techxpark-67c25"
+  },
+  "targets": {
+    "techxpark-67c25": {
+      "hosting": {
+        "owner": [
+          "techxpark-67c25"
+        ],
+        "admin": [
+          "techxpark-admin-panel"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

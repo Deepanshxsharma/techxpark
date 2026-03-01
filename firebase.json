@@ -1,0 +1,78 @@
+{
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "techxpark-67c25",
+          "appId": "1:457287100758:android:b8fb3f0500dc7028028ef7",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "ios": {
+        "default": {
+          "projectId": "techxpark-67c25",
+          "appId": "1:457287100758:ios:f67f4f3ccf37f9e5028ef7",
+          "uploadDebugSymbols": false,
+          "fileOutput": "ios/Runner/GoogleService-Info.plist"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "techxpark-67c25",
+          "configurations": {
+            "android": "1:457287100758:android:b8fb3f0500dc7028028ef7",
+            "ios": "1:457287100758:ios:f67f4f3ccf37f9e5028ef7",
+            "web": "1:457287100758:web:d6ccaa715cee7ea8028ef7",
+            "windows": "1:457287100758:web:b4acb5941ba03fa9028ef7"
+          }
+        }
+      }
+    }
+  },
+  "functions": {
+    "source": "functions",
+    "ignore": [
+      "node_modules",
+      ".git",
+      "firebase-debug.log",
+      "firebase-debug.*.log",
+      "*.local"
+    ]
+  },
+  "hosting": [
+    {
+      "target": "owner",
+      "public": "techxpark-owner/dist",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "rewrites": [
+        {
+          "source": "**",
+          "destination": "/index.html"
+        }
+      ]
+    },
+    {
+      "target": "admin",
+      "public": "techxpark-admin/dist",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "rewrites": [
+        {
+          "source": "**",
+          "destination": "/index.html"
+        }
+      ]
+    }
+  ]
+}

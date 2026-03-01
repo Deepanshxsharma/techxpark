@@ -1,0 +1,63 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --primary: #2845D6;
+    --primary-dark: #1E36B5;
+    --primary-light: #4C63E8;
+    --primary-glow: rgba(40, 69, 214, 0.15);
+    
+    --bg: #F4F6FB;
+    --surface: #FFFFFF;
+    --border: #E8ECF4;
+    
+    --text-primary: #0D1117;
+    --text-secondary: #5C6B8A;
+    --text-tertiary: #9AA5BC;
+    
+    --success: #0D9E6E;
+    --error: #E5393B;
+    --warning: #D97706;
+    
+    --sidebar-bg: #0A0F1E;
+    --sidebar-border: rgba(255, 255, 255, 0.06);
+  }
+
+  body {
+    @apply bg-bg-light text-text-primary antialiased;
+    font-family: 'Inter', sans-serif;
+  }
+}
+
+@layer utilities {
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Animations */
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.animate-slide-up { animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.animate-fade-in { animation: fadeIn 0.2s ease-out forwards; }
+.animate-scale-in { animation: scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; }

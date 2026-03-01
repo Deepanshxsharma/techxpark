@@ -1,0 +1,91 @@
+{
+  "project_info": {
+    "project_number": "457287100758",
+    "firebase_url": "https://techxpark-67c25-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "techxpark-67c25",
+    "storage_bucket": "techxpark-67c25.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:457287100758:android:b8fb3f0500dc7028028ef7",
+        "android_client_info": {
+          "package_name": "com.example.techxpark_clean"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "457287100758-n7tc3tdopm7viq428g9khq3ltlqg8j5m.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDXC3hMXVhPVWlYM5z_wX2a3b-tCg7jjfs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "457287100758-n7tc3tdopm7viq428g9khq3ltlqg8j5m.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "457287100758-7n7t7fem1bkjicsu5ogs2jhs3j6i2bcl.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.techxparkClean"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:457287100758:android:cb96449638f5000a028ef7",
+        "android_client_info": {
+          "package_name": "com.techxpark.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "457287100758-knl1qsql0qgejhm8s426gde7d2k730lr.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.techxpark.app",
+            "certificate_hash": "7bb2b077dabd28c3b303066eb4b1d58a9945e2e3"
+          }
+        },
+        {
+          "client_id": "457287100758-n7tc3tdopm7viq428g9khq3ltlqg8j5m.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDXC3hMXVhPVWlYM5z_wX2a3b-tCg7jjfs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "457287100758-n7tc3tdopm7viq428g9khq3ltlqg8j5m.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "457287100758-7n7t7fem1bkjicsu5ogs2jhs3j6i2bcl.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.techxparkClean"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

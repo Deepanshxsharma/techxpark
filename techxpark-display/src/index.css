@@ -1,0 +1,244 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ═══ Theme CSS Custom Properties ═══ */
+:root {
+    --bg: #F4F6FB;
+    --surface: #FFFFFF;
+    --text-primary: #0D1117;
+    --text-secondary: #5C6B8A;
+    --border: #E8ECF4;
+    --slot-avail-bg: #DCFCE7;
+    --slot-avail-text: #166534;
+    --slot-occ-bg: #FEE2E2;
+    --slot-occ-text: #991B1B;
+    --sidebar: #0D1117;
+    --ticker-bg: #0A0F1E;
+    --primary: #2845D6;
+
+    transition: all 3s ease;
+}
+
+[data-theme="dark"] {
+    --bg: #050A18;
+    --surface: #0D1321;
+    --text-primary: #F8FAFF;
+    --text-secondary: rgba(248, 250, 255, 0.5);
+    --border: rgba(255, 255, 255, 0.06);
+    --slot-avail-bg: rgba(34, 197, 94, 0.15);
+    --slot-avail-text: #4ADE80;
+    --slot-occ-bg: rgba(239, 68, 68, 0.15);
+    --slot-occ-text: #F87171;
+    --sidebar: #020408;
+}
+
+/* ═══ Global Reset ═══ */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html,
+body,
+#root {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text-primary);
+    cursor: none;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* ═══ TV-specific ═══ */
+body {
+    -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar {
+    display: none;
+}
+
+/* ═══ Breathing animation for available slots ═══ */
+@keyframes breathe {
+
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.35);
+    }
+
+    50% {
+        box-shadow: 0 0 0 6px rgba(34, 197, 94, 0);
+    }
+}
+
+.slot-avail {
+    animation: breathe 3s ease-in-out infinite;
+}
+
+/* ═══ Just-freed golden glow ═══ */
+@keyframes justFreed {
+    0% {
+        box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.6);
+        background: rgba(234, 179, 8, 0.2);
+    }
+
+    50% {
+        box-shadow: 0 0 20px rgba(234, 179, 8, 0.5);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.35);
+        background: var(--slot-avail-bg);
+    }
+}
+
+.slot-just-free {
+    animation: justFreed 3s ease-out forwards;
+}
+
+/* ═══ Just-occupied red flash ═══ */
+@keyframes justOccupied {
+    0% {
+        box-shadow: 0 0 15px rgba(239, 68, 68, 0.6);
+    }
+
+    100% {
+        box-shadow: none;
+    }
+}
+
+.slot-just-occ {
+    animation: justOccupied 1s ease-out forwards;
+}
+
+/* ═══ Pulsing LIVE dot ═══ */
+@keyframes pulseDot {
+
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.4;
+        transform: scale(0.7);
+    }
+}
+
+.live-dot {
+    animation: pulseDot 1.5s ease-in-out infinite;
+}
+
+/* ═══ FULL badge blink ═══ */
+@keyframes blink {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.3;
+    }
+}
+
+.blink {
+    animation: blink 1s ease-in-out infinite;
+}
+
+/* ═══ Ticker scroll ═══ */
+@keyframes tickerScroll {
+    0% {
+        transform: translateX(0);
+    }
+
+    100% {
+        transform: translateX(-50%);
+    }
+}
+
+.ticker-track {
+    display: flex;
+    white-space: nowrap;
+    animation: tickerScroll var(--ticker-duration, 40s) linear infinite;
+}
+
+/* ═══ Outdoor big number breathing ═══ */
+@keyframes bigBreathe {
+
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 0.9;
+    }
+
+    50% {
+        transform: scale(1.02);
+        opacity: 1;
+    }
+}
+
+.big-breathe {
+    animation: bigBreathe 3s ease-in-out infinite;
+}
+
+@keyframes urgentPulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.06);
+    }
+}
+
+.urgent-pulse {
+    animation: urgentPulse 1s ease-in-out infinite;
+}
+
+/* ═══ Outdoor view transitions ═══ */
+.view-fade-enter {
+    opacity: 0;
+}
+
+.view-fade-active {
+    opacity: 1;
+    transition: opacity 500ms ease;
+}
+
+.view-fade-exit {
+    opacity: 0;
+    transition: opacity 500ms ease;
+}
+
+/* ═══ Anti screen-burn pixel shift ═══ */
+.pixel-shift {
+    transition: transform 2s ease;
+}
+
+/* ═══ Night dim ═══ */
+.night-dim {
+    filter: brightness(0.4);
+    transition: filter 5s ease;
+}
+
+/* ═══ Floor cycle progress ═══ */
+@keyframes cycleProgress {
+    0% {
+        width: 0%;
+    }
+
+    100% {
+        width: 100%;
+    }
+}
