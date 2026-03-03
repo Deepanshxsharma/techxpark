@@ -69,3 +69,6 @@ coverage/
 gatex-seed/
 users.json
 make_owner.js
+.github/
+*.png
+tmp_import.txt
