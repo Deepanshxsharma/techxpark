@@ -11,17 +11,17 @@ dependencies:
     sdk: flutter
 
   # 🔥 Firebase
-  firebase_core: ^2.32.0
-  firebase_auth: ^4.20.0
-  cloud_firestore: ^4.17.5
-  firebase_database: ^10.5.7
-  firebase_storage: ^11.7.7
-  firebase_messaging: ^14.9.4   # ✅ FCM Push Notifications
+  firebase_core: ^3.8.1
+  firebase_auth: ^5.4.1
+  cloud_firestore: ^5.6.1
+  firebase_database: ^11.2.1
+  firebase_storage: ^12.4.1
+  firebase_messaging: ^15.2.1
   timezone: ^0.10.1             # ✅ Required for scheduled local notifications
 
   # UI & Utils
   cupertino_icons: ^1.0.8
-  google_sign_in: ^6.1.0
+  google_sign_in: ^6.3.0
   flutter_map: ^6.2.1
   latlong2: ^0.9.1
   location: ^5.0.3
