@@ -1,0 +1,35 @@
+name: Deploy TechXPark to Firebase
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install & Build Admin Panel
+        run: |
+          cd techxpark-admin
+          npm install
+          npm run build
+
+      - name: Install & Build Owner Panel
+        run: |
+          cd techxpark-owner
+          npm install
+          npm run build
+
+      - name: Deploy to Firebase
+        uses: w9jds/firebase-action@master
+        with:
+          args: deploy --only hosting
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
