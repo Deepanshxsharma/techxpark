@@ -8,8 +8,3 @@ Future<int> getActiveBookingCount(String userId) async {
       .get();
   return snapshot.docs.length;
 }
-
-Future<bool> hasReachedBookingLimit(String userId) async {
-  final count = await getActiveBookingCount(userId);
-  return count >= 3;
-}

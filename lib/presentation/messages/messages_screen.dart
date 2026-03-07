@@ -2,11 +2,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:intl/intl.dart';
 
-import '../../services/message_service.dart';
+import '../../models/conversation_model.dart';
+import '../../services/chat_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
+import '../../widgets/conversation_tile.dart';
 import 'chat_screen.dart';
 
 class MessagesScreen extends StatefulWidget {
@@ -19,29 +20,7 @@ class MessagesScreen extends StatefulWidget {
 class _MessagesScreenState extends State<MessagesScreen> {
   final _auth = FirebaseAuth.instance;
   final _db = FirebaseFirestore.instance;
-  final _messageService = MessageService();
-
-  String _getRoleIcon(String role) {
-    switch (role) {
-      case 'admin':
-        return '🛡️';
-      case 'owner':
-        return '🅿️';
-      default:
-        return '👤';
-    }
-  }
-
-  String _getRoleLabel(String role) {
-    switch (role) {
-      case 'admin':
-        return 'Support';
-      case 'owner':
-        return 'Parking Manager';
-      default:
-        return 'Customer';
-    }
-  }
+  final _chatService = ChatService();
 
   @override
   Widget build(BuildContext context) {
@@ -73,12 +52,34 @@ class _MessagesScreenState extends State<MessagesScreen> {
             return const Center(child: CircularProgressIndicator());
           }
 
+
           if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 48),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Unable to load messages',
+                      style: AppTextStyles.h3.copyWith(color: AppColors.textPrimaryLight),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Please check your connection and try again.',
+                      style: AppTextStyles.body2.copyWith(color: AppColors.textSecondaryLight),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            );
           }
 
           final docs = snapshot.data?.docs ?? [];
-
+          
           if (docs.isEmpty) {
             return Center(
               child: Column(
@@ -115,143 +116,25 @@ class _MessagesScreenState extends State<MessagesScreen> {
           return ListView.separated(
             padding: const EdgeInsets.symmetric(vertical: 8),
             itemCount: docs.length,
-            separatorBuilder: (_, __) => const Divider(height: 1, indent: 76),
+            separatorBuilder: (_, __) => const Divider(height: 1, indent: 76, color: AppColors.borderLight),
             itemBuilder: (context, index) {
-              final data = docs[index].data() as Map<String, dynamic>;
-              final convId = docs[index].id;
+              final doc = docs[index];
+              final data = doc.data() as Map<String, dynamic>;
+              final conversation = ConversationModel.fromMap(doc.id, data);
+              
+              final otherId = conversation.participants.firstWhere((p) => p != user.uid, orElse: () => '');
+              final name = conversation.participantNames[otherId] ?? 'Support';
+              final role = (conversation.participantRoles[otherId] ?? 'admin') as String;
 
-              final participants = List<String>.from(data['participants'] ?? []);
-              final otherId = participants.firstWhere((p) => p != user.uid,
-                  orElse: () => '');
-              final participantNames =
-                  data['participantNames'] as Map<String, dynamic>? ?? {};
-              final participantRoles =
-                  data['participantRoles'] as Map<String, dynamic>? ?? {};
-              final name = participantNames[otherId] ?? 'Support';
-              final role = (participantRoles[otherId] ?? 'admin') as String;
-
-              // Unread count
-              final unreadMap =
-                  data['unreadCount'] as Map<String, dynamic>? ?? {};
-              final unread = (unreadMap[user.uid] as num?)?.toInt() ?? 0;
-
-              final lastMsg = data['lastMessage'] as String? ?? '';
-              final timestamp =
-                  (data['lastMessageTime'] as Timestamp?)?.toDate();
-
-              String timeStr = '';
-              if (timestamp != null) {
-                final now = DateTime.now();
-                if (now.difference(timestamp).inDays == 0 && now.day == timestamp.day) {
-                  timeStr = DateFormat.jm().format(timestamp);
-                } else {
-                  timeStr = DateFormat.MMMd().format(timestamp);
-                }
-              }
-
-              return ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                leading: CircleAvatar(
-                  radius: 24,
-                  backgroundColor: AppColors.primary.withOpacity(0.1),
-                  child: Text(
-                    name.isNotEmpty ? name[0].toUpperCase() : 'S',
-                    style: const TextStyle(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20),
-                  ),
-                ),
-                title: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              name,
-                              style: AppTextStyles.body1SemiBold,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: role == 'admin'
-                                  ? Colors.blue.withOpacity(0.1)
-                                  : role == 'owner'
-                                      ? Colors.orange.withOpacity(0.1)
-                                      : Colors.grey.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              '${_getRoleIcon(role)} ${_getRoleLabel(role)}',
-                              style: TextStyle(
-                                fontSize: 9,
-                                fontWeight: FontWeight.w700,
-                                color: role == 'admin'
-                                    ? Colors.blue
-                                    : role == 'owner'
-                                        ? Colors.orange
-                                        : Colors.grey,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (timeStr.isNotEmpty)
-                      Text(
-                        timeStr,
-                        style: AppTextStyles.caption.copyWith(
-                          color: unread > 0 ? AppColors.primary : AppColors.textTertiaryLight,
-                          fontWeight: unread > 0 ? FontWeight.bold : FontWeight.normal,
-                        ),
-                      ),
-                  ],
-                ),
-                subtitle: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        lastMsg,
-                        style: AppTextStyles.body2.copyWith(
-                          color: unread > 0 ? AppColors.textPrimaryLight : AppColors.textSecondaryLight,
-                          fontWeight: unread > 0 ? FontWeight.w600 : FontWeight.normal,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (unread > 0)
-                      Container(
-                        margin: const EdgeInsets.only(left: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          unread.toString(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
+              return ConversationTile(
+                conversation: conversation,
+                currentUserId: user.uid,
                 onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (_) => ChatScreen(
-                        conversationId: convId,
+                        conversationId: conversation.id,
                         otherUserId: otherId,
                         otherUserName: name,
                         otherUserRole: role,
@@ -273,16 +156,16 @@ class _MessagesScreenState extends State<MessagesScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _NewChatSheet(messageService: _messageService),
+      builder: (_) => _NewChatSheet(chatService: _chatService),
     );
   }
 }
 
 // ─── New Chat Contact Sheet ──────────────────────────────────────
 class _NewChatSheet extends StatefulWidget {
-  final MessageService messageService;
+  final ChatService chatService;
 
-  const _NewChatSheet({required this.messageService});
+  const _NewChatSheet({required this.chatService});
 
   @override
   State<_NewChatSheet> createState() => _NewChatSheetState();
@@ -393,7 +276,7 @@ class _NewChatSheetState extends State<_NewChatSheet> {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w900,
-                    color: Color(0xFF0D1117),
+                    color: AppColors.textPrimaryLight,
                   ),
                 ),
               ],
@@ -422,7 +305,7 @@ class _NewChatSheetState extends State<_NewChatSheet> {
                               width: 46, height: 46,
                               decoration: BoxDecoration(
                                 gradient: const LinearGradient(
-                                  colors: [AppColors.primary, Color(0xFF4C63E8)],
+                                  colors: [AppColors.primary, AppColors.primaryLight],
                                 ),
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -443,13 +326,13 @@ class _NewChatSheetState extends State<_NewChatSheet> {
                               contact['name'] ?? 'Unknown',
                               style: const TextStyle(
                                 fontWeight: FontWeight.w700,
-                                color: Color(0xFF0D1117),
+                                color: AppColors.textPrimaryLight,
                               ),
                             ),
                             subtitle: Text(
                               contact['subtitle'] ?? '',
                               style: const TextStyle(
-                                color: Color(0xFF5C6B8A),
+                                color: AppColors.textSecondaryLight,
                                 fontSize: 12,
                               ),
                             ),
@@ -460,7 +343,7 @@ class _NewChatSheetState extends State<_NewChatSheet> {
                               Navigator.pop(context);
                               final currentUser = _auth.currentUser;
                               if (currentUser == null) return;
-                              final convId = widget.messageService.generateConversationId(
+                              final convId = widget.chatService.generateConversationId(
                                 currentUser.uid,
                                 contact['id'],
                               );

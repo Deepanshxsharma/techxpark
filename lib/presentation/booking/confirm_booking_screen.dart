@@ -8,11 +8,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../services/booking_service.dart';
 import '../../services/booking_exceptions.dart';
 import '../../services/notification_service.dart';
-import '../../services/booking_helper.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import 'booking_summary_screen.dart';
-import 'my_bookings_screen.dart';
 
 class ConfirmBookingScreen extends StatefulWidget {
   final Map<String, dynamic> parking;
@@ -76,19 +74,6 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
       return;
     }
 
-    try {
-      final limitReached = await hasReachedBookingLimit(userId);
-      if (limitReached) {
-        setState(() => _isProcessing = false);
-        _showLimitDialog();
-        return;
-      }
-    } catch (e) {
-      _showError('Could not verify booking limit.');
-      setState(() => _isProcessing = false);
-      return;
-    }
-
     // ── Network Check ─────────────────────────────────────────────────
     final hasInternet = await _hasInternetConnection();
     if (!hasInternet) {
@@ -98,60 +83,115 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
     }
 
     try {
-      // ── Create booking via BookingService (transaction-safe) ─────────
-      await BookingService.instance.createBooking(
-        parkingId: widget.parkingId,
-        parkingName: widget.parking['name'] ?? 'Parking',
-        slotId: widget.selectedSlot,
-        floorIndex: widget.floorIndex,
-        startTime: widget.start,
-        endTime: widget.end,
-        vehicle: {
-          'number': widget.vehicle['number'],
-          'type': widget.vehicle['type'],
-        },
-      ).timeout(
-        const Duration(seconds: 15),
-        onTimeout: () => throw TimeoutException('Connection timed out. Please try again.'),
-      );
+      // ── Price Check ──────────────────────────────────────────────────
+      final ratePerHour = (widget.parking['price_per_hour'] as num?)?.toDouble() ?? 0.0;
+      final hours = widget.end.difference(widget.start).inMinutes / 60;
+      final totalPrice = ratePerHour * hours;
 
-      // ── Notifications ────────────────────────────────────────────────
-      await notifyBookingConfirmed(
-        slotName: widget.selectedSlot,
-        parkingName: widget.parking['name'] ?? 'Parking',
-        startTime: widget.start,
-        endTime: widget.end,
-      );
+      if (totalPrice == 0) {
+        // Automatically create booking without payment
+        await BookingService.instance.createBooking(
+          parkingId: widget.parkingId,
+          parkingName: widget.parking['name'] ?? 'Parking',
+          slotId: widget.selectedSlot,
+          floorIndex: widget.floorIndex,
+          startTime: widget.start,
+          endTime: widget.end,
+          vehicle: {
+            'number': widget.vehicle['number'],
+            'type': widget.vehicle['type'],
+          },
+        ).timeout(
+          const Duration(seconds: 15),
+          onTimeout: () => throw TimeoutException('Connection timed out. Please try again.'),
+        );
 
-      if (!mounted) return;
-      HapticFeedback.heavyImpact(); // Success cue
+        await notifyBookingConfirmed(
+          slotName: widget.selectedSlot,
+          parkingName: widget.parking['name'] ?? 'Parking',
+          startTime: widget.start,
+          endTime: widget.end,
+        );
 
-      // ── Smooth Navigation ────────────────────────────────────────────
-      Navigator.pushReplacement(
-        context,
-        PageRouteBuilder(
-          transitionDuration: const Duration(milliseconds: 600),
-          pageBuilder: (_, animation, __) => FadeTransition(
-            opacity: animation,
-            child: BookingSummaryScreen(
-              parking: widget.parking,
-              docId: widget.parkingId, // Note: BookingSummaryScreen originally expected docId as parkingId. BookingService doesn't return the docId easily here so we pass parkingId for now. The original implementation did the same.
-              selectedSlot: widget.selectedSlot,
-              floorIndex: widget.floorIndex,
-              start: widget.start,
-              end: widget.end,
-              vehicle: widget.vehicle,
+        if (!mounted) return;
+        HapticFeedback.heavyImpact();
+
+        Navigator.pushReplacement(
+          context,
+          PageRouteBuilder(
+            transitionDuration: const Duration(milliseconds: 600),
+            pageBuilder: (_, animation, __) => FadeTransition(
+              opacity: animation,
+              child: BookingSummaryScreen(
+                parking: widget.parking,
+                docId: widget.parkingId,
+                selectedSlot: widget.selectedSlot,
+                floorIndex: widget.floorIndex,
+                start: widget.start,
+                end: widget.end,
+                vehicle: widget.vehicle,
+              ),
             ),
           ),
-        ),
-      );
+        );
+      } else {
+        // In the future: redirect to Stripe/Payment Screen here
+        // For now, we simulate default creation
+        await BookingService.instance.createBooking(
+          parkingId: widget.parkingId,
+          parkingName: widget.parking['name'] ?? 'Parking',
+          slotId: widget.selectedSlot,
+          floorIndex: widget.floorIndex,
+          startTime: widget.start,
+          endTime: widget.end,
+          vehicle: {
+            'number': widget.vehicle['number'],
+            'type': widget.vehicle['type'],
+          },
+        ).timeout(
+          const Duration(seconds: 15),
+          onTimeout: () => throw TimeoutException('Connection timed out. Please try again.'),
+        );
+
+        await notifyBookingConfirmed(
+          slotName: widget.selectedSlot,
+          parkingName: widget.parking['name'] ?? 'Parking',
+          startTime: widget.start,
+          endTime: widget.end,
+        );
+
+        if (!mounted) return;
+        HapticFeedback.heavyImpact();
+
+        Navigator.pushReplacement(
+          context,
+          PageRouteBuilder(
+            transitionDuration: const Duration(milliseconds: 600),
+            pageBuilder: (_, animation, __) => FadeTransition(
+              opacity: animation,
+              child: BookingSummaryScreen(
+                parking: widget.parking,
+                docId: widget.parkingId,
+                selectedSlot: widget.selectedSlot,
+                floorIndex: widget.floorIndex,
+                start: widget.start,
+                end: widget.end,
+                vehicle: widget.vehicle,
+              ),
+            ),
+          ),
+        );
+      }
     } on BookingException catch (e) {
+      if (!mounted) return;
       setState(() => _isProcessing = false);
       _showError(e.userMessage);
     } on TimeoutException {
+      if (!mounted) return;
       setState(() => _isProcessing = false);
       _showError('Request timed out. Please try again.');
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isProcessing = false);
       _showError(e.toString().replaceFirst('Exception: ', ''));
     }
@@ -170,116 +210,6 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
           textColor: Colors.white,
           onPressed: _createBooking,
         ),
-      ),
-    );
-  }
-
-  void _showLimitDialog() {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-        ),
-        title: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: const BoxDecoration(
-                color: Color(0xFFFEF3C7),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.warning_amber_rounded,
-                color: Color(0xFFF59E0B),
-                size: 40,
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Booking Limit Reached',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontWeight: FontWeight.w900,
-                fontSize: 18,
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'You already have 3 active or upcoming bookings. '
-              'Please complete or cancel an existing booking '
-              'before making a new one.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Color(0xFF64748B),
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
-                  Icon(Icons.local_parking_rounded,
-                      color: Color(0xFF2563EB), size: 18),
-                  SizedBox(width: 8),
-                  Text(
-                    '3/3 booking slots used',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF0F172A),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const MyBookingsScreen()),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2563EB),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-              child: const Text(
-                'View My Bookings',
-                style: TextStyle(fontWeight: FontWeight.w800),
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            child: TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                'Go Back',
-                style: TextStyle(color: Color(0xFF64748B)),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

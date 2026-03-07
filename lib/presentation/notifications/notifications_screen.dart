@@ -17,9 +17,9 @@ class _NotificationsScreenState extends State<NotificationsScreen>
   late Animation<Color?> _bgColor1;
   late Animation<Color?> _bgColor2;
 
-  static const Color _dark = Color(0xFF0F172A);
-  static const Color _slate = Color(0xFF64748B);
-  static const Color _surface = Color(0xFFF8FAFC);
+  static const Color _dark = AppColors.textPrimaryLight;
+  static const Color _slate = AppColors.textSecondaryLight;
+  static const Color _surface = AppColors.bgLight;
 
   @override
   void initState() {
@@ -99,7 +99,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text(
               'Clear',
-              style: TextStyle(color: Color(0xFFEF4444)),
+              style: TextStyle(color: AppColors.error),
             ),
           ),
         ],
@@ -319,7 +319,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                 child: const Text(
                   'Clear all',
                   style: TextStyle(
-                    color: Color(0xFFEF4444),
+                    color: AppColors.error,
                     fontWeight: FontWeight.w700,
                     fontSize: 13,
                   ),
@@ -353,7 +353,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
             child: const Icon(
               Icons.notifications_off_outlined,
               size: 52,
-              color: Color(0xFFCBD5E1),
+              color: AppColors.textTertiaryLight,
             ),
           ),
           const SizedBox(height: 20),
@@ -386,7 +386,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
+          border: Border.all(color: AppColors.borderLight),
         ),
       ),
     );
@@ -420,15 +420,15 @@ class _NotifCardState extends State<_NotifCard> {
       case 'booking':
         return AppColors.primary;
       case 'payment':
-        return const Color(0xFF10B981);
+        return AppColors.success;
       case 'expiry':
-        return const Color(0xFFF59E0B);
+        return AppColors.warning;
       case 'slot':
         return const Color(0xFF8B5CF6);
       case 'offer':
         return const Color(0xFFEC4899);
       default:
-        return const Color(0xFF64748B);
+        return AppColors.textSecondaryLight;
     }
   }
 
@@ -472,7 +472,7 @@ class _NotifCardState extends State<_NotifCard> {
         margin: const EdgeInsets.symmetric(vertical: 4),
         padding: const EdgeInsets.only(right: 24),
         decoration: BoxDecoration(
-          color: const Color(0xFFEF4444),
+          color: AppColors.error,
           borderRadius: BorderRadius.circular(20),
         ),
         child: const Icon(
@@ -504,7 +504,7 @@ class _NotifCardState extends State<_NotifCard> {
               border: Border.all(
                 color: isUnread
                     ? _accentColor.withOpacity(0.25)
-                    : const Color(0xFFE2E8F0),
+                    : AppColors.borderLight,
                 width: isUnread ? 1.5 : 1.0,
               ),
               boxShadow: [
@@ -588,7 +588,7 @@ class _NotifCardState extends State<_NotifCard> {
                           _timeAgo(widget.data['createdAt']),
                           style: const TextStyle(
                             fontSize: 11,
-                            color: Color(0xFF94A3B8),
+                            color: AppColors.textTertiaryLight,
                             fontWeight: FontWeight.w500,
                           ),
                         ),

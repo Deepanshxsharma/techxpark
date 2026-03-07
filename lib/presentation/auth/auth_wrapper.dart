@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import '../map/dashboard_map_screen.dart';
+
 import '../admin/admin_dashboard_screen.dart';
 import 'login/login_screen.dart';
+import '../../widgets/main_shell.dart';
 
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
@@ -61,12 +62,12 @@ class AuthWrapper extends StatelessWidget {
             if (snap.hasError) {
               debugPrint('❌ AuthWrapper Firestore error: ${snap.error}');
               // On error, try to show dashboard anyway (user IS authenticated)
-              return DashboardMapScreen();
+              return const MainShell();
             }
 
             if (!snap.hasData || !snap.data!.exists) {
               debugPrint('⚠️ AuthWrapper: User doc does not exist, showing dashboard');
-              return DashboardMapScreen();
+              return const MainShell();
             }
 
             final data = snap.data!.data() as Map<String, dynamic>?;
@@ -79,7 +80,7 @@ class AuthWrapper extends StatelessWidget {
             }
 
             // 👤 NORMAL USER
-            return DashboardMapScreen();
+            return const MainShell();
           },
         );
       },

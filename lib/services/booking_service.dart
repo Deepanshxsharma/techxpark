@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
 
 import 'booking_exceptions.dart';
 import 'abuse_monitor.dart';
@@ -12,8 +11,7 @@ import 'abuse_monitor.dart';
 ///  1. User authentication
 ///  2. Slot-level time overlap (prevents double booking)
 ///  3. User-level time overlap (prevents self-overlap)
-///  4. Active booking quota per user
-///  5. Status transition rules
+///  4. Status transition rules
 ///  6. 15-minute cancellation window
 ///
 /// Failed attempts are logged to `booking_audit_log` via [AbuseMonitor].
@@ -25,9 +23,6 @@ class BookingService {
   final _audit = AbuseMonitor.instance;
 
   User? get _user => FirebaseAuth.instance.currentUser;
-
-  /// Default max active bookings per user.
-  static const int defaultMaxBookings = 3;
 
   // ─── STATUS TRANSITION MAP ───────────────────────────────────────────────
   static const Map<String, Set<String>> _allowedTransitions = {
@@ -76,23 +71,7 @@ class BookingService {
 
     try {
       return await _fs.runTransaction<String>((tx) async {
-        // ────────────────────────────────────────────────────────────────
-        // CHECK 1: User quota
-        // ────────────────────────────────────────────────────────────────
         final userRef = _fs.collection('users').doc(user.uid);
-        final userSnap = await tx.get(userRef);
-        final userData = userSnap.data() ?? {};
-
-        final activeCount = (userData['activeBookings'] as num?)?.toInt() ?? 0;
-        final maxAllowed =
-            (userData['maxActiveBookings'] as num?)?.toInt() ?? defaultMaxBookings;
-
-        if (activeCount >= maxAllowed) {
-          throw UserBookingLimitExceededException(
-            current: activeCount,
-            max: maxAllowed,
-          );
-        }
 
         // ────────────────────────────────────────────────────────────────
         // CHECK 2: Slot-level overlap (double booking prevention)

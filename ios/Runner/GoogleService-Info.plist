@@ -3,11 +3,11 @@
 <plist version="1.0">
 <dict>
 	<key>CLIENT_ID</key>
-	<string>457287100758-7n7t7fem1bkjicsu5ogs2jhs3j6i2bcl.apps.googleusercontent.com</string>
+	<string>457287100758-13o6nc7ua6ejkir0rbvv2strp471c5ns.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.457287100758-7n7t7fem1bkjicsu5ogs2jhs3j6i2bcl</string>
+	<string>com.googleusercontent.apps.457287100758-13o6nc7ua6ejkir0rbvv2strp471c5ns</string>
 	<key>ANDROID_CLIENT_ID</key>
-	<string>457287100758-0c9c64tqngsga5fd63gsu54imk8pku74.apps.googleusercontent.com</string>
+	<string>457287100758-023eia10ogm5mbqr9acmvac9tfqc6og5.apps.googleusercontent.com</string>
 	<key>API_KEY</key>
 	<string>AIzaSyCzidstWOerTu2owYuYs8uiO5NRUrvVdxc</string>
 	<key>GCM_SENDER_ID</key>
@@ -15,7 +15,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.deepansh.techxpark</string>
+	<string>com.techxpark.parking</string>
 	<key>PROJECT_ID</key>
 	<string>techxpark-67c25</string>
 	<key>STORAGE_BUCKET</key>
@@ -31,7 +31,7 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:457287100758:ios:f67f4f3ccf37f9e5028ef7</string>
+	<string>1:457287100758:ios:0339dd318207d1e6028ef7</string>
 	<key>DATABASE_URL</key>
 	<string>https://techxpark-67c25-default-rtdb.asia-southeast1.firebasedatabase.app</string>
 </dict>

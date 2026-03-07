@@ -29,6 +29,9 @@ import '../../presentation/messages/messages_screen.dart'; // Updated to new Mes
 import '../../widgets/availability_heatmap.dart';
 
 class DashboardMapScreen extends StatefulWidget {
+  /// Static flag: intro animation shows only ONCE per app session.
+  static bool _hasShownIntro = false;
+
   const DashboardMapScreen({super.key});
 
   @override
@@ -73,7 +76,7 @@ class _DashboardMapScreenState extends State<DashboardMapScreen>
   List<QueryDocumentSnapshot> _filteredParkings = [];
 
   // --- STATE VARIABLES ---
-  bool _showIntro = true;
+  bool _showIntro = !DashboardMapScreen._hasShownIntro;
   bool _showPoster = false;
   bool _hasShownPoster = false;
   DocumentSnapshot? _nearestParking;
@@ -125,9 +128,12 @@ class _DashboardMapScreenState extends State<DashboardMapScreen>
       if (mounted && !showMap) setState(() {});
     });
 
-    Future.delayed(const Duration(milliseconds: 2500), () {
-      if (mounted) setState(() => _showIntro = false);
-    });
+    if (_showIntro) {
+      DashboardMapScreen._hasShownIntro = true;
+      Future.delayed(const Duration(milliseconds: 2500), () {
+        if (mounted) setState(() => _showIntro = false);
+      });
+    }
   }
 
   // 🌤️ Get Greeting based on time
@@ -399,8 +405,7 @@ class _DashboardMapScreenState extends State<DashboardMapScreen>
                 child: showMap ? _buildMapUI() : _buildDashboardUI(),
               ),
             ),
-            if (!_showIntro && !showMap)
-              _buildAttachedNavBar(), // Show attached nav only on dashboard
+            // Old nav bar removed — MainShell provides the persistent bottom nav now
             if (_showPoster && _nearestParking != null) _buildPosterOverlay(),
             IgnorePointer(
               ignoring: !_showIntro,

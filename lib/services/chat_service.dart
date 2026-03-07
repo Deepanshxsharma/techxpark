@@ -1,8 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-class MessageService {
+class ChatService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // Single common utility function to generate normalized, sorted conversation IDs
   String generateConversationId(String uid1, String uid2) {
@@ -11,15 +12,21 @@ class MessageService {
   }
 
   Future<void> sendMessage({
-    required String senderId,
-    required String senderName,
-    required String senderRole,
     required String receiverId,
     required String receiverName,
     required String receiverRole,
     required String text,
     String? lotId,
   }) async {
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) {
+      throw Exception('User must be logged in to send messages');
+    }
+
+    final senderId = currentUser.uid;
+    final senderName = currentUser.displayName ?? 'User';
+    final senderRole = 'customer'; // Default role for app users
+
     final convId = generateConversationId(senderId, receiverId);
 
     final msgData = {
@@ -54,6 +61,7 @@ class MessageService {
           'participantRoles': participantRoles,
           'lastMessage': text,
           'lastMessageTime': FieldValue.serverTimestamp(),
+          'createdAt': FieldValue.serverTimestamp(),
           'unreadCount': {
             senderId: 0,
             receiverId: 1,
@@ -68,7 +76,7 @@ class MessageService {
           'lastMessage': text,
           'lastMessageTime': FieldValue.serverTimestamp(),
           'unreadCount.$receiverId': receiverUnread,
-          'participantNames': participantNames,
+          'participantNames': participantNames, // update names in case they changed
           'participantRoles': participantRoles,
         });
       }
@@ -78,7 +86,11 @@ class MessageService {
     });
   }
 
-  Future<void> markConversationRead(String conversationId, String userId) async {
+  Future<void> markConversationRead(String conversationId) async {
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) return;
+    
+    final userId = currentUser.uid;
     final convRef = _db.collection('conversations').doc(conversationId);
     
     // Reset unread count for this user

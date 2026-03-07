@@ -1,4 +1,5 @@
 import 'package:techxpark/theme/app_colors.dart';
+import 'package:techxpark/theme/app_text_styles.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -13,10 +14,6 @@ import 'indoor_navigation_screen.dart';
 class MyBookingsScreen extends StatelessWidget {
   const MyBookingsScreen({super.key});
 
-  final Color _bgOffWhite = const Color(0xFFF8FAFC);
-  final Color _darkGrey = const Color(0xFF1E293B);
-  final Color _techBlue = const Color(0xFF2563EB);
-
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
@@ -28,11 +25,11 @@ class MyBookingsScreen extends StatelessWidget {
     }
 
     return Scaffold(
-      backgroundColor: _bgOffWhite,
+      backgroundColor: AppColors.bgLight,
       appBar: AppBar(
         title: Text(
           "My History",
-          style: TextStyle(color: _darkGrey, fontWeight: FontWeight.w900),
+          style: AppTextStyles.h2,
         ),
         centerTitle: true,
         backgroundColor: Colors.transparent,
@@ -41,7 +38,7 @@ class MyBookingsScreen extends StatelessWidget {
         leading: IconButton(
           icon: CircleAvatar(
             backgroundColor: Colors.white,
-            child: Icon(Icons.arrow_back, color: _darkGrey),
+            child: Icon(Icons.arrow_back, color: AppColors.textPrimaryLight),
           ),
           onPressed: () => Navigator.pop(context),
         ),
@@ -63,7 +60,7 @@ class MyBookingsScreen extends StatelessWidget {
 
           if (snapshot.connectionState == ConnectionState.waiting) {
             return Center(
-              child: CircularProgressIndicator(color: _techBlue),
+              child: CircularProgressIndicator(color: AppColors.primary),
             );
           }
 
@@ -117,23 +114,6 @@ class MyBookingsScreen extends StatelessWidget {
   // SUMMARY PROGRESS CARD
   // ---------------------------------------------------------------------------
   Widget _buildProgressCard(int activeCount) {
-    // Cap at 3 for UI purposes
-    final int displayCount = activeCount > 3 ? 3 : activeCount;
-    final double progress = displayCount / 3.0;
-    
-    Color progressColor;
-    if (displayCount == 1) progressColor = Colors.green;
-    else if (displayCount == 2) progressColor = Colors.orange;
-    else if (displayCount == 3) progressColor = Colors.red;
-    else progressColor = Colors.grey.shade300;
-
-    String subtitleText;
-    if (displayCount < 3) {
-      subtitleText = "You can book ${3 - displayCount} more parking slot${3 - displayCount == 1 ? '' : 's'}";
-    } else {
-      subtitleText = "Booking limit reached. Cancel an existing slot.";
-    }
-
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 20, 20, 0),
       padding: const EdgeInsets.all(16),
@@ -148,50 +128,38 @@ class MyBookingsScreen extends StatelessWidget {
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          const Text(
-            "Active Bookings",
-            style: TextStyle(
-              fontWeight: FontWeight.w800,
-              fontSize: 16,
-              color: Color(0xFF1E293B),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF2563EB).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
             ),
+            child: const Icon(Icons.local_parking_rounded, color: Color(0xFF2563EB), size: 24),
           ),
-          const SizedBox(height: 12),
-          Row(
+          const SizedBox(width: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    minHeight: 12,
-                    backgroundColor: const Color(0xFFF1F5F9),
-                    valueColor: AlwaysStoppedAnimation<Color>(progressColor),
-                  ),
+              const Text(
+                "Active Bookings",
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                  color: Color(0xFF1E293B),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(height: 4),
               Text(
-                "$displayCount / 3 used",
+                "$activeCount active parking ${activeCount == 1 ? 'slot' : 'slots'}",
                 style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                  color: Color(0xFF0F172A),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF64748B),
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            subtitleText,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: displayCount >= 3 ? Colors.red : const Color(0xFF64748B),
-            ),
           ),
         ],
       ),
@@ -214,7 +182,7 @@ class MyBookingsScreen extends StatelessWidget {
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: _darkGrey,
+              color: AppColors.textPrimaryLight,
             ),
           ),
           const SizedBox(height: 8),
@@ -282,7 +250,7 @@ class MyBookingsScreen extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w900,
-                          color: _darkGrey,
+                          color: AppColors.textPrimaryLight,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -318,7 +286,7 @@ class MyBookingsScreen extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w900,
-                          color: _techBlue,
+                          color: AppColors.primary,
                         ),
                       ),
               ],
@@ -378,7 +346,7 @@ class MyBookingsScreen extends StatelessWidget {
                           );
                         },
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: _darkGrey,
+                          foregroundColor: AppColors.textPrimaryLight,
                           side:
                               BorderSide(color: Colors.grey.shade300),
                           shape: RoundedRectangleBorder(
@@ -413,7 +381,7 @@ class MyBookingsScreen extends StatelessWidget {
                             );
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: _darkGrey,
+                            backgroundColor: AppColors.textPrimaryLight,
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -548,13 +516,13 @@ class MyBookingsScreen extends StatelessWidget {
             left: -10,
             top: 0,
             bottom: 0,
-            child: CircleAvatar(radius: 10, backgroundColor: _bgOffWhite),
+             child: CircleAvatar(radius: 10, backgroundColor: AppColors.bgLight),
           ),
           Positioned(
             right: -10,
             top: 0,
             bottom: 0,
-            child: CircleAvatar(radius: 10, backgroundColor: _bgOffWhite),
+             child: CircleAvatar(radius: 10, backgroundColor: AppColors.bgLight),
           ),
         ],
       ),
@@ -578,7 +546,7 @@ class MyBookingsScreen extends StatelessWidget {
         Text(
           value,
           style:
-              TextStyle(fontWeight: FontWeight.w700, color: _darkGrey),
+              TextStyle(fontWeight: FontWeight.w700, color: AppColors.textPrimaryLight),
           overflow: TextOverflow.ellipsis,
           maxLines: 1,
         ),

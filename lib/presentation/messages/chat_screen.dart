@@ -3,7 +3,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:techxpark/services/message_service.dart';
+import '../../models/message_model.dart';
+import '../../services/chat_service.dart';
+import '../../widgets/message_bubble.dart';
 
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
@@ -31,15 +33,11 @@ class _ChatScreenState extends State<ChatScreen> {
   final _scrollCtrl = ScrollController();
   final _auth = FirebaseAuth.instance;
   final _db = FirebaseFirestore.instance;
-  final _messageService = MessageService();
-
-  String _senderName = 'User';
-  String _senderRole = 'customer';
+  final _chatService = ChatService();
 
   @override
   void initState() {
     super.initState();
-    _loadSenderInfo();
     _markAsRead();
   }
 
@@ -50,26 +48,11 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
-  Future<void> _loadSenderInfo() async {
-    final uid = _auth.currentUser?.uid;
-    if (uid == null) return;
-    try {
-      final userDoc = await _db.collection('users').doc(uid).get();
-      if (userDoc.exists && mounted) {
-        setState(() {
-          _senderName = userDoc.data()?['name'] ?? _auth.currentUser?.displayName ?? 'User';
-          _senderRole = userDoc.data()?['role'] ?? 'customer';
-        });
-      }
-    } catch (e) {
-      debugPrint('Failed to load sender info: $e');
-    }
-  }
 
   void _markAsRead() {
     final user = _auth.currentUser;
     if (user != null) {
-      _messageService.markConversationRead(widget.conversationId, user.uid);
+      _chatService.markConversationRead(widget.conversationId);
     }
   }
 
@@ -93,15 +76,20 @@ class _ChatScreenState extends State<ChatScreen> {
     _msgCtrl.clear();
     HapticFeedback.lightImpact();
 
-    await _messageService.sendMessage(
-      senderId: user.uid,
-      senderName: _senderName,
-      senderRole: _senderRole,
-      receiverId: widget.otherUserId,
-      receiverName: widget.otherUserName,
-      receiverRole: widget.otherUserRole,
-      text: text,
-    );
+    try {
+      await _chatService.sendMessage(
+        receiverId: widget.otherUserId,
+        receiverName: widget.otherUserName,
+        receiverRole: widget.otherUserRole,
+        text: text,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to send message. Please try again.')),
+        );
+      }
+    }
     
     _scrollToBottom();
   }
@@ -214,30 +202,28 @@ class _ChatScreenState extends State<ChatScreen> {
           itemCount: messages.length,
           itemBuilder: (context, index) {
             final data = messages[index].data() as Map<String, dynamic>;
-            final isMe = data['senderId'] == _auth.currentUser?.uid;
-            final prevData = index > 0 ? messages[index - 1].data() as Map<String, dynamic> : null;
+            final message = MessageModel.fromMap(messages[index].id, data);
+            final isMe = message.senderId == _auth.currentUser?.uid;
             
             bool showTimeSeparator = false;
             if (index == 0) {
               showTimeSeparator = true;
-            } else if (data['timestamp'] != null && prevData?['timestamp'] != null) {
-              final current = (data['timestamp'] as Timestamp).toDate();
-              final previous = (prevData!['timestamp'] as Timestamp).toDate();
-              if (current.difference(previous).inMinutes > 20) {
-                showTimeSeparator = true;
+            } else {
+              final prevData = messages[index - 1].data() as Map<String, dynamic>;
+              if (message.timestamp != null && prevData['timestamp'] != null) {
+                final current = message.timestamp!;
+                final previous = (prevData['timestamp'] as Timestamp).toDate();
+                if (current.difference(previous).inMinutes > 20) {
+                  showTimeSeparator = true;
+                }
               }
             }
 
             return Column(
               children: [
-                if (showTimeSeparator && data['timestamp'] != null)
-                  _buildTimeSeparator((data['timestamp'] as Timestamp).toDate()),
-                _ChatBubble(
-                  text: data['text'] ?? '',
-                  isMe: isMe,
-                  timestamp: (data['timestamp'] as Timestamp?)?.toDate(),
-                  isRead: data['read'] ?? false,
-                ),
+                if (showTimeSeparator && message.timestamp != null)
+                  _buildTimeSeparator(message.timestamp!),
+                MessageBubble(message: message, isMe: isMe),
               ],
             );
           },
@@ -305,71 +291,3 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 }
 
-class _ChatBubble extends StatelessWidget {
-  final String text;
-  final bool isMe;
-  final DateTime? timestamp;
-  final bool isRead;
-
-  const _ChatBubble({
-    required this.text,
-    required this.isMe,
-    this.timestamp,
-    required this.isRead,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Align(
-      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: isMe ? AppColors.primary : Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(16),
-            topRight: const Radius.circular(16),
-            bottomLeft: Radius.circular(isMe ? 16 : 4),
-            bottomRight: Radius.circular(isMe ? 4 : 16),
-          ),
-          boxShadow: [
-            if (!isMe) BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5, offset: const Offset(0, 2))
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              text,
-              style: AppTextStyles.body2.copyWith(color: isMe ? Colors.white : AppColors.textPrimaryLight),
-            ),
-            const SizedBox(height: 4),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (timestamp != null)
-                  Text(
-                    DateFormat('h:mm a').format(timestamp!),
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: isMe ? Colors.white.withOpacity(0.7) : AppColors.textTertiaryLight,
-                    ),
-                  ),
-                if (isMe) ...[
-                  const SizedBox(width: 4),
-                  Icon(
-                    isRead ? Icons.done_all_rounded : Icons.done_rounded,
-                    size: 14,
-                    color: isRead ? Colors.white : Colors.white.withOpacity(0.5),
-                  ),
-                ],
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

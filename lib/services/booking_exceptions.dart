@@ -47,19 +47,6 @@ class UserBookingOverlapException extends BookingException {
         );
 }
 
-// ─── QUOTA EXCEEDED ────────────────────────────────────────────────────────────
-
-class UserBookingLimitExceededException extends BookingException {
-  final int current;
-  final int max;
-
-  UserBookingLimitExceededException({required this.current, required this.max})
-      : super(
-          'User has $current active bookings (max $max)',
-          'You have reached the maximum of $max active bookings. Please complete or cancel an existing booking first.',
-        );
-}
-
 // ─── CANCELLATION ──────────────────────────────────────────────────────────────
 
 class CancellationNotAllowedException extends BookingException {

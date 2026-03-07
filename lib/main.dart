@@ -14,7 +14,8 @@ import 'theme/theme_controller.dart';
 import 'theme/app_colors.dart';
 import 'theme/app_text_styles.dart';
 import 'presentation/booking/my_bookings_screen.dart';
-import 'presentation/map/dashboard_map_screen.dart';
+
+import 'widgets/main_shell.dart';
 import 'presentation/messages/messages_screen.dart';
 import 'presentation/notifications/notifications_screen.dart';
 
@@ -171,11 +172,11 @@ class _TechxParkAppState extends State<TechxParkApp> with WidgetsBindingObserver
           routes: {
             '/notifications': (context) => const NotificationsScreen(),
             '/my_bookings': (context) => const MyBookingsScreen(),
-            '/dashboard': (context) => const DashboardMapScreen(),
+            '/dashboard': (context) => const MainShell(),
             '/active_parking': (context) =>
-                const MyBookingsScreen(), // fallback
+                const MainShell(initialIndex: 2), // fallback to bookings
             '/slot_selection': (context) =>
-                const DashboardMapScreen(), // fallback
+                const MainShell(initialIndex: 2), // Bookings tab
             '/messages': (context) => const MessagesScreen(),
           },
         );
