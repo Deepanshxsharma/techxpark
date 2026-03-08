@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:techxpark/services/google_auth_service.dart';
 import 'package:techxpark/presentation/auth/signup/signup_screen.dart';
 import 'package:techxpark/theme/app_colors.dart';
@@ -90,10 +91,17 @@ class _LoginScreenState extends State<LoginScreen>
     HapticFeedback.mediumImpact();
 
     try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
+      final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: _emailCtrl.text.trim(),
         password: _passCtrl.text.trim(),
       );
+      // Ensure user document has role field
+      if (cred.user != null) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(cred.user!.uid)
+            .set({'role': 'customer'}, SetOptions(merge: true));
+      }
       // AuthWrapper handles navigation automatically upon auth state change.
       HapticFeedback.heavyImpact(); 
     } on FirebaseAuthException catch (e) {
@@ -114,6 +122,25 @@ class _LoginScreenState extends State<LoginScreen>
     HapticFeedback.lightImpact();
 
     final user = await GoogleAuthService().signInWithGoogle();
+
+    // Ensure user document has role field after Google sign-in
+    if (user != null) {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .set({
+        'uid': user.uid,
+        'name': user.displayName ?? '',
+        'email': user.email ?? '',
+        'phone': user.phoneNumber ?? '',
+        'provider': 'google',
+        'role': 'customer',
+        'banned': false,
+        'isOnline': false,
+        'accessStatus': 'none',
+        'createdAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    }
 
     if (mounted) {
       setState(() => _isGoogleLoading = false);

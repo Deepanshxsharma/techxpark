@@ -305,8 +305,21 @@ class _EditProfileScreenState extends State<EditProfileScreen>
                                 child: CircularProgressIndicator(
                                     strokeWidth: 2))))
                     : _photoUrl != null && _photoUrl!.isNotEmpty
-                        ? Image.network(_photoUrl!,
-                            fit: BoxFit.cover, width: 110, height: 110)
+                        ? Image.network(
+                            _photoUrl!,
+                            fit: BoxFit.cover,
+                            width: 110,
+                            height: 110,
+                            errorBuilder: (context, error, stackTrace) => Container(
+                              color: _techBlue.withOpacity(0.1),
+                              child: Center(
+                                child: Text(
+                                  (_nameCtrl.text.isNotEmpty ? _nameCtrl.text[0] : 'U').toUpperCase(),
+                                  style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w900, color: _techBlue),
+                                ),
+                              ),
+                            ),
+                          )
                         : Container(
                             color: _techBlue.withOpacity(0.1),
                             child: Center(

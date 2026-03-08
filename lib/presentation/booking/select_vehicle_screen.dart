@@ -5,6 +5,9 @@ import 'package:flutter/services.dart';
 
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
+import '../../theme/app_spacing.dart';
+import '../../widgets/app_card.dart';
+import '../../widgets/app_button.dart';
 
 import 'slot_selection_screen.dart';
 
@@ -37,7 +40,7 @@ class _SelectVehicleScreenState extends State<SelectVehicleScreen> {
         .collection("users")
         .doc(user.uid)
         .collection("vehicles")
-        .orderBy("created_at", descending: true)
+        .orderBy("createdAt", descending: true)
         .snapshots();
   }
 
@@ -69,17 +72,19 @@ class _SelectVehicleScreenState extends State<SelectVehicleScreen> {
             children: [
               Expanded(
                 child: ListView.builder(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(AppSpacing.screenPadding),
                   itemCount: vehicles.length,
                   itemBuilder: (context, index) {
                     final doc = vehicles[index];
                     final data = doc.data() as Map<String, dynamic>;
                     final isSelected = selectedVehicleId == doc.id;
-                    final isBike = data["type"] == "bike";
+                    final vehicleType = data["vehicleType"] ?? "Car";
+                    final isBike = vehicleType.toString().toLowerCase() == "bike";
 
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 16),
-                      child: InkWell(
+                      child: AppCard(
+                        color: isSelected ? AppColors.primary.withOpacity(0.05) : AppColors.surfaceLight,
                         onTap: () {
                           HapticFeedback.selectionClick();
                           setState(() {
@@ -87,63 +92,43 @@ class _SelectVehicleScreenState extends State<SelectVehicleScreen> {
                             selectedVehicle = data;
                           });
                         },
-                        borderRadius: BorderRadius.circular(20),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: isSelected ? AppColors.primary.withOpacity(0.05) : AppColors.surfaceLight,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: isSelected ? AppColors.primary : AppColors.borderLight,
-                              width: 2,
-                            ),
-                            boxShadow: isSelected ? [] : [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.04),
-                                blurRadius: 16,
-                                offset: const Offset(0, 4)
-                              )
-                            ],
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(14),
-                                decoration: BoxDecoration(
-                                  color: isSelected ? AppColors.primary : AppColors.bgLight,
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: Icon(
-                                  isBike ? Icons.two_wheeler : Icons.directions_car,
-                                  color: isSelected ? Colors.white : AppColors.primary,
-                                  size: 28,
-                                ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: isSelected ? AppColors.primary : AppColors.bgLight,
+                                borderRadius: BorderRadius.circular(16),
                               ),
-                              const SizedBox(width: 20),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      data["number"]?.toString().toUpperCase() ?? "UNKNOWN",
-                                      style: AppTextStyles.h2,
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      "${data['brand'] ?? ''} ${data['model'] ?? ''}".trim(),
-                                      style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.w600),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Icon(
-                                isSelected ? Icons.check_circle : Icons.radio_button_off,
-                                color: isSelected ? AppColors.primary : AppColors.borderDark,
+                              child: Icon(
+                                isBike ? Icons.two_wheeler : Icons.directions_car,
+                                color: isSelected ? Colors.white : AppColors.primary,
                                 size: 28,
                               ),
-                            ],
-                          ),
+                            ),
+                            const SizedBox(width: 20),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    data["vehicleNumber"]?.toString().toUpperCase() ?? "UNKNOWN",
+                                    style: AppTextStyles.h2,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    vehicleType,
+                                    style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.w600),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Icon(
+                              isSelected ? Icons.check_circle : Icons.radio_button_off,
+                              color: isSelected ? AppColors.primary : AppColors.borderDark,
+                              size: 28,
+                            ),
+                          ],
                         ),
                       ),
                     );
@@ -172,7 +157,8 @@ class _SelectVehicleScreenState extends State<SelectVehicleScreen> {
         ],
       ),
       child: SafeArea(
-        child: ElevatedButton(
+        child: AppButton(
+          label: "Proceed to Slot Selection",
           onPressed: selectedVehicle == null
               ? null
               : () {
@@ -193,20 +179,6 @@ class _SelectVehicleScreenState extends State<SelectVehicleScreen> {
                     ),
                   );
                 },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            disabledBackgroundColor: AppColors.borderLight,
-            minimumSize: const Size.fromHeight(56),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            elevation: 8,
-            shadowColor: AppColors.primary.withOpacity(0.4),
-          ),
-          child: Text(
-            "Proceed to Slot Selection",
-            style: AppTextStyles.buttonText.copyWith(
-              color: selectedVehicle == null ? AppColors.textSecondaryLight : Colors.white
-            ),
-          ),
         ),
       ),
     );
@@ -237,17 +209,12 @@ class _SelectVehicleScreenState extends State<SelectVehicleScreen> {
               style: AppTextStyles.body1,
             ),
             const SizedBox(height: 32),
-            OutlinedButton(
+            AppButtonOutline(
+              label: "Return to Booking",
               onPressed: () {
                 HapticFeedback.lightImpact();
                 Navigator.pop(context);
               },
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: AppColors.primary, width: 2),
-                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              ),
-              child: Text("Return to Booking", style: AppTextStyles.buttonText.copyWith(color: AppColors.primary)),
             ),
           ],
         ),

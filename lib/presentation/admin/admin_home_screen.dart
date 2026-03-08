@@ -193,7 +193,7 @@ class AdminHomeScreen extends StatelessWidget {
                       children: [
                         Text(data['parkingName'] ?? data['parking_name'] ?? "Unknown Parking", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                         const SizedBox(height: 4),
-                        Text("${vehicle['number']} • ${DateFormat('hh:mm a').format(date)}", style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+                        Text("${vehicle['vehicleNumber'] ?? vehicle['number']} • ${DateFormat('hh:mm a').format(date)}", style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
                       ],
                     ),
                   ),

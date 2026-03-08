@@ -10,6 +10,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../notifications/notifications_screen.dart';
+import '../vehicle/my_vehicle_screen.dart';
 import 'edit_profile_screen.dart';
 import 'privacy_security_screen.dart';
 
@@ -210,6 +211,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   icon: Icons.person_outline,
                   label: 'Edit Profile',
                   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EditProfileScreen())),
+                ),
+                _divider(),
+                _menuItem(
+                  icon: Icons.garage_outlined,
+                  label: 'My Garage',
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyVehicleScreen())),
                 ),
                 _divider(),
                 _menuItem(

@@ -1,74 +1,81 @@
-# Node modules
-node_modules/
-**/node_modules/
+# ═══════════════════════════════════════════════════
+#  TechXPark — Flutter + Firebase .gitignore
+# ═══════════════════════════════════════════════════
 
-# Build outputs
-dist/
+# ── Flutter & Dart ────────────────────────────────
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
 build/
-**/dist/
-**/build/
+*.iml
+*.log
 
-# Environment files — NEVER commit these
-.env
-.env.local
-.env.production
-.env.development
-**/.env
-**/.env.local
+# ── Android ───────────────────────────────────────
+android/.gradle/
+android/local.properties
+android/key.properties
+android/app/build/
+**/android/**/gradle-wrapper.jar
+.gradle/
 
-# Firebase
+# ── iOS ───────────────────────────────────────────
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Runner/GeneratedPluginRegistrant.*
+
+# ── IDE ───────────────────────────────────────────
+.idea/
+.vscode/
+.cursor/
+*.swp
+*.swo
+
+# ── macOS / Windows / Linux ───────────────────────
+.DS_Store
+**/.DS_Store
+Thumbs.db
+*.tmp
+
+# ── Firebase ──────────────────────────────────────
 .firebase/
 firebase-debug.log
 firestore-debug.log
 ui-debug.log
 database-debug.log
 
-# Flutter
-**/.dart_tool/
-**/.flutter-plugins
-**/.flutter-plugins-dependencies
-**/build/
-**/*.iml
-**/.idea/
-**/*.log
-**/android/.gradle/
-**/android/local.properties
-**/android/key.properties
-**/ios/Pods/
-**/ios/.symlinks/
-**/.packages
-**/.pub-cache/
-**/pubspec.lock
+# ── Cloud Functions ───────────────────────────────
+node_modules/
+**/node_modules/
 
-# Mac
-.DS_Store
-**/.DS_Store
-Thumbs.db
-
-# VS Code
-.vscode/
-**/.vscode/
-
-# Cursor
-.cursor/
-
-# Logs
-*.log
-npm-debug.log*
-
-# Coverage
-coverage/
-
-# Vite
-**/.vite/
-
-# Secrets — NEVER commit
-**/serviceAccountKey.json
-**/*.keystore
+# ── Secrets — NEVER commit ────────────────────────
+.env
+.env.*
+**/.env
+**/.env.*
+*.keystore
 **/key.properties
+**/serviceAccountKey.json
+
+# ── Seed & Test Data ─────────────────────────────
 gatex-seed/
 users.json
 make_owner.js
-.github/
-*.png
 tmp_import.txt
+
+# ── Misc build outputs ───────────────────────────
+dist/
+**/dist/
+coverage/
+**/.vite/
+
+# ── Flutter generated ────────────────────────────
+.flutter-plugins
+.flutter-plugins-dependencies
+.metadata
+
+# ── Root screenshots (not needed in repo) ────────
+dashboard_app.png
+dashboard_app_v2.png

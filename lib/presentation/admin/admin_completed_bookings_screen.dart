@@ -36,7 +36,7 @@ class AdminCompletedBookingsScreen extends StatelessWidget {
               parking: data["parkingName"] ?? data["parking_name"],
               slot: data["slotId"] ?? data["slot_id"],
               floor: data["floor"],
-              vehicleNo: vehicle["number"] ?? "UNKNOWN",
+              vehicleNo: vehicle["vehicleNumber"] ?? vehicle["number"] ?? "UNKNOWN",
               amount: data["total_price"],
             );
           },

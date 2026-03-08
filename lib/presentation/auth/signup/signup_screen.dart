@@ -244,10 +244,16 @@ class _SignupScreenState extends State<SignupScreen> {
           'uid': user.uid,
           'name': name,
           'email': email,
+          'phone': '',
           'provider': 'email',
-          'role': 'user',
+          'role': 'customer',
           'blocked': false,
-          'created_at': FieldValue.serverTimestamp(),
+          'banned': false,
+          'isOnline': false,
+          'accessStatus': 'none',
+          'assignedLotId': null,
+          'fcmToken': null,
+          'createdAt': FieldValue.serverTimestamp(),
         });
       }
 
