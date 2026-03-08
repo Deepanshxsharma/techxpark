@@ -79,3 +79,4 @@ coverage/
 # ── Root screenshots (not needed in repo) ────────
 dashboard_app.png
 dashboard_app_v2.png
+.github/
