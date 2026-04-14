@@ -1518,6 +1518,15 @@ class _DashboardMapScreenState extends State<DashboardMapScreen>
                     ),
                     const SizedBox(height: 6),
                     Text(
+                      data['address']?.toString() ?? '',
+                      style: const TextStyle(
+                        color: Colors.white54,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
                       "Slot ${data['slotId'] ?? data['slot_id']} • Floor ${data['floor'] ?? 'G'}",
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.7),
@@ -1706,7 +1715,9 @@ class _DashboardMapScreenState extends State<DashboardMapScreen>
                         HapticFeedback.lightImpact();
                         Navigator.push(
                           context,
-                          NotificationsPageRoute(),
+                          MaterialPageRoute(
+                            builder: (_) => const NotificationsScreen(),
+                          ),
                         );
                       },
                       child: Stack(

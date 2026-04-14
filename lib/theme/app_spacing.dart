@@ -4,9 +4,11 @@ class AppSpacing {
   // Screen-level
   static const double screenPadding = 16.0;
   static const double screenPaddingLarge = 20.0;
+  static const double screen = 16.0; // alias used by Codex screens
 
   // Sections (gap between major sections)
   static const double sectionGap = 20.0;
+  static const double section = 20.0; // alias used by Codex screens
 
   // Items (gap between list items, cards in a row, etc.)
   static const double itemGap = 12.0;

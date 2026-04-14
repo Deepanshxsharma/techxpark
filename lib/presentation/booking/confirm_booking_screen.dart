@@ -83,105 +83,85 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
     }
 
     try {
-      // ── Price Check ──────────────────────────────────────────────────
+      // ── Price Calculation ─────────────────────────────────────────────
       final ratePerHour = (widget.parking['price_per_hour'] as num?)?.toDouble() ?? 0.0;
       final hours = widget.end.difference(widget.start).inMinutes / 60;
-      final totalPrice = ratePerHour * hours;
+      final durationCharge = ratePerHour * hours;
+      final baseFee = (widget.parking['base_fee'] as num?)?.toDouble() ?? 0.0;
+      final serviceFee = (widget.parking['service_fee'] as num?)?.toDouble() ?? 0.0;
+      final subtotal = baseFee + durationCharge + serviceFee;
+      final taxAmount = subtotal * 0.0; // No tax for now
+      final discountAmount = 0.0;
+      final totalPrice = subtotal + taxAmount - discountAmount;
 
-      if (totalPrice == 0) {
-        // Automatically create booking without payment
-        await BookingService.instance.createBooking(
-          parkingId: widget.parkingId,
-          parkingName: widget.parking['name'] ?? 'Parking',
-          slotId: widget.selectedSlot,
-          floorIndex: widget.floorIndex,
-          startTime: widget.start,
-          endTime: widget.end,
-          vehicle: {
-            'number': widget.vehicle['number'],
-            'type': widget.vehicle['type'],
-          },
-        ).timeout(
-          const Duration(seconds: 15),
-          onTimeout: () => throw TimeoutException('Connection timed out. Please try again.'),
-        );
+      final vehicleData = <String, dynamic>{
+        'number': widget.vehicle['number'],
+        'type': widget.vehicle['type'] ?? 'Car',
+        'vehicleNumber': widget.vehicle['number'],
+        'vehicleType': widget.vehicle['type'] ?? 'Car',
+        'color': widget.vehicle['color'] ?? '',
+      };
 
-        await notifyBookingConfirmed(
-          slotName: widget.selectedSlot,
-          parkingName: widget.parking['name'] ?? 'Parking',
-          startTime: widget.start,
-          endTime: widget.end,
-        );
+      final parkingName = widget.parking['name']?.toString() ?? 'Parking';
+      final parkingAddress = widget.parking['address']?.toString() ?? '';
 
-        if (!mounted) return;
-        HapticFeedback.heavyImpact();
+      // ── Create Booking (same path for free and paid) ────────────────
+      await BookingService.instance.createBooking(
+        parkingId: widget.parkingId,
+        parkingName: parkingName,
+        parkingAddress: parkingAddress,
+        slotId: widget.selectedSlot,
+        slotNumber: widget.selectedSlot,
+        floorIndex: widget.floorIndex,
+        startTime: widget.start,
+        endTime: widget.end,
+        ratePerHour: ratePerHour,
+        baseFee: baseFee,
+        durationCharge: durationCharge,
+        serviceFee: serviceFee,
+        taxAmount: taxAmount,
+        discountAmount: discountAmount,
+        totalAmount: totalPrice,
+        bookingType: 'Standard',
+        vehicle: vehicleData,
+        paymentMethod: totalPrice == 0 ? 'No Payment Required' : 'Instant Pay',
+        paymentStatus: totalPrice == 0 ? 'skipped' : 'simulated_success',
+        paymentMode: 'mock',
+        paymentGateway: 'test_bypass',
+        paymentReference: '',
+      ).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () => throw TimeoutException('Connection timed out. Please try again.'),
+      );
 
-        Navigator.pushReplacement(
-          context,
-          PageRouteBuilder(
-            transitionDuration: const Duration(milliseconds: 600),
-            pageBuilder: (_, animation, __) => FadeTransition(
-              opacity: animation,
-              child: BookingSummaryScreen(
-                parking: widget.parking,
-                docId: widget.parkingId,
-                selectedSlot: widget.selectedSlot,
-                floorIndex: widget.floorIndex,
-                start: widget.start,
-                end: widget.end,
-                vehicle: widget.vehicle,
-              ),
+      await notifyBookingConfirmed(
+        slotName: widget.selectedSlot,
+        parkingName: parkingName,
+        startTime: widget.start,
+        endTime: widget.end,
+      );
+
+      if (!mounted) return;
+      HapticFeedback.heavyImpact();
+
+      Navigator.pushReplacement(
+        context,
+        PageRouteBuilder(
+          transitionDuration: const Duration(milliseconds: 600),
+          pageBuilder: (_, animation, __) => FadeTransition(
+            opacity: animation,
+            child: BookingSummaryScreen(
+              parking: widget.parking,
+              docId: widget.parkingId,
+              selectedSlot: widget.selectedSlot,
+              floorIndex: widget.floorIndex,
+              start: widget.start,
+              end: widget.end,
+              vehicle: widget.vehicle,
             ),
           ),
-        );
-      } else {
-        // In the future: redirect to Stripe/Payment Screen here
-        // For now, we simulate default creation
-        await BookingService.instance.createBooking(
-          parkingId: widget.parkingId,
-          parkingName: widget.parking['name'] ?? 'Parking',
-          slotId: widget.selectedSlot,
-          floorIndex: widget.floorIndex,
-          startTime: widget.start,
-          endTime: widget.end,
-          vehicle: {
-            'number': widget.vehicle['number'],
-            'type': widget.vehicle['type'],
-          },
-        ).timeout(
-          const Duration(seconds: 15),
-          onTimeout: () => throw TimeoutException('Connection timed out. Please try again.'),
-        );
-
-        await notifyBookingConfirmed(
-          slotName: widget.selectedSlot,
-          parkingName: widget.parking['name'] ?? 'Parking',
-          startTime: widget.start,
-          endTime: widget.end,
-        );
-
-        if (!mounted) return;
-        HapticFeedback.heavyImpact();
-
-        Navigator.pushReplacement(
-          context,
-          PageRouteBuilder(
-            transitionDuration: const Duration(milliseconds: 600),
-            pageBuilder: (_, animation, __) => FadeTransition(
-              opacity: animation,
-              child: BookingSummaryScreen(
-                parking: widget.parking,
-                docId: widget.parkingId,
-                selectedSlot: widget.selectedSlot,
-                floorIndex: widget.floorIndex,
-                start: widget.start,
-                end: widget.end,
-                vehicle: widget.vehicle,
-              ),
-            ),
-          ),
-        );
-      }
+        ),
+      );
     } on BookingException catch (e) {
       if (!mounted) return;
       setState(() => _isProcessing = false);

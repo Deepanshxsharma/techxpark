@@ -1,4 +1,10 @@
 {
+  "scripts": {
+    "build:admin": "npm --prefix techxpark-admin run build",
+    "build:owner": "npm --prefix techxpark-owner run build",
+    "build:display": "npm --prefix techxpark-display run build",
+    "build:web-panels": "npm run build:admin && npm run build:owner"
+  },
   "dependencies": {
     "firebase-admin": "^13.7.0"
   }

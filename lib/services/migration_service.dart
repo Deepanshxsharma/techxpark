@@ -1,6 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import 'booking_status_helper.dart';
+
+import 'booking_status_helper.dart';
+
 /// Production-ready migration service with 4 phases:
 /// 1. MIGRATE — Copy old data to new structure
 /// 2. VERIFY — Compare slot counts, ensure floor fields exist
@@ -270,7 +274,7 @@ class MigrationService {
         final activeBookingsSnap = await _fs
             .collection('bookings')
             .where('parkingId', isEqualTo: parkDoc.id)
-            .where('status', whereIn: ['upcoming', 'active'])
+            .where('status', whereIn: BookingStatusHelper.blockingStatuses)
             .get();
         final occupied = activeBookingsSnap.docs.length;
         final available = (total - occupied).clamp(0, total);

@@ -173,7 +173,6 @@ class _MapScreenState extends State<MapScreen> {
                     MaterialPageRoute(
                       builder: (_) =>
                           ParkingDetailsScreen(
-                        id: id,
                         data: data,
                       ),
                     ),

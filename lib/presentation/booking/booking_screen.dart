@@ -9,9 +9,9 @@ import 'dart:ui';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 
-import 'booking_time_screen.dart';
 import '../vehicle/my_vehicle_screen.dart';
-import 'parking_overview_screen.dart'; 
+import 'parking_overview_screen.dart';
+import 'booking_time_screen.dart';
 
 class BookingScreen extends StatefulWidget {
   final String parkingId;
@@ -118,6 +118,79 @@ class _BookingScreenState extends State<BookingScreen> with SingleTickerProvider
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
     ));
+  }
+
+  // --- HELPER METHODS ---
+
+  List<String> _galleryImagesFor(Map<String, dynamic> data) {
+    final gallery = <String>[];
+    final rawGallery = data['imageGallery'] ?? data['gallery'] ?? data['images'];
+    if (rawGallery is List) {
+      for (final item in rawGallery) {
+        final url = item?.toString().trim() ?? '';
+        if (url.isNotEmpty && !gallery.contains(url)) {
+          gallery.add(url);
+        }
+      }
+    }
+
+    final primary = (data['imageUrl'] ?? data['image'] ?? '').toString().trim();
+    if (primary.isNotEmpty && !gallery.contains(primary)) {
+      gallery.insert(0, primary);
+    }
+
+    return gallery;
+  }
+
+  double _doubleValue(dynamic v, {double fallback = 0.0}) {
+    if (v is num) return v.toDouble();
+    if (v is String) return double.tryParse(v) ?? fallback;
+    return fallback;
+  }
+
+  int _intValue(dynamic v, {int fallback = 0}) {
+    if (v is num) return v.toInt();
+    if (v is String) return int.tryParse(v) ?? fallback;
+    return fallback;
+  }
+
+  List<Map<String, dynamic>> _zonesFor(Map<String, dynamic> data) {
+    final rawZones = data['zones'];
+    final totalSlots = _intValue(
+      data['totalSlots'] ?? data['total_slots'],
+      fallback: 0,
+    );
+
+    if (rawZones is! List || rawZones.isEmpty) {
+      return [
+        {
+          'name': 'General Zone',
+          'capacity': totalSlots,
+          'lifters': 0,
+        },
+      ];
+    }
+
+    final zoneCount = rawZones.length;
+    final baseCapacity = zoneCount == 0 ? 0 : totalSlots ~/ zoneCount;
+    final remainder = zoneCount == 0 ? 0 : totalSlots % zoneCount;
+
+    return List<Map<String, dynamic>>.generate(zoneCount, (index) {
+      final raw = rawZones[index];
+      final zone = raw is Map ? Map<String, dynamic>.from(raw) : <String, dynamic>{};
+      final name = zone['name']?.toString().trim().isNotEmpty == true
+          ? zone['name'].toString().trim()
+          : 'Zone ${index + 1}';
+      final capacity = _intValue(
+        zone['capacity'] ?? zone['totalSlots'] ?? zone['slots'],
+        fallback: baseCapacity + (index < remainder ? 1 : 0),
+      );
+      return {
+        'name': name,
+        'capacity': capacity,
+        'lifters': _intValue(zone['lifters'], fallback: 0),
+      };
+    });
   }
 
   @override
@@ -246,6 +319,15 @@ class _BookingScreenState extends State<BookingScreen> with SingleTickerProvider
                       _buildStatsRow(p),
                       const SizedBox(height: 32),
 
+                      _buildGallerySection(p),
+                      const SizedBox(height: 32),
+
+                      _buildReviewSection(p),
+                      const SizedBox(height: 32),
+
+                      _buildZonesSection(p),
+                      const SizedBox(height: 32),
+
                       // Live Grid Button
                       _buildLiveGridButton(),
                       const SizedBox(height: 20),
@@ -328,6 +410,163 @@ class _BookingScreenState extends State<BookingScreen> with SingleTickerProvider
         const SizedBox(height: 8),
         Text(value, style: AppTextStyles.h2),
         Text(label, style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.w600)),
+      ],
+    );
+  }
+
+  Widget _buildGallerySection(Map<String, dynamic> p) {
+    final images = _galleryImagesFor(p);
+    if (images.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Image Gallery',
+          style: AppTextStyles.h2.copyWith(fontSize: 20),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 118,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: images.length,
+            separatorBuilder: (context, index) =>
+                const SizedBox(width: 12),
+            itemBuilder: (context, index) {
+              return ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: UniversalImage(
+                  imagePath: images[index],
+                  width: 164,
+                  height: 118,
+                  fit: BoxFit.cover,
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildReviewSection(Map<String, dynamic> p) {
+    final rating = _doubleValue(
+      p['rating'] ?? p['ratingAverage'] ?? p['averageRating'],
+      fallback: 4.5,
+    );
+    final reviews = _intValue(
+      p['reviews'] ?? p['ratingCount'] ?? p['rating_count'],
+      fallback: 0,
+    );
+    final type = p['type']?.toString() ?? 'Smart Parking';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceLight,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.borderLight),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Rating & Reviews', style: AppTextStyles.h3),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFBBF24).withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: const Icon(
+                  Icons.star_rounded,
+                  color: Color(0xFFF59E0B),
+                  size: 30,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${rating.toStringAsFixed(1)} (${reviews.toString()} reviews)',
+                    style: AppTextStyles.h3,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(type, style: AppTextStyles.captionBold),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildZonesSection(Map<String, dynamic> p) {
+    final zones = _zonesFor(p);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Zones',
+          style: AppTextStyles.h2.copyWith(fontSize: 20),
+        ),
+        const SizedBox(height: 16),
+        Column(
+          children: zones.map((zone) {
+            return Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceLight,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppColors.borderLight),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Icon(
+                      Icons.apartment_rounded,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          zone['name']?.toString() ?? 'Zone',
+                          style: AppTextStyles.h3,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${zone['capacity']?.toString() ?? '0'} slots • ${zone['lifters']?.toString() ?? '0'} lifters',
+                          style: AppTextStyles.caption,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
       ],
     );
   }
