@@ -5,13 +5,15 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:intl/intl.dart';
+
 import 'package:latlong2/latlong.dart';
 
 import '../../services/booking_status_helper.dart';
-import '../../theme/app_text_styles.dart';
+import '../../theme/app_colors.dart';
+
 import '../booking/my_bookings_screen.dart';
 import '../booking/parking_ticket_screen.dart';
 import '../booking/parking_timer_screen.dart';
@@ -33,15 +35,9 @@ class _HomeScreenState extends State<HomeScreen> {
     'All Lots',
     'EV Charging',
     'Covered Parking',
-    'Valet',
+    '24/7',
+    'Budget',
   ];
-
-  static const LinearGradient _heroGradient = LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: <Color>[Color(0xFF0F172A), Color(0xFF1E3A8A), Color(0xFF3B82F6)],
-    stops: <double>[0.0, 0.6, 1.0],
-  );
 
   int _selectedFilterIndex = 0;
   String _currentLocationText = 'Fetching location...';
@@ -119,12 +115,14 @@ class _HomeScreenState extends State<HomeScreen> {
           final p = placemarks.first;
           // Build a short, recognizable name like "Connaught Place, New Delhi"
           final parts = <String>[
-            if (p.subLocality != null && p.subLocality!.isNotEmpty) p.subLocality!,
+            if (p.subLocality != null && p.subLocality!.isNotEmpty)
+              p.subLocality!,
             if (p.locality != null && p.locality!.isNotEmpty) p.locality!,
           ];
           final locationName = parts.isNotEmpty
               ? parts.join(', ')
-              : p.name ?? '${position.latitude.toStringAsFixed(3)}, ${position.longitude.toStringAsFixed(3)}';
+              : p.name ??
+                    '${position.latitude.toStringAsFixed(3)}, ${position.longitude.toStringAsFixed(3)}';
           setState(() => _currentLocationText = locationName);
         }
       } catch (_) {
@@ -221,7 +219,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF8FAFC),
+        backgroundColor: AppColors.bgLight,
         body: CustomScrollView(
           physics: const BouncingScrollPhysics(),
           slivers: <Widget>[
@@ -259,20 +257,21 @@ class _HomeScreenState extends State<HomeScreen> {
                 onParkingTap: _openParkingDetails,
               ),
             ),
-            const SliverToBoxAdapter(child: SizedBox(height: 36)),
+            const SliverToBoxAdapter(child: SizedBox(height: 48)),
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Text(
                   'Quick Actions',
-                  style: AppTextStyles.h2.copyWith(
-                    fontSize: 22,
-                    color: const Color(0xFF0F172A),
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF181C20), // on-background
                   ),
                 ),
               ),
             ),
-            const SliverToBoxAdapter(child: SizedBox(height: 16)),
+            const SliverToBoxAdapter(child: SizedBox(height: 24)),
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -280,22 +279,22 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: <Widget>[
                     Expanded(
                       child: _QuickActionCard(
-                        icon: Icons.electric_bolt_rounded,
-                        iconColor: const Color(0xFF10B981),
-                        bgColor: const Color(0xFFECFDF5),
-                        title: 'EV Charge',
-                        subtitle: 'Find stations',
+                        icon: Icons.electric_car_rounded,
+                        iconColor: AppColors.primary,
+                        bgColor: const Color(0xFFF1F4F9), // surface-container-low
+                        title: 'Find EV',
+                        subtitle: '12 nearby stations',
                         onTap: _openSearch,
                       ),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
                       child: _QuickActionCard(
-                        icon: Icons.receipt_long_rounded,
-                        iconColor: const Color(0xFF8B5CF6),
-                        bgColor: const Color(0xFFF5F3FF),
-                        title: 'Bookings',
-                        subtitle: 'Open history',
+                        icon: Icons.history_rounded,
+                        iconColor: const Color(0xFF344DD2), // secondary
+                        bgColor: const Color(0xFFF1F4F9), // surface-container-low
+                        title: 'Recents',
+                        subtitle: '3 spots visited',
                         onTap: _openBookings,
                       ),
                     ),
@@ -314,136 +313,94 @@ class _HomeScreenState extends State<HomeScreen> {
     final topPadding = MediaQuery.of(context).padding.top;
 
     return Container(
-      padding: EdgeInsets.fromLTRB(24, topPadding + 16, 24, 64),
-      decoration: BoxDecoration(
-        gradient: _heroGradient,
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(40),
-          bottomRight: Radius.circular(40),
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(32, topPadding + 32, 32, 64),
+      decoration: const BoxDecoration(
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(48)),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF0029B9), // primary
+            Color(0xFF2845D6), // primary-container
+          ],
         ),
-        boxShadow: <BoxShadow>[
+        boxShadow: [
           BoxShadow(
-            color: const Color(0xFF1E3A8A).withValues(alpha: 0.28),
-            blurRadius: 30,
-            offset: const Offset(0, 10),
+            color: Color(0x0F0830C6), // rgba(8,48,198,0.06)
+            blurRadius: 40,
+            offset: Offset(0, 20),
           ),
         ],
       ),
-      child: Stack(
-        children: <Widget>[
-          Positioned(
-            right: -50,
-            top: -50,
-            child: Container(
-              width: 150,
-              height: 150,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.05),
-              ),
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: <Widget>[
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                        _fetchCurrentLocation();
-                      },
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(999),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 10,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(999),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.2),
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: <Widget>[
-                                _isLocating
-                                    ? const SizedBox(
-                                        width: 14,
-                                        height: 14,
-                                        child: CircularProgressIndicator(
-                                          color: Colors.white,
-                                          strokeWidth: 2,
-                                        ),
-                                      )
-                                    : const Icon(
-                                        Icons.my_location_rounded,
-                                        size: 16,
-                                        color: Color(0xFF34D399),
-                                      ),
-                                const SizedBox(width: 8),
-                                Flexible(
-                                  child: Text(
-                                    _currentLocationText,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Top Row: Location Pill + Notification
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Location Pill
+              GestureDetector(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  _fetchCurrentLocation();
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.location_on_rounded, color: Colors.white, size: 16),
+                      const SizedBox(width: 8),
+                      Text(
+                        _currentLocationText,
+                        style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: -0.2,
                         ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  _NotificationButton(uid: uid, onTap: _openNotifications),
-                ],
-              ),
-              const SizedBox(height: 36),
-              const Text(
-                'Find Parking,',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 36,
-                  fontWeight: FontWeight.w900,
-                  height: 1.1,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              const SizedBox(height: 4),
-              ShaderMask(
-                shaderCallback: (bounds) => const LinearGradient(
-                  colors: <Color>[
-                    Color(0xFF60A5FA), // Blue 400
-                    Color(0xFF818CF8), // Indigo 400
-                    Color(0xFFA78BFA), // Violet 400
-                  ],
-                ).createShader(bounds),
-                child: const Text(
-                  'Park Smarter.',
-                  style: TextStyle(
-                    color: Colors.white, // Required for ShaderMask
-                    fontSize: 36,
-                    fontWeight: FontWeight.w900,
-                    height: 1.1,
-                    letterSpacing: -0.5,
+                      const SizedBox(width: 8),
+                      const Icon(Icons.refresh_rounded, color: Colors.white, size: 16),
+                    ],
                   ),
                 ),
               ),
+              // Notification
+              _NotificationButton(uid: uid, onTap: _openNotifications),
             ],
+          ),
+          const SizedBox(height: 40),
+          // Hero Text
+          Text(
+            'TechXPark',
+            style: GoogleFonts.inter(
+              color: Colors.white.withValues(alpha: 0.8),
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+              letterSpacing: -0.5,
+            ),
+          ),
+          const SizedBox(height: 4),
+          RichText(
+            text: TextSpan(
+              style: GoogleFonts.plusJakartaSans(
+                color: Colors.white,
+                fontSize: 36,
+                fontWeight: FontWeight.w800,
+                height: 1.1,
+              ),
+              children: const [
+                TextSpan(text: 'Find Parking,\n'),
+                TextSpan(text: 'Park Smarter.', style: TextStyle(color: Color(0xFFBAC3FF))),
+              ],
+            ),
           ),
         ],
       ),
@@ -454,15 +411,16 @@ class _HomeScreenState extends State<HomeScreen> {
     return GestureDetector(
       onTap: _openSearch,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        height: 64,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: <BoxShadow>[
+          color: Colors.white, // surface-container-lowest
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
             BoxShadow(
-              color: const Color(0xFF1E3A8A).withValues(alpha: 0.12),
-              blurRadius: 24,
-              offset: const Offset(0, 12),
+              color: const Color(0xFF0830C6).withValues(alpha: 0.08),
+              blurRadius: 40,
+              offset: const Offset(0, 20),
             ),
           ],
         ),
@@ -470,33 +428,22 @@ class _HomeScreenState extends State<HomeScreen> {
           children: <Widget>[
             const Icon(
               Icons.search_rounded,
-              color: Color(0xFF3B82F6),
+              color: Color(0xFF757686), // outline
               size: 24,
             ),
             const SizedBox(width: 12),
-            const Expanded(
+            Expanded(
               child: Text(
                 'Search destinations or lots...',
-                style: TextStyle(
+                style: GoogleFonts.inter(
                   fontWeight: FontWeight.w500,
-                  color: Color(0xFF94A3B8),
-                  fontSize: 15,
+                  color: const Color(0xFF757686),
+                  fontSize: 14,
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFEFF6FF),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.tune_rounded,
-                color: Color(0xFF3B82F6),
-                size: 20,
-              ),
-            ),
+            const Icon(Icons.tune_rounded, color: AppColors.primary, size: 24),
           ],
         ),
       ),
@@ -521,35 +468,30 @@ class _HomeScreenState extends State<HomeScreen> {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 12,
+                  horizontal: 24,
+                  vertical: 10,
                 ),
                 decoration: BoxDecoration(
-                  color: selected ? const Color(0xFF1E3A8A) : Colors.white,
+                  color: selected ? AppColors.primary : const Color(0xFFE6E8ED), // surface-container-high
                   borderRadius: BorderRadius.circular(999),
-                  border: Border.all(
-                    color: selected
-                        ? Colors.transparent
-                        : const Color(0xFFE2E8F0),
-                  ),
                   boxShadow: selected
-                      ? <BoxShadow>[
+                      ? [
                           BoxShadow(
-                            color: const Color(
-                              0xFF1E3A8A,
-                            ).withValues(alpha: 0.26),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
+                            color: AppColors.primary.withValues(alpha: 0.2),
+                            blurRadius: 15,
+                            offset: const Offset(0, 5),
+                          )
                         ]
-                      : const <BoxShadow>[],
+                      : [],
                 ),
                 child: Text(
                   _filters[index],
-                  style: TextStyle(
-                    color: selected ? Colors.white : const Color(0xFF64748B),
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
+                  style: GoogleFonts.inter(
+                    color: selected
+                        ? Colors.white
+                        : const Color(0xFF444655), // on-surface-variant
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
                   ),
                 ),
               ),
@@ -699,7 +641,7 @@ class _NearbyParkingSectionState extends State<_NearbyParkingSection> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               _SectionHeading(
-                title: 'Nearby Parking',
+                title: 'Nearby Lots',
                 subtitle: widget.userLocation == null
                     ? 'Showing available lots in default order'
                     : 'Sorted by distance from your current location',
@@ -837,16 +779,20 @@ class _SectionHeading extends StatelessWidget {
             children: <Widget>[
               Text(
                 title,
-                style: AppTextStyles.h2.copyWith(
-                  fontSize: 22,
-                  color: const Color(0xFF0F172A),
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF181C20), // on-background
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 4),
               Text(
                 subtitle,
-                style: const TextStyle(color: Color(0xFF64748B), fontSize: 13),
+                style: GoogleFonts.inter(
+                  color: const Color(0xFF444655), // on-surface-variant
+                  fontSize: 14,
+                ),
                 overflow: TextOverflow.ellipsis,
               ),
             ],
@@ -856,11 +802,11 @@ class _SectionHeading extends StatelessWidget {
           onTap: onActionTap,
           child: Text(
             actionLabel.toUpperCase(),
-            style: const TextStyle(
-              color: Color(0xFF3B82F6),
-              fontWeight: FontWeight.w800,
-              fontSize: 12,
-              letterSpacing: 1.2,
+            style: GoogleFonts.inter(
+              color: AppColors.primary,
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+              letterSpacing: 1.5,
             ),
           ),
         ),
@@ -885,208 +831,198 @@ class _ActiveTicketCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(32),
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 26,
-            offset: const Offset(0, 12),
+    return Stack(
+      children: [
+        // Asymmetric Layering Blur
+        Positioned.fill(
+          child: Container(
+            margin: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.primary.withValues(alpha: 0.1),
+                  Colors.transparent,
+                ],
+              ),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  blurRadius: 24,
+                  spreadRadius: 4,
+                ),
+              ],
+            ),
           ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(32),
-        child: Column(
-          children: <Widget>[
-            SizedBox(
-              height: 190,
-              child: Stack(
-                fit: StackFit.expand,
-                children: <Widget>[
-                  _SmartParkingImage(
-                    imagePath: booking.imagePath,
-                    fallbackAsset: _fallbackImage,
-                  ),
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: <Color>[
-                          Colors.black.withValues(alpha: 0.12),
-                          Colors.black.withValues(alpha: 0.78),
-                        ],
+        ),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white, // surface-container-lowest
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: <BoxShadow>[
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 40,
+                offset: const Offset(0, 20),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Column(
+              children: <Widget>[
+                SizedBox(
+                  height: 224, // h-56
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: <Widget>[
+                      _SmartParkingImage(
+                        imagePath: booking.imagePath,
+                        fallbackAsset: _fallbackImage,
                       ),
-                    ),
-                  ),
-                  Positioned(
-                    top: 16,
-                    left: 16,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEF4444),
-                        borderRadius: BorderRadius.circular(999),
-                        boxShadow: <BoxShadow>[
-                          BoxShadow(
-                            color: const Color(
-                              0xFFEF4444,
-                            ).withValues(alpha: 0.35),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: const Row(
-                        children: <Widget>[
-                          SizedBox(
-                            width: 6,
-                            height: 6,
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                          ),
-                          SizedBox(width: 6),
-                          Text(
-                            'LIVE SESSION',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 1.2,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    left: 20,
-                    right: 20,
-                    bottom: 20,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Text(
-                          booking.parkingName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.bottomCenter,
+                            end: Alignment.topCenter,
+                            colors: <Color>[
+                              Colors.black.withValues(alpha: 0.8),
+                              Colors.black.withValues(alpha: 0.2),
+                              Colors.transparent,
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 6),
-                        Row(
-                          children: <Widget>[
-                            const Icon(
-                              Icons.space_dashboard_rounded,
-                              size: 14,
-                              color: Colors.white70,
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                'Floor ${booking.floorDisplay} • Slot ${booking.slotNumber}',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                                overflow: TextOverflow.ellipsis,
+                      ),
+                      Positioned(
+                        top: 16,
+                        left: 16,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFBA1A1A), // error
+                            borderRadius: BorderRadius.circular(999),
+                            boxShadow: <BoxShadow>[
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.15),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
                               ),
+                            ],
+                          ),
+                          child: const Row(
+                            children: <Widget>[
+                              SizedBox(
+                                width: 6,
+                                height: 6,
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: 6),
+                              Text(
+                                'LIVE BOOKING',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1.0,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        left: 24,
+                        right: 24,
+                        bottom: 24,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(
+                              booking.parkingName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.inter(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                                height: 1.25,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: <Widget>[
+                                const Icon(
+                                  Icons.garage_rounded,
+                                  size: 14,
+                                  color: Colors.white,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Floor ${booking.floorDisplay} • Slot ${booking.slotNumber}',
+                                    style: GoogleFonts.inter(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      letterSpacing: 0.2,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                children: <Widget>[
-                  Row(
-                    children: <Widget>[
-                      Expanded(
-                        child: _TicketInfoChip(
-                          icon: Icons.login_rounded,
-                          label: 'Start Time',
-                          value: DateFormat('hh:mm a').format(booking.start),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _TicketInfoChip(
-                          icon: Icons.timelapse_rounded,
-                          label: 'Duration',
-                          value: _formatDurationCompact(booking.totalDuration),
-                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 22),
-                  _CountdownPanel(booking: booking),
-                  const SizedBox(height: 24),
-                  Row(
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
                     children: <Widget>[
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: onDetailsTap,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFF1F5F9),
-                            foregroundColor: const Color(0xFF0F172A),
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                          ),
-                          child: const Text(
-                            'Details',
-                            style: TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton(
+                      _CountdownPanel(booking: booking),
+                      const SizedBox(height: 32),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
                           onPressed: onPrimaryTap,
+                          icon: const Icon(Icons.add_circle_outline_rounded, size: 20),
+                          label: const Text('Extend Duration'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF1E3A8A),
+                            backgroundColor: AppColors.primary,
                             foregroundColor: Colors.white,
                             elevation: 0,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            padding: const EdgeInsets.symmetric(vertical: 20),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(999),
                             ),
-                          ),
-                          child: const Text(
-                            'Extend Duration',
-                            style: TextStyle(fontWeight: FontWeight.w700),
+                            textStyle: GoogleFonts.inter(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                            ),
+                          ).copyWith(
+                            shadowColor: WidgetStateProperty.all(AppColors.primary.withValues(alpha: 0.2)),
+                            elevation: WidgetStateProperty.resolveWith((states) => states.contains(WidgetState.pressed) ? 2 : 10),
                           ),
                         ),
                       ),
                     ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 }
@@ -1230,127 +1166,74 @@ class _CountdownPanelState extends State<_CountdownPanel> {
   Widget build(BuildContext context) {
     final remaining = widget.booking.remainingAt(_now);
     final progress = widget.booking.progressAt(_now);
+    
+    final elapsed = widget.booking.totalDuration - remaining;
 
     return Column(
       children: <Widget>[
-        const Text(
+        Text(
           'TIME REMAINING',
-          style: TextStyle(
-            color: Color(0xFF64748B),
+          style: GoogleFonts.inter(
+            color: const Color(0xFF444655), // on-surface-variant
             fontSize: 10,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1.5,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 2.0,
           ),
         ),
         const SizedBox(height: 8),
         Text(
           _formatDurationClock(remaining),
-          style: const TextStyle(
-            fontSize: 32,
-            fontWeight: FontWeight.w900,
-            color: Color(0xFF0F172A),
-            fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 36,
+            fontWeight: FontWeight.w800,
+            color: const Color(0xFF181C20), // on-background
+            letterSpacing: -1.5,
+            fontFeatures: const [FontFeature.tabularFigures()],
           ),
         ),
-        const SizedBox(height: 8),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: <Widget>[
-            Text(
-              'Started ${DateFormat('hh:mm a').format(widget.booking.start)}',
-              style: const TextStyle(
-                fontSize: 12,
-                color: Color(0xFF64748B),
-                fontWeight: FontWeight.w600,
+        const SizedBox(height: 24),
+        Column(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 8,
+                backgroundColor: const Color(0xFFF1F4F9), // surface-container-low
+                color: AppColors.primary,
               ),
             ),
-            Text(
-              'Ends ${DateFormat('hh:mm a').format(widget.booking.end)}',
-              style: const TextStyle(
-                fontSize: 12,
-                color: Color(0xFF64748B),
-                fontWeight: FontWeight.w600,
-              ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: <Widget>[
+                Text(
+                  'ELAPSED: ${_formatDurationCompact(elapsed)}',
+                  style: GoogleFonts.inter(
+                    fontSize: 10,
+                    color: const Color(0xFF444655),
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.0,
+                  ),
+                ),
+                Text(
+                  'TOTAL: ${_formatDurationCompact(widget.booking.totalDuration)}',
+                  style: GoogleFonts.inter(
+                    fontSize: 10,
+                    color: const Color(0xFF444655),
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.0,
+                  ),
+                ),
+              ],
             ),
           ],
-        ),
-        const SizedBox(height: 16),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(999),
-          child: LinearProgressIndicator(
-            value: progress,
-            minHeight: 8,
-            backgroundColor: const Color(0xFFF1F5F9),
-            color: const Color(0xFF10B981),
-          ),
         ),
       ],
     );
   }
 }
 
-class _TicketInfoChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-
-  const _TicketInfoChip({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Row(
-        children: <Widget>[
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEFF6FF),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, size: 18, color: const Color(0xFF2563EB)),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  label,
-                  style: const TextStyle(
-                    color: Color(0xFF64748B),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFF0F172A),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _QuickActionCard extends StatelessWidget {
   final IconData icon;
@@ -1377,44 +1260,48 @@ class _QuickActionCard extends StatelessWidget {
         onTap();
       },
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-          boxShadow: <BoxShadow>[
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 12,
-              offset: const Offset(0, 6),
-            ),
-          ],
+          color: bgColor,
+          borderRadius: BorderRadius.circular(16),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Container(
-              padding: const EdgeInsets.all(10),
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
-                color: bgColor,
-                borderRadius: BorderRadius.circular(12),
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 2,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
               ),
-              child: Icon(icon, color: iconColor, size: 22),
+              child: Icon(icon, color: iconColor, size: 20),
             ),
             const SizedBox(height: 16),
             Text(
               title,
-              style: const TextStyle(
-                fontWeight: FontWeight.w800,
-                fontSize: 15,
-                color: Color(0xFF0F172A),
+              style: GoogleFonts.inter(
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                color: const Color(0xFF181C20), // on-background
               ),
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 2),
             Text(
               subtitle,
-              style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+              style: GoogleFonts.inter(
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+                color: const Color(0xFF444655), // on-surface-variant
+              ),
               overflow: TextOverflow.ellipsis,
             ),
           ],
@@ -1443,20 +1330,17 @@ class _NotificationButton extends StatelessWidget {
 
         return GestureDetector(
           onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.15),
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-            ),
+          child: SizedBox(
+            width: 32,
+            height: 32,
             child: Stack(
+              alignment: Alignment.center,
               clipBehavior: Clip.none,
               children: <Widget>[
                 const Icon(
-                  Icons.notifications_outlined,
+                  Icons.notifications_rounded,
                   color: Colors.white,
-                  size: 24,
+                  size: 28,
                 ),
                 if (hasUnread)
                   Positioned(
@@ -1466,12 +1350,9 @@ class _NotificationButton extends StatelessWidget {
                       width: 10,
                       height: 10,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFEF4444),
+                        color: const Color(0xFF772300), // tertiary
                         shape: BoxShape.circle,
-                        border: Border.all(
-                          color: const Color(0xFF1E3A8A),
-                          width: 2,
-                        ),
+                        border: Border.all(color: const Color(0xFF0029B9), width: 2),
                       ),
                     ),
                   ),
@@ -1506,186 +1387,247 @@ class _NearbyParkingCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
+        width: MediaQuery.of(context).size.width * 0.8,
+        constraints: const BoxConstraints(minWidth: 280, maxWidth: 320),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(28),
-          border: Border.all(
-            color: isRecommended
-                ? const Color(0xFF3B82F6)
-                : const Color(0xFFE2E8F0),
-            width: isRecommended ? 1.7 : 1,
-          ),
-          boxShadow: <BoxShadow>[
+          color: Colors.white, // surface-container-lowest
+          borderRadius: BorderRadius.circular(24), // rounded-2xl
+          border: Border.all(color: const Color(0xFFF1F4F9)), // surface-container-low
+          boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 18,
-              offset: const Offset(0, 10),
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(28),
-          child: Column(
-            children: <Widget>[
-              SizedBox(
-                height: 150,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            // Image Box
+            Container(
+              height: 128, // h-32
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16), // rounded-xl
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05), 
+                    blurRadius: 4, 
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
                 child: Stack(
                   fit: StackFit.expand,
-                  children: <Widget>[
+                  children: [
                     _SmartParkingImage(
                       imagePath: parking.imagePath,
                       fallbackAsset: _fallbackImage,
                     ),
-                    DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: <Color>[
-                            Colors.black.withValues(alpha: 0.08),
-                            Colors.black.withValues(alpha: 0.32),
+                    // Distance Badge
+                    Positioned(
+                      top: 12,
+                      left: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.9), // glass-blur
+                          borderRadius: BorderRadius.circular(999),
+                          boxShadow: [
+                            BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.near_me_rounded, color: AppColors.primary, size: 10),
+                            const SizedBox(width: 4),
+                            Text(
+                              distanceMeters == null ? '--' : _formatDistance(distanceMeters),
+                              style: GoogleFonts.inter(
+                                color: const Color(0xFF181C20), // on-background
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                           ],
                         ),
                       ),
                     ),
+                    // Recommended Badge
                     if (isRecommended)
                       Positioned(
-                        top: 14,
-                        left: 14,
+                        top: 12,
+                        right: 12,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
-                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF3B82F6),
-                            borderRadius: BorderRadius.circular(999),
+                            color: const Color(0xFF344DD2), // secondary
+                            borderRadius: BorderRadius.circular(4), // rounded-sm
+                            boxShadow: [
+                              BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4),
+                            ],
                           ),
-                          child: const Text(
-                            'Recommended',
-                            style: TextStyle(
+                          child: Text(
+                            'RECOMMENDED',
+                            style: GoogleFonts.inter(
                               color: Colors.white,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
+                              fontSize: 8,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1.0,
                             ),
                           ),
                         ),
                       ),
+                    // Rating / Availability
+                    Positioned(
+                      bottom: 12,
+                      left: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.6),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.local_parking_rounded, color: Colors.amber, size: 10),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${parking.availableSlots} SLOTS',
+                              style: GoogleFonts.inter(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+            ),
+            const SizedBox(height: 16),
+            // Details
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
+                    children: [
                       Text(
                         parking.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 17,
-                          color: Color(0xFF0F172A),
+                        style: GoogleFonts.inter(
+                          color: const Color(0xFF181C20),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                          height: 1.25,
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: <Widget>[
-                          const Icon(
-                            Icons.near_me_rounded,
-                            size: 14,
-                            color: Color(0xFF64748B),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            distanceMeters == null
-                                ? 'Distance unavailable'
-                                : _formatDistance(distanceMeters),
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: Color(0xFF64748B),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const Spacer(),
-                      Row(
-                        children: <Widget>[
-                          Expanded(
-                            child: _ParkingMetricPill(
-                              icon: Icons.payments_outlined,
-                              value:
-                                  '₹${parking.pricePerHour.toStringAsFixed(parking.pricePerHour % 1 == 0 ? 0 : 1)}/hr',
-                              accent: const Color(0xFF10B981),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: _ParkingMetricPill(
-                              icon: Icons.local_parking_rounded,
-                              value: '${parking.availableSlots} slots',
-                              accent: parking.availableSlots > 0
-                                  ? const Color(0xFF2563EB)
-                                  : const Color(0xFFEF4444),
-                            ),
-                          ),
-                        ],
+                      const SizedBox(height: 4),
+                      Text(
+                        parking.address,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(
+                          color: const Color(0xFF444655), // on-surface-variant
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ],
                   ),
                 ),
-              ),
-            ],
-          ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4, right: 2),
+                          child: Text(
+                            'from',
+                            style: GoogleFonts.inter(
+                              color: const Color(0xFF444655),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          '₹${parking.pricePerHour.toStringAsFixed(parking.pricePerHour % 1 == 0 ? 0 : 1)}',
+                          style: GoogleFonts.inter(
+                            color: AppColors.primary,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            '/hr',
+                            style: GoogleFonts.inter(
+                              color: const Color(0xFF444655),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            // Tags
+            Row(
+              children: [
+                if (parking.hasEvCharging) _buildTag('EV Charging'),
+                if (parking.isCovered) _buildTag('Covered'),
+                if (parking.hasValet) _buildTag('Valet'),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTag(String label) {
+    return Container(
+      margin: const EdgeInsets.only(right: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F4F9), // surface-container-low
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: const Color(0xFFECEEF3)), // surface-container
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.inter(
+          color: const Color(0xFF181C20), // on-surface
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );
   }
 }
 
-class _ParkingMetricPill extends StatelessWidget {
-  final IconData icon;
-  final String value;
-  final Color accent;
-
-  const _ParkingMetricPill({
-    required this.icon,
-    required this.value,
-    required this.accent,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: accent.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        children: <Widget>[
-          Icon(icon, size: 16, color: accent),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: accent,
-                fontSize: 12.5,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _NearbyParkingLoadingCard extends StatelessWidget {
   const _NearbyParkingLoadingCard();
@@ -1693,20 +1635,23 @@ class _NearbyParkingLoadingCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 260,
+      width: MediaQuery.of(context).size.width * 0.8,
+      constraints: const BoxConstraints(minWidth: 280, maxWidth: 320),
+      height: 252,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: <BoxShadow>[
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFF1F4F9)),
+        boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
       child: const Center(
-        child: CircularProgressIndicator(color: Color(0xFF1E3A8A)),
+        child: CircularProgressIndicator(color: AppColors.primary),
       ),
     );
   }
