@@ -7,7 +7,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:shimmer/shimmer.dart';
-
+import 'package:flutter_map/flutter_map.dart';
+import '../../config/map_config.dart';
 import '../booking/booking_screen.dart';
 
 /// Premium Search Parking Screen based on HTML template.
@@ -170,22 +171,29 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
 
   Widget _buildMapBackground() {
     return Positioned.fill(
-      child: Stack(
-        children: [
-          // Map Image
-          Positioned.fill(
-            child: Image.network(
-              'https://lh3.googleusercontent.com/aida-public/AB6AXuApftSWABpUEiNy70r7Sz0B9lISR-VYVMmR6OknSrHCzo5iuQb3DkglcYvj5HCrdVRC1elipSlJqBW3MNbQRBM3yD8nLj6lycfzv-9ltjHVeRCJVlj80wLSbBXoSljC8ZHt3hYJSFkKB_GY6iTnD_91MXYxZateqFAAtfIUYhfR-gIWQQIZiajLiuLtKBE-t_ma99VAl5GmOr-Hguiqpv32sWZ213Cf02lIzacNANBlqMgin_OHW_mQLWVv5TWqXDl19KfOdQniX0gY',
-              fit: BoxFit.cover,
-              color: _surfaceContainerLow.withOpacity(0.4),
-              colorBlendMode: BlendMode.multiply,
-            ),
+      child: FlutterMap(
+        options: const MapOptions(
+          initialCenter: LatLng(12.9716, 77.5946), // Bangalore coordinates
+          initialZoom: 14.0,
+          interactionOptions: InteractionOptions(
+            flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
           ),
-          // User Location Dot
-          Positioned(
-            top: MediaQuery.of(context).size.height * 0.4,
-            left: MediaQuery.of(context).size.width * 0.4,
-            child: _buildUserLocationDot(),
+        ),
+        children: [
+          TileLayer(
+            urlTemplate: MapConfig.tileUrl,
+            userAgentPackageName: MapConfig.userAgent,
+            maxZoom: MapConfig.maxZoom.toInt(),
+          ),
+          MarkerLayer(
+            markers: [
+              Marker(
+                point: const LatLng(12.9716, 77.5946),
+                width: 48,
+                height: 48,
+                child: _buildUserLocationDot(),
+              ),
+            ],
           ),
         ],
       ),

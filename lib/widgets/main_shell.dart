@@ -3,12 +3,14 @@ import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:ui';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../presentation/home/home_screen.dart';
-import '../presentation/search/search_parking_screen.dart';
+import '../presentation/profile/saved_parkings_screen.dart';
 import '../presentation/booking/my_bookings_screen.dart';
-import '../presentation/messages/messages_screen.dart';
+import '../presentation/profile/wallet_screen.dart';
 import '../presentation/profile/profile_screen.dart';
+import '../theme/app_colors.dart';
 
 /// Main app shell with persistent bottom navigation bar.
 /// Uses IndexedStack so tab screens stay alive and never rebuild
@@ -36,9 +38,9 @@ class _MainShellState extends State<MainShell> {
     _currentIndex = widget.initialIndex;
     _screens = [
       HomeScreen(onTabSelected: _selectTab),
-      const SearchParkingScreen(),
+      const SavedParkingsScreen(),
       const MyBookingsScreen(),
-      const MessagesScreen(),
+      const WalletScreen(),
       const ProfileScreen(),
     ];
     _listenUnreadMessages();
@@ -83,24 +85,24 @@ class _MainShellState extends State<MainShell> {
     final bottomInset = MediaQuery.of(context).padding.bottom;
     const destinations = <_ShellDestination>[
       _ShellDestination(
-        label: 'Home',
-        icon: Icons.home_outlined,
-        selectedIcon: Icons.home_rounded,
+        label: 'Explore',
+        icon: Icons.explore_outlined,
+        selectedIcon: Icons.explore_rounded,
       ),
       _ShellDestination(
-        label: 'Search',
-        icon: Icons.search_rounded,
-        selectedIcon: Icons.search_rounded,
+        label: 'Saved',
+        icon: Icons.bookmark_border_rounded,
+        selectedIcon: Icons.bookmark_rounded,
       ),
       _ShellDestination(
-        label: 'Bookings',
-        icon: Icons.confirmation_number_outlined,
-        selectedIcon: Icons.confirmation_number_rounded,
+        label: 'Activity',
+        icon: Icons.local_activity_outlined,
+        selectedIcon: Icons.local_activity_rounded,
       ),
       _ShellDestination(
-        label: 'Messages',
-        icon: Icons.chat_bubble_outline_rounded,
-        selectedIcon: Icons.chat_bubble_rounded,
+        label: 'Wallet',
+        icon: Icons.account_balance_wallet_outlined,
+        selectedIcon: Icons.account_balance_wallet_rounded,
       ),
       _ShellDestination(
         label: 'Profile',
@@ -110,20 +112,21 @@ class _MainShellState extends State<MainShell> {
     ];
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(16, 0, 16, 16 + bottomInset),
+      padding: EdgeInsets.only(bottom: bottomInset),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(32),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+            height: 72 + bottomInset,
+            padding: EdgeInsets.fromLTRB(14, 8, 14, 8 + bottomInset),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.88),
+              color: Colors.white.withValues(alpha: 0.96),
+              border: const Border(top: BorderSide(color: Color(0xFFF1F5F9))),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 24,
-                  offset: const Offset(0, -10),
+                  offset: const Offset(0, -8),
                 ),
               ],
             ),
@@ -169,9 +172,7 @@ class _NavBarItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isSelected
-        ? const Color(0xFF0029B9)
-        : const Color(0xFF444655);
+    final color = isSelected ? AppColors.primary : AppColors.textTertiaryLight;
 
     return InkWell(
       onTap: onTap,
@@ -184,7 +185,25 @@ class _NavBarItem extends StatelessWidget {
             Stack(
               clipBehavior: Clip.none,
               children: [
-                Icon(icon, color: color, size: 24),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(icon, color: color, size: 24),
+                    const SizedBox(height: 6),
+                    AnimatedOpacity(
+                      duration: const Duration(milliseconds: 180),
+                      opacity: isSelected ? 1 : 0,
+                      child: Container(
+                        width: 6,
+                        height: 6,
+                        decoration: const BoxDecoration(
+                          color: AppColors.primary,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
                 if (unreadCount > 0)
                   Positioned(
                     top: -6,
@@ -215,24 +234,11 @@ class _NavBarItem extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               label,
-              style: TextStyle(
+              style: GoogleFonts.poppins(
                 color: color,
-                fontSize: 10,
+                fontSize: 11,
                 fontWeight: FontWeight.w600,
-                letterSpacing: 1.2,
-              ),
-            ),
-            const SizedBox(height: 4),
-            AnimatedOpacity(
-              duration: const Duration(milliseconds: 180),
-              opacity: isSelected ? 1 : 0,
-              child: Container(
-                width: 4,
-                height: 4,
-                decoration: const BoxDecoration(
-                  color: Color(0xFF0029B9),
-                  shape: BoxShape.circle,
-                ),
+                letterSpacing: 0.2,
               ),
             ),
           ],

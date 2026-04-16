@@ -2,6 +2,9 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+import '../../config/map_config.dart';
 
 class DashboardMapScreen extends StatefulWidget {
   const DashboardMapScreen({super.key});
@@ -39,40 +42,50 @@ class _DashboardMapScreenState extends State<DashboardMapScreen> {
 
   Widget _buildMapBackground() {
     return Positioned.fill(
-      child: Stack(
+      child: FlutterMap(
+        options: const MapOptions(
+          initialCenter: LatLng(12.9716, 77.5946), // Bangalore coordinates
+          initialZoom: 14.0,
+          interactionOptions: InteractionOptions(
+            flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+          ),
+        ),
         children: [
-          // Map Image
-          Positioned.fill(
-            child: Image.network(
-              'https://lh3.googleusercontent.com/aida-public/AB6AXuApftSWABpUEiNy70r7Sz0B9lISR-VYVMmR6OknSrHCzo5iuQb3DkglcYvj5HCrdVRC1elipSlJqBW3MNbQRBM3yD8nLj6lycfzv-9ltjHVeRCJVlj80wLSbBXoSljC8ZHt3hYJSFkKB_GY6iTnD_91MXYxZateqFAAtfIUYhfR-gIWQQIZiajLiuLtKBE-t_ma99VAl5GmOr-Hguiqpv32sWZ213Cf02lIzacNANBlqMgin_OHW_mQLWVv5TWqXDl19KfOdQniX0gY',
-              fit: BoxFit.cover,
-              color: _surfaceContainerLow.withOpacity(0.4),
-              colorBlendMode: BlendMode.multiply,
-            ),
+          TileLayer(
+            urlTemplate: MapConfig.tileUrl,
+            userAgentPackageName: MapConfig.userAgent,
+            maxZoom: MapConfig.maxZoom.toInt(),
           ),
-
-          // User Location Dot
-          Positioned(
-            top: MediaQuery.of(context).size.height * 0.5,
-            left: MediaQuery.of(context).size.width * 0.33,
-            child: _buildUserLocationDot(),
-          ),
-
-          // Parking Pins
-          Positioned(
-            top: MediaQuery.of(context).size.height * 0.4,
-            left: MediaQuery.of(context).size.width * 0.6,
-            child: _buildParkingPin("₹30", isSelected: false),
-          ),
-          Positioned(
-            top: MediaQuery.of(context).size.height * 0.25,
-            left: MediaQuery.of(context).size.width * 0.45,
-            child: _buildParkingPin("₹45", isSelected: false),
-          ),
-          Positioned(
-            top: MediaQuery.of(context).size.height * 0.65,
-            left: MediaQuery.of(context).size.width * 0.55,
-            child: _buildParkingPin("₹40", isSelected: true),
+          MarkerLayer(
+            markers: [
+              Marker(
+                point: const LatLng(12.9716, 77.5946),
+                width: 48,
+                height: 48,
+                child: _buildUserLocationDot(),
+              ),
+              Marker(
+                point: const LatLng(12.9750, 77.5900),
+                width: 100,
+                height: 50,
+                child: _buildParkingPin("₹30", isSelected: false),
+                alignment: Alignment.topCenter,
+              ),
+              Marker(
+                point: const LatLng(12.9650, 77.6000),
+                width: 100,
+                height: 50,
+                child: _buildParkingPin("₹45", isSelected: false),
+                alignment: Alignment.topCenter,
+              ),
+              Marker(
+                point: const LatLng(12.9800, 77.5980),
+                width: 100,
+                height: 50,
+                child: _buildParkingPin("₹40", isSelected: true),
+                alignment: Alignment.topCenter,
+              ),
+            ],
           ),
         ],
       ),
