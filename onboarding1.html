@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>TechXPark Onboarding</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#1c31d4",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#111321",
+                    },
+                    fontFamily: {
+                        "display": ["Inter"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.5rem",
+                        "lg": "1rem",
+                        "xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display">
+<div class="relative flex flex-col h-screen w-full max-w-md mx-auto overflow-hidden bg-white dark:bg-background-dark">
+<!-- Top Section: Illustration Area (60%) -->
+<div class="relative h-[60%] w-full bg-primary/5 flex items-center justify-center overflow-hidden">
+<!-- Decorative Background Elements -->
+<div class="absolute top-[-10%] right-[-10%] w-64 h-64 bg-primary/10 rounded-full blur-3xl"></div>
+<div class="absolute bottom-[20%] left-[-5%] w-48 h-48 bg-primary/5 rounded-full blur-2xl"></div>
+<!-- Main Illustration Container -->
+<div class="relative w-full h-full flex flex-col items-center justify-center px-8">
+<div class="w-full aspect-square bg-white dark:bg-slate-800 rounded-xl shadow-xl flex items-center justify-center relative overflow-hidden" data-alt="Smart parking lot with glowing digital sensors and cars" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDRX-VyG7Fwn54sNb3M5-HMXOGyqN42rcIPDvz2K39imGnPbjS_14ahp8oQQeQwvv5ff70-WxBmpIESiH1YaCFVDZ6BPW75_gjufrNBO2VK7L9zJUZeuAh0PRrt9x62NJV7A9iC2cQIxtopMLb1PVI0qF9se6sv5Ibnqjqnzzat0Y2IYBGT_ExMhFvs7pdf_-EBPlLoDVrtMEo4KD8e71JEE8bygCb6SdSJfm9Gf_Y8Zk2uICZ_S3zI6Bu6l4dWLkhSHSUpuSnwjBSm'); background-size: cover; background-position: center;">
+<!-- Overlay for tech feel -->
+<div class="absolute inset-0 bg-primary/10 mix-blend-overlay"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-primary/20 to-transparent"></div>
+</div>
+<!-- Floating Icon UI element -->
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md p-4 rounded-xl shadow-2xl flex items-center gap-3 border border-primary/10">
+<span class="material-symbols-outlined text-primary text-3xl">local_parking</span>
+<div>
+<div class="h-2 w-16 bg-primary/20 rounded-full mb-2 overflow-hidden">
+<div class="h-full w-2/3 bg-primary"></div>
+</div>
+<p class="text-[10px] font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider">Spot Available</p>
+</div>
+</div>
+</div>
+<!-- Skip Button -->
+<div class="absolute top-6 right-6">
+<button class="text-sm font-semibold text-slate-500 hover:text-primary transition-colors">Skip</button>
+</div>
+</div>
+<!-- Bottom Section: Content Card (40%) -->
+<div class="relative h-[40%] w-full bg-white dark:bg-slate-900 rounded-t-xl shadow-[0_-10px_40px_rgba(0,0,0,0.05)] z-10 px-8 flex flex-col">
+<!-- Handle -->
+<div class="flex justify-center pt-4 pb-6">
+<div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
+</div>
+<!-- Text Content -->
+<div class="flex-1">
+<h1 class="text-3xl font-bold text-slate-900 dark:text-slate-100 leading-tight mb-3">
+                    Find Parking Instantly
+                </h1>
+<p class="text-slate-500 dark:text-slate-400 text-lg leading-relaxed">
+                    Locate available slots near you in real time. No more circling the block.
+                </p>
+</div>
+<!-- Navigation & Progress -->
+<div class="pb-10 flex flex-col items-center gap-8">
+<!-- Progress Dots -->
+<div class="flex gap-2">
+<div class="w-8 h-2 bg-primary rounded-full"></div>
+<div class="w-2 h-2 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
+<div class="w-2 h-2 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
+</div>
+<!-- Primary Action -->
+<button class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-4 rounded-xl shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-2">
+                    Next
+                    <span class="material-symbols-outlined text-xl">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+</body></html>

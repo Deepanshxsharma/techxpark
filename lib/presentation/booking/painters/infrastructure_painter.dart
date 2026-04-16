@@ -39,7 +39,7 @@ class InfrastructurePainter {
 
   static void _drawZebraCrossing(Canvas canvas, Offset center) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.3)
+      ..color = Colors.white.withValues(alpha: 0.3)
       ..strokeWidth = 6;
       
     for (int i = 0; i < 5; i++) {

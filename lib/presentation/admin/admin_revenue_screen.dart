@@ -159,7 +159,7 @@ class _AdminRevenueScreenState extends State<AdminRevenueScreen> with SingleTick
           decoration: BoxDecoration(
             color: isSelected ? Colors.white : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
-            boxShadow: isSelected ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)] : [],
+            boxShadow: isSelected ? [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4)] : [],
           ),
           child: Center(
             child: Text(
@@ -188,13 +188,13 @@ class _AdminRevenueScreenState extends State<AdminRevenueScreen> with SingleTick
         ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(color: const Color(0xFF10B981).withOpacity(0.4), blurRadius: 20, offset: const Offset(0, 10)),
+          BoxShadow(color: const Color(0xFF10B981).withValues(alpha: 0.4), blurRadius: 20, offset: const Offset(0, 10)),
         ],
       ),
       child: Stack(
         children: [
           // Background Decor
-          Positioned(right: -20, top: -20, child: Icon(Icons.currency_rupee, size: 120, color: Colors.white.withOpacity(0.1))),
+          Positioned(right: -20, top: -20, child: Icon(Icons.currency_rupee, size: 120, color: Colors.white.withValues(alpha: 0.1))),
           
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -203,13 +203,13 @@ class _AdminRevenueScreenState extends State<AdminRevenueScreen> with SingleTick
                 children: [
                   Container(
                     padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(10)),
+                    decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(10)),
                     child: const Icon(Icons.auto_graph_rounded, color: Colors.white, size: 18),
                   ),
                   const SizedBox(width: 10),
                   Text(
                     _isMonthly ? "Monthly Income" : "Daily Income",
-                    style: TextStyle(color: Colors.white.withOpacity(0.9), fontWeight: FontWeight.w600),
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontWeight: FontWeight.w600),
                   ),
                 ],
               ),
@@ -230,7 +230,7 @@ class _AdminRevenueScreenState extends State<AdminRevenueScreen> with SingleTick
               const SizedBox(height: 8),
               Text(
                 "$txCount successful transactions",
-                style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 13),
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 13),
               ),
             ],
           ),
@@ -246,7 +246,7 @@ class _AdminRevenueScreenState extends State<AdminRevenueScreen> with SingleTick
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
         children: [

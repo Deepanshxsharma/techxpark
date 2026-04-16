@@ -245,7 +245,7 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
                 builder: (_, __) => Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: AppColors.success.withOpacity(0.2 + (_pulseAnim.value * 0.8)),
+                    color: AppColors.success.withValues(alpha: 0.2 + (_pulseAnim.value * 0.8)),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Row(
@@ -253,7 +253,7 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
                     children: [
                       Container(
                         width: 4, height: 4,
-                        decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.white.withOpacity(0.5), blurRadius: 4)]),
+                        decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.white.withValues(alpha: 0.5), blurRadius: 4)]),
                       ),
                       const SizedBox(width: 4),
                       const Text('LIVE', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
@@ -335,11 +335,11 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
       child: Container(
         height: 52,
         decoration: BoxDecoration(
-          color: AppColors.surfaceDark.withOpacity(0.9),
+          color: AppColors.surfaceDark.withValues(alpha: 0.9),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: Colors.white12),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 16, offset: const Offset(0, 4)),
+            BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 16, offset: const Offset(0, 4)),
           ]
         ),
         child: TextField(
@@ -378,11 +378,11 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
         width: 100,
         height: 75,
         decoration: BoxDecoration(
-          color: AppColors.bgDark.withOpacity(0.9),
+          color: AppColors.bgDark.withValues(alpha: 0.9),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.white24, width: 2),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4)),
+            BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4)),
           ],
         ),
         clipBehavior: Clip.hardEdge,
@@ -417,7 +417,7 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
           Color textColor = isSelected ? Colors.white : AppColors.textSecondaryDark;
           
           if (isBooked && !isSelected) {
-             bgColor = AppColors.info.withOpacity(0.15);
+             bgColor = AppColors.info.withValues(alpha: 0.15);
              textColor = AppColors.info;
           }
 
@@ -598,10 +598,10 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 300),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFFBBF24).withOpacity(0.3),
+                              color: const Color(0xFFFBBF24).withValues(alpha: 0.3),
                               borderRadius: BorderRadius.circular(4),
                               boxShadow: [
-                                BoxShadow(color: const Color(0xFFFBBF24).withOpacity(0.6), blurRadius: 12),
+                                BoxShadow(color: const Color(0xFFFBBF24).withValues(alpha: 0.6), blurRadius: 12),
                               ],
                             ),
                           ),
@@ -615,7 +615,7 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
                           child: Text(
                             '$slotNum',
                             style: AppTextStyles.captionBold.copyWith(
-                              color: isBooked ? Colors.white : Colors.white.withOpacity(0.6),
+                              color: isBooked ? Colors.white : Colors.white.withValues(alpha: 0.6),
                               fontSize: isBooked ? 10 : 8,
                               fontWeight: isBooked ? FontWeight.w800 : FontWeight.w500,
                               letterSpacing: 0.3,
@@ -647,7 +647,7 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
                   borderRadius: BorderRadius.circular(4),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.info.withOpacity(0.4),
+                      color: AppColors.info.withValues(alpha: 0.4),
                       blurRadius: 6,
                     ),
                   ],
@@ -722,7 +722,7 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
             borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.5), 
+                color: Colors.black.withValues(alpha: 0.5), 
                 blurRadius: 24, 
                 offset: const Offset(0, -8)
               )
@@ -750,7 +750,7 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
                       Container(
                         width: 48, height: 48,
                         decoration: BoxDecoration(
-                          color: isArrived ? AppColors.success.withOpacity(0.15) : AppColors.info.withOpacity(0.15),
+                          color: isArrived ? AppColors.success.withValues(alpha: 0.15) : AppColors.info.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Icon(
@@ -874,9 +874,9 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: AppColors.warning.withOpacity(0.1),
+                      color: AppColors.warning.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.warning.withOpacity(0.3)),
+                      border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
                     ),
                     child: Row(
                       children: [
@@ -1002,7 +1002,7 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
           color: AppColors.surfaceDark,
           shape: BoxShape.circle,
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4)),
+            BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4)),
           ],
         ),
         child: Icon(icon, color: color, size: 24),
@@ -1057,7 +1057,7 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                color: isBooked ? AppColors.info.withOpacity(0.15) : (status == 'available' ? AppColors.success.withOpacity(0.15) : AppColors.error.withOpacity(0.15)),
+                                color: isBooked ? AppColors.info.withValues(alpha: 0.15) : (status == 'available' ? AppColors.success.withValues(alpha: 0.15) : AppColors.error.withValues(alpha: 0.15)),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
@@ -1136,7 +1136,7 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.white12),
       ),

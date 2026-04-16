@@ -4,13 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../theme/app_colors.dart';
-import '../../theme/app_text_styles.dart';
-import '../../theme/app_spacing.dart';
-import '../../widgets/app_card.dart';
-import '../../widgets/app_button.dart';
-
 import 'slot_selection_screen.dart';
 
+/// Select Vehicle Screen — Stitch design.
+/// Premium vehicle cards with gradient selection, dark mode, and
+/// gradient proceed button.
 class SelectVehicleScreen extends StatefulWidget {
   final Map<String, dynamic> parking;
   final String parkingId;
@@ -37,131 +35,271 @@ class _SelectVehicleScreenState extends State<SelectVehicleScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return const Stream.empty();
     return FirebaseFirestore.instance
-        .collection("users")
+        .collection('users')
         .doc(user.uid)
-        .collection("vehicles")
-        .orderBy("createdAt", descending: true)
+        .collection('vehicles')
+        .orderBy('createdAt', descending: true)
         .snapshots();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.bgLight,
-      appBar: AppBar(
-        title: Text("Select Vehicle", style: AppTextStyles.h2),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        leading: const BackButton(color: AppColors.textPrimaryLight),
-      ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: _vehicleStream(),
-        builder: (_, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(color: AppColors.primary));
-          }
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return _noVehicleUI();
-          }
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+      child: Scaffold(
+        backgroundColor: isDark ? AppColors.bgDark : const Color(0xFFF9F9FB),
+        appBar: AppBar(
+          title: Text(
+            'Select Vehicle',
+            style: TextStyle(
+              fontFamily: 'Plus Jakarta Sans',
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: isDark ? Colors.white : const Color(0xFF0F172A),
+            ),
+          ),
+          centerTitle: true,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          surfaceTintColor: Colors.transparent,
+          leading: GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: const Icon(Icons.arrow_back_ios_new, size: 20),
+          ),
+        ),
+        body: StreamBuilder<QuerySnapshot>(
+          stream: _vehicleStream(),
+          builder: (_, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(
+                  child:
+                      CircularProgressIndicator(color: AppColors.primary));
+            }
 
-          final vehicles = snapshot.data!.docs;
+            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+              return _noVehicleUI(isDark);
+            }
 
-          return Column(
-            children: [
-              Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.all(AppSpacing.screenPadding),
-                  itemCount: vehicles.length,
-                  itemBuilder: (context, index) {
-                    final doc = vehicles[index];
-                    final data = doc.data() as Map<String, dynamic>;
-                    final isSelected = selectedVehicleId == doc.id;
-                    final vehicleType = data["vehicleType"] ?? "Car";
-                    final isBike = vehicleType.toString().toLowerCase() == "bike";
+            final vehicles = snapshot.data!.docs;
 
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: AppCard(
-                        color: isSelected ? AppColors.primary.withOpacity(0.05) : AppColors.surfaceLight,
-                        onTap: () {
-                          HapticFeedback.selectionClick();
-                          setState(() {
-                            selectedVehicleId = doc.id;
-                            selectedVehicle = data;
-                          });
-                        },
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(14),
-                              decoration: BoxDecoration(
-                                color: isSelected ? AppColors.primary : AppColors.bgLight,
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: Icon(
-                                isBike ? Icons.two_wheeler : Icons.directions_car,
-                                color: isSelected ? Colors.white : AppColors.primary,
-                                size: 28,
-                              ),
-                            ),
-                            const SizedBox(width: 20),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    data["vehicleNumber"]?.toString().toUpperCase() ?? "UNKNOWN",
-                                    style: AppTextStyles.h2,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    vehicleType,
-                                    style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.w600),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Icon(
-                              isSelected ? Icons.check_circle : Icons.radio_button_off,
-                              color: isSelected ? AppColors.primary : AppColors.borderDark,
-                              size: 28,
-                            ),
-                          ],
-                        ),
+            return Column(
+              children: [
+                // Subtitle
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Choose a vehicle for this booking',
+                      style: TextStyle(
+                        fontFamily: 'Manrope',
+                        fontSize: 14,
+                        color: isDark
+                            ? Colors.white54
+                            : const Color(0xFF64748B),
                       ),
-                    );
-                  },
+                    ),
+                  ),
                 ),
-              ),
-              _buildBottomAction(),
-            ],
-          );
-        },
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    physics: const BouncingScrollPhysics(),
+                    itemCount: vehicles.length,
+                    itemBuilder: (context, index) {
+                      final doc = vehicles[index];
+                      final data = doc.data() as Map<String, dynamic>;
+                      final isSelected = selectedVehicleId == doc.id;
+                      final vehicleType =
+                          data['vehicleType']?.toString() ?? 'Car';
+                      final isBike =
+                          vehicleType.toLowerCase() == 'bike';
+                      final number =
+                          data['vehicleNumber']?.toString().toUpperCase() ??
+                              'UNKNOWN';
+
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: GestureDetector(
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            setState(() {
+                              selectedVehicleId = doc.id;
+                              selectedVehicle = data;
+                            });
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 250),
+                            curve: Curves.easeOut,
+                            padding: const EdgeInsets.all(18),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? (isSelected
+                                      ? AppColors.primary
+                                          .withValues(alpha: 0.12)
+                                      : AppColors.surfaceDark)
+                                  : (isSelected
+                                      ? AppColors.primary
+                                          .withValues(alpha: 0.05)
+                                      : Colors.white),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: isSelected
+                                    ? AppColors.primary
+                                    : (isDark
+                                        ? Colors.white10
+                                        : const Color(0xFFE2E8F0)),
+                                width: isSelected ? 2 : 1,
+                              ),
+                              boxShadow: isSelected
+                                  ? [
+                                      BoxShadow(
+                                        color: AppColors.primary
+                                            .withValues(alpha: 0.15),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ]
+                                  : [],
+                            ),
+                            child: Row(
+                              children: [
+                                // Icon
+                                Container(
+                                  width: 52,
+                                  height: 52,
+                                  decoration: BoxDecoration(
+                                    gradient: isSelected
+                                        ? AppColors.primaryGradient
+                                        : null,
+                                    color: isSelected
+                                        ? null
+                                        : (isDark
+                                            ? Colors.white
+                                                .withValues(alpha: 0.06)
+                                            : const Color(0xFFF1F5F9)),
+                                    borderRadius:
+                                        BorderRadius.circular(14),
+                                  ),
+                                  child: Center(
+                                    child: Icon(
+                                      isBike
+                                          ? Icons.two_wheeler
+                                          : Icons.directions_car,
+                                      color: isSelected
+                                          ? Colors.white
+                                          : AppColors.primary,
+                                      size: 26,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                // Info
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        number,
+                                        style: TextStyle(
+                                          fontFamily:
+                                              'Plus Jakarta Sans',
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w800,
+                                          letterSpacing: 0.5,
+                                          color: isDark
+                                              ? Colors.white
+                                              : const Color(
+                                                  0xFF0F172A),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        vehicleType,
+                                        style: TextStyle(
+                                          fontFamily: 'Manrope',
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: isDark
+                                              ? Colors.white54
+                                              : const Color(
+                                                  0xFF64748B),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                // Selection indicator
+                                AnimatedContainer(
+                                  duration: const Duration(
+                                      milliseconds: 250),
+                                  width: 26,
+                                  height: 26,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    gradient: isSelected
+                                        ? AppColors.primaryGradient
+                                        : null,
+                                    border: isSelected
+                                        ? null
+                                        : Border.all(
+                                            color: isDark
+                                                ? Colors.white24
+                                                : const Color(
+                                                    0xFFE2E8F0),
+                                            width: 2),
+                                  ),
+                                  child: isSelected
+                                      ? const Icon(
+                                          Icons.check,
+                                          color: Colors.white,
+                                          size: 16,
+                                        )
+                                      : const SizedBox.shrink(),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                _buildBottomAction(isDark),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
 
-  Widget _buildBottomAction() {
+  // ═══════════════════════════════════════════════════════════════
+  // BOTTOM ACTION — Gradient proceed button
+  // ═══════════════════════════════════════════════════════════════
+  Widget _buildBottomAction(bool isDark) {
+    final enabled = selectedVehicle != null;
+
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 40),
       decoration: BoxDecoration(
-        color: AppColors.surfaceLight,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+        color: isDark ? AppColors.surfaceDark : Colors.white,
+        borderRadius:
+            const BorderRadius.vertical(top: Radius.circular(28)),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 24,
               offset: const Offset(0, -8)),
         ],
       ),
       child: SafeArea(
-        child: AppButton(
-          label: "Proceed to Slot Selection",
-          onPressed: selectedVehicle == null
-              ? null
-              : () {
+        child: GestureDetector(
+          onTap: enabled
+              ? () {
                   HapticFeedback.lightImpact();
                   Navigator.push(
                     context,
@@ -173,18 +311,54 @@ class _SelectVehicleScreenState extends State<SelectVehicleScreen> {
                         end: widget.end,
                         vehicle: {
                           ...selectedVehicle!,
-                          "id": selectedVehicleId,
+                          'id': selectedVehicleId,
                         },
                       ),
                     ),
                   );
-                },
+                }
+              : null,
+          child: AnimatedOpacity(
+            duration: const Duration(milliseconds: 200),
+            opacity: enabled ? 1.0 : 0.4,
+            child: Container(
+              height: 56,
+              decoration: BoxDecoration(
+                gradient: AppColors.primaryGradient,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: enabled
+                    ? [
+                        BoxShadow(
+                          color: AppColors.primary
+                              .withValues(alpha: 0.3),
+                          blurRadius: 16,
+                          offset: const Offset(0, 6),
+                        ),
+                      ]
+                    : [],
+              ),
+              child: const Center(
+                child: Text(
+                  'Proceed to Slot Selection',
+                  style: TextStyle(
+                    fontFamily: 'Plus Jakarta Sans',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );
   }
 
-  Widget _noVehicleUI() {
+  // ═══════════════════════════════════════════════════════════════
+  // EMPTY STATE — No vehicles
+  // ═══════════════════════════════════════════════════════════════
+  Widget _noVehicleUI(bool isDark) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -192,29 +366,63 @@ class _SelectVehicleScreenState extends State<SelectVehicleScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(28),
               decoration: BoxDecoration(
-                color: AppColors.surfaceLight, 
+                color: isDark
+                    ? AppColors.surfaceDark
+                    : AppColors.primary.withValues(alpha: 0.06),
                 shape: BoxShape.circle,
-                border: Border.all(color: AppColors.borderLight),
               ),
-              child: const Icon(Icons.car_rental, size: 80, color: AppColors.textSecondaryLight),
+              child: Icon(Icons.car_rental,
+                  size: 64,
+                  color: isDark
+                      ? Colors.white24
+                      : AppColors.primary.withValues(alpha: 0.4)),
             ),
             const SizedBox(height: 24),
-            Text("Your Garage is Empty", style: AppTextStyles.h1),
+            Text(
+              'Your Garage is Empty',
+              style: TextStyle(
+                fontFamily: 'Plus Jakarta Sans',
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: isDark ? Colors.white : const Color(0xFF0F172A),
+              ),
+            ),
             const SizedBox(height: 12),
             Text(
-              "You need to add a vehicle to your profile before you can book a parking spot.",
+              'Add a vehicle to your profile before booking a parking spot.',
               textAlign: TextAlign.center,
-              style: AppTextStyles.body1,
+              style: TextStyle(
+                fontFamily: 'Manrope',
+                fontSize: 14,
+                color:
+                    isDark ? Colors.white54 : const Color(0xFF64748B),
+              ),
             ),
             const SizedBox(height: 32),
-            AppButtonOutline(
-              label: "Return to Booking",
-              onPressed: () {
+            GestureDetector(
+              onTap: () {
                 HapticFeedback.lightImpact();
                 Navigator.pop(context);
               },
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 28, vertical: 14),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.primary),
+                ),
+                child: const Text(
+                  'Return to Booking',
+                  style: TextStyle(
+                    fontFamily: 'Plus Jakarta Sans',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
             ),
           ],
         ),

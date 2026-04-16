@@ -129,7 +129,7 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           CircleAvatar(
             radius: 18,
-            backgroundColor: AppColors.primary.withOpacity(0.1),
+            backgroundColor: AppColors.primary.withValues(alpha: 0.1),
             child: Text(
               widget.otherUserName.isNotEmpty ? widget.otherUserName[0].toUpperCase() : 'S',
               style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
@@ -248,7 +248,7 @@ class _ChatScreenState extends State<ChatScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -5))
         ],
       ),
       child: Row(

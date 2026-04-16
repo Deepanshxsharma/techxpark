@@ -66,7 +66,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                 child: IconButton(
                   icon: Container(
                     padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)]),
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)]),
                     child: const Icon(Icons.logout_rounded, color: Colors.redAccent, size: 20),
                   ),
                   onPressed: () => _confirmLogout(context),
@@ -174,14 +174,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           decoration: BoxDecoration(
             gradient: LinearGradient(colors: colors, begin: Alignment.topLeft, end: Alignment.bottomRight),
             borderRadius: BorderRadius.circular(24),
-            boxShadow: [BoxShadow(color: colors[0].withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 6))],
+            boxShadow: [BoxShadow(color: colors[0].withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 6))],
           ),
           child: Stack(
             children: [
               // Watermark Icon
               Positioned(
                 right: -10, bottom: -10,
-                child: Icon(icon, size: 80, color: Colors.white.withOpacity(0.15)),
+                child: Icon(icon, size: 80, color: Colors.white.withValues(alpha: 0.15)),
               ),
               // Content
               Column(
@@ -190,14 +190,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                 children: [
                   Container(
                     padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(12)),
+                    decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(12)),
                     child: Icon(icon, color: Colors.white, size: 20),
                   ),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(count.toString(), style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: Colors.white)),
-                      Text(title, style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.8), fontWeight: FontWeight.w600)),
+                      Text(title, style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.8), fontWeight: FontWeight.w600)),
                     ],
                   ),
                 ],
@@ -238,7 +238,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(28),
-            boxShadow: [BoxShadow(color: const Color(0xFF94A3B8).withOpacity(0.1), blurRadius: 20, offset: const Offset(0, 10))],
+            boxShadow: [BoxShadow(color: const Color(0xFF94A3B8).withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, 10))],
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -246,7 +246,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               Container(
                 height: 60, width: 60,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.08),
+                  color: color.withValues(alpha: 0.08),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(icon, color: color, size: 30),

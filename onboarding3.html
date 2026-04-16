@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#1c31d4",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#111321",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.5rem",
+                        "lg": "1rem",
+                        "xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display">
+<div class="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-background-light dark:bg-background-dark">
+<!-- Illustration Section (Top 60%) -->
+<div class="relative flex h-[60vh] w-full items-center justify-center overflow-hidden">
+<div class="absolute inset-0 bg-gradient-to-b from-primary/10 to-transparent"></div>
+<div class="relative z-10 w-full h-full p-8 flex items-center justify-center">
+<!-- Illustration representation using stylized background -->
+<div class="h-full w-full rounded-xl bg-center bg-no-repeat bg-cover shadow-sm border border-primary/10" data-alt="Happy person walking away from parked car illustration" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDGuZ86Cb22aHkMPKB9cRgp60DsPnbN_5cVsoufyiqE5_MumBhSRVbCFvcxg03h66w8NpEV1s0tqLwIWZJmaomdzTjEFyHyxOozwUhn_amakbcZ4S-IZKCW8ekLTSNqfQDAVo_ETiz46KqjZYl0DLw_avSs7oXNfepDXRnIu9FEshsqfPw5KDk7Xu7aE2vt82hrFxjzQjOJs-p5s5bAKQG_lYex0LRcKUZwfaPM0nYwSZtUjS_mRZDEt0JnDlo-eYqZW9xKUBJeikwO");'>
+</div>
+</div>
+<!-- Skip Button -->
+<button class="absolute top-6 right-6 text-slate-500 font-medium text-sm hover:text-primary transition-colors">
+                Skip
+            </button>
+</div>
+<!-- Content Card Section (Bottom 40%) -->
+<div class="fixed bottom-0 left-0 right-0 z-20">
+<div class="flex h-auto min-h-[40vh] w-full flex-col items-center bg-white dark:bg-background-dark rounded-t-xl shadow-2xl px-6 pb-10 pt-4">
+<!-- Pull Indicator -->
+<div class="mb-6 h-1 w-12 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="flex-1 w-full max-w-md mx-auto text-center">
+<!-- Heading -->
+<h1 class="text-slate-900 dark:text-slate-100 text-3xl font-bold leading-tight tracking-tight mb-4">
+                        Pay &amp; Go Hassle Free
+                    </h1>
+<!-- Body Text -->
+<p class="text-slate-600 dark:text-slate-400 text-base font-normal leading-relaxed mb-8">
+                        Pay digitally, get receipts instantly. No cash needed.
+                    </p>
+<!-- Progress Dots -->
+<div class="flex w-full flex-row items-center justify-center gap-2.5 mb-8">
+<div class="h-2 w-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="h-2 w-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="h-2.5 w-6 rounded-full bg-primary"></div>
+</div>
+<!-- Action Button -->
+<button class="w-full bg-primary py-4 rounded-xl text-white font-semibold text-lg hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 mb-6">
+                        Get Started
+                    </button>
+<!-- Footer Link -->
+<p class="text-slate-500 dark:text-slate-500 text-sm font-medium">
+                        Already have an account? 
+                        <a class="text-primary hover:underline ml-1" href="#">Sign In</a>
+</p>
+</div>
+</div>
+</div>
+</div>
+</body></html>

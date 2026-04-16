@@ -50,7 +50,7 @@ class _MyLocationDotState extends State<MyLocationDot>
                 height: 40 + _pulse.value,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.blue.withOpacity(0.15),
+                  color: Colors.blue.withValues(alpha: 0.15),
                 ),
               ),
 

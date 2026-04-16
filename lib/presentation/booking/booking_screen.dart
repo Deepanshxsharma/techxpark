@@ -224,9 +224,9 @@ class _BookingScreenState extends State<BookingScreen> with SingleTickerProvider
                     child: Container(
                       height: 40, width: 40,
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.2),
+                        color: Colors.black.withValues(alpha: 0.2),
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white.withOpacity(0.2))
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.2))
                       ),
                       child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
                     ),
@@ -252,9 +252,9 @@ class _BookingScreenState extends State<BookingScreen> with SingleTickerProvider
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [
-                          Colors.black.withOpacity(0.4),
+                          Colors.black.withValues(alpha: 0.4),
                           Colors.transparent,
-                          AppColors.bgDark.withOpacity(0.9),
+                          AppColors.bgDark.withValues(alpha: 0.9),
                         ],
                         stops: const [0.0, 0.5, 1.0],
                       ),
@@ -384,7 +384,7 @@ class _BookingScreenState extends State<BookingScreen> with SingleTickerProvider
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04), 
+            color: Colors.black.withValues(alpha: 0.04), 
             blurRadius: 20, 
             offset: const Offset(0, 8)
           )
@@ -578,7 +578,7 @@ class _BookingScreenState extends State<BookingScreen> with SingleTickerProvider
         gradient: const LinearGradient(colors: [AppColors.bgDark, Color(0xFF1E293B)]),
         boxShadow: [
           BoxShadow(
-            color: AppColors.bgDark.withOpacity(0.2), 
+            color: AppColors.bgDark.withValues(alpha: 0.2), 
             blurRadius: 16, 
             offset: const Offset(0, 8)
           )
@@ -693,19 +693,19 @@ class _BookingScreenState extends State<BookingScreen> with SingleTickerProvider
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04), 
+            color: Colors.black.withValues(alpha: 0.04), 
             blurRadius: 16, 
             offset: const Offset(0, 6)
           )
         ],
-        border: Border.all(color: AppColors.primary.withOpacity(0.1)),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.1)),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.1), 
+              color: AppColors.primary.withValues(alpha: 0.1), 
               borderRadius: BorderRadius.circular(16)
             ),
             child: const Icon(Icons.directions_car_filled, color: AppColors.primary, size: 28),
@@ -741,7 +741,7 @@ class _BookingScreenState extends State<BookingScreen> with SingleTickerProvider
         borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08), 
+            color: Colors.black.withValues(alpha: 0.08), 
             blurRadius: 24, 
             offset: const Offset(0, -8)
           )
@@ -772,7 +772,7 @@ class _BookingScreenState extends State<BookingScreen> with SingleTickerProvider
             padding: const EdgeInsets.symmetric(vertical: 20),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             elevation: 8,
-            shadowColor: AppColors.primary.withOpacity(0.4),
+            shadowColor: AppColors.primary.withValues(alpha: 0.4),
           ),
           child: const Row(
             mainAxisAlignment: MainAxisAlignment.center,

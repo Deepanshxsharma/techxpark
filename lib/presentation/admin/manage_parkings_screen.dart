@@ -74,7 +74,7 @@ class _ManageParkingsScreenState extends State<ManageParkingsScreen> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(15),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
                 ),
                 child: TextField(
                   controller: _searchController,
@@ -176,7 +176,7 @@ class _ManageParkingsScreenState extends State<ManageParkingsScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: const Color(0xFF94A3B8).withOpacity(0.1), blurRadius: 15, offset: const Offset(0, 8))],
+        boxShadow: [BoxShadow(color: const Color(0xFF94A3B8).withValues(alpha: 0.1), blurRadius: 15, offset: const Offset(0, 8))],
       ),
       child: Column(
         children: [
@@ -190,7 +190,7 @@ class _ManageParkingsScreenState extends State<ManageParkingsScreen> {
                 Container(
                   height: 50, width: 50,
                   decoration: BoxDecoration(
-                    color: _primaryBlue.withOpacity(0.1),
+                    color: _primaryBlue.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Icon(Icons.local_parking_rounded, color: _primaryBlue, size: 28),
@@ -213,7 +213,7 @@ class _ManageParkingsScreenState extends State<ManageParkingsScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
-                    color: isActive ? _activeGreen.withOpacity(0.1) : _inactiveRed.withOpacity(0.1),
+                    color: isActive ? _activeGreen.withValues(alpha: 0.1) : _inactiveRed.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -286,9 +286,9 @@ class _ManageParkingsScreenState extends State<ManageParkingsScreen> {
                   child: Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: isActive ? _inactiveRed.withOpacity(0.1) : _activeGreen.withOpacity(0.1),
+                      color: isActive ? _inactiveRed.withValues(alpha: 0.1) : _activeGreen.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: isActive ? _inactiveRed.withOpacity(0.2) : _activeGreen.withOpacity(0.2)),
+                      border: Border.all(color: isActive ? _inactiveRed.withValues(alpha: 0.2) : _activeGreen.withValues(alpha: 0.2)),
                     ),
                     child: Icon(
                       Icons.power_settings_new_rounded, 

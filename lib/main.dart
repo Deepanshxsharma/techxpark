@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -77,7 +78,9 @@ void main() async {
   FirebaseMessaging.onBackgroundMessage(_backgroundHandler);
 
   try {
-    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
     debugPrint('✅ Firebase initialized');
   } catch (e) {
     debugPrint('❌ Firebase init error: $e');
@@ -117,7 +120,8 @@ class TechxParkApp extends StatefulWidget {
   State<TechxParkApp> createState() => _TechxParkAppState();
 }
 
-class _TechxParkAppState extends State<TechxParkApp> with WidgetsBindingObserver {
+class _TechxParkAppState extends State<TechxParkApp>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
@@ -160,7 +164,7 @@ class _TechxParkAppState extends State<TechxParkApp> with WidgetsBindingObserver
   Widget build(BuildContext context) {
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: ThemeController.themeMode,
-      builder: (_, mode, __) {
+      builder: (_, mode, child) {
         return MaterialApp(
           navigatorKey: navigatorKey,
           debugShowCheckedModeBanner: false,
@@ -186,19 +190,53 @@ class _TechxParkAppState extends State<TechxParkApp> with WidgetsBindingObserver
 }
 
 /* -------------------------------------------------------------------------- */
+/* 🔤 SHARED POPPINS TYPOGRAPHY                                               */
+/* -------------------------------------------------------------------------- */
+// Refactored to use the `google_fonts` package for a cleaner, more maintainable,
+// and future-proof typography system, as requested.
+TextTheme _poppinsTextTheme(Brightness brightness) {
+  final baseTheme = ThemeData(brightness: brightness).textTheme;
+  final poppinsTheme = GoogleFonts.poppinsTextTheme(baseTheme);
+
+  final isDark = brightness == Brightness.dark;
+  final primaryTextColor = isDark
+      ? AppColors.textPrimaryDark
+      : AppColors.textPrimaryLight;
+  final secondaryTextColor = isDark
+      ? AppColors.textSecondaryDark
+      : AppColors.textSecondaryLight;
+
+  // Apply the primary color to all styles by default
+  return poppinsTheme.apply(
+    bodyColor: primaryTextColor,
+    displayColor: primaryTextColor,
+  ).copyWith(
+    // Manually override specific styles that should use the secondary color,
+    // matching the original implementation.
+    titleSmall: poppinsTheme.titleSmall?.copyWith(color: secondaryTextColor),
+    bodyMedium: poppinsTheme.bodyMedium?.copyWith(color: secondaryTextColor),
+    bodySmall: poppinsTheme.bodySmall?.copyWith(color: secondaryTextColor),
+  );
+}
+
+/* -------------------------------------------------------------------------- */
 /* 🌤️ LIGHT THEME                                                             */
 /* -------------------------------------------------------------------------- */
 ThemeData _lightTheme() {
+  final textTheme = _poppinsTextTheme(Brightness.light);
+
   return ThemeData(
     useMaterial3: true,
     brightness: Brightness.light,
+    fontFamily: 'Poppins',
+    textTheme: textTheme,
+    primaryTextTheme: textTheme,
 
     colorScheme: ColorScheme.fromSeed(
       seedColor: AppColors.primary,
       primary: AppColors.primary,
       secondary: AppColors.success,
       surface: AppColors.surfaceLight,
-      background: AppColors.bgLight,
       error: AppColors.error,
     ),
 
@@ -219,7 +257,7 @@ ThemeData _lightTheme() {
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         elevation: 0,
-        shadowColor: AppColors.primary.withOpacity(0.3),
+        shadowColor: AppColors.primary.withValues(alpha: 0.3),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         textStyle: AppTextStyles.buttonText,
       ),
@@ -300,9 +338,14 @@ ThemeData _lightTheme() {
 /* 🌑 DARK THEME                                                              */
 /* -------------------------------------------------------------------------- */
 ThemeData _darkTheme() {
+  final textTheme = _poppinsTextTheme(Brightness.dark);
+
   return ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
+    fontFamily: 'Poppins',
+    textTheme: textTheme,
+    primaryTextTheme: textTheme,
 
     colorScheme: ColorScheme.fromSeed(
       seedColor: AppColors.primaryLight,
@@ -310,7 +353,6 @@ ThemeData _darkTheme() {
       primary: AppColors.primaryLight,
       secondary: AppColors.success,
       surface: AppColors.surfaceDark,
-      background: AppColors.bgDark,
       error: AppColors.error,
     ),
 

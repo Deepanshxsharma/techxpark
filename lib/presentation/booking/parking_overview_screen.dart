@@ -96,7 +96,7 @@ class _ParkingOverviewScreenState extends State<ParkingOverviewScreen> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(20),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, 5))],
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, 5))],
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -145,7 +145,7 @@ class _ParkingOverviewScreenState extends State<ParkingOverviewScreen> {
                 borderRadius: BorderRadius.circular(30),
                 border: Border.all(color: isSelected ? _techBlue : Colors.grey.shade300),
                 boxShadow: isSelected 
-                    ? [BoxShadow(color: _techBlue.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))] 
+                    ? [BoxShadow(color: _techBlue.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))] 
                     : [],
               ),
               child: Text("Level $floorNum",
@@ -165,14 +165,14 @@ class _ParkingOverviewScreenState extends State<ParkingOverviewScreen> {
       decoration: BoxDecoration(
         color: _asphalt,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 10, offset: const Offset(0, -5))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 10, offset: const Offset(0, -5))],
       ),
       child: Column(
         children: [
           const SizedBox(height: 15),
           // Road Markings
-          Icon(Icons.keyboard_arrow_down, color: Colors.white.withOpacity(0.2)),
-          Text("ENTRY", style: TextStyle(color: Colors.white.withOpacity(0.2), letterSpacing: 4, fontWeight: FontWeight.bold, fontSize: 10)),
+          Icon(Icons.keyboard_arrow_down, color: Colors.white.withValues(alpha: 0.2)),
+          Text("ENTRY", style: TextStyle(color: Colors.white.withValues(alpha: 0.2), letterSpacing: 4, fontWeight: FontWeight.bold, fontSize: 10)),
           const SizedBox(height: 10),
 
           // The Grid
@@ -210,7 +210,7 @@ class _ParkingOverviewScreenState extends State<ParkingOverviewScreen> {
                           Container(
                             width: 50, height: 60,
                             alignment: Alignment.center,
-                            child: Container(width: 2, height: 30, color: Colors.yellow.withOpacity(0.4)),
+                            child: Container(width: 2, height: 30, color: Colors.yellow.withValues(alpha: 0.4)),
                           ),
 
                           // Right Bay
@@ -258,7 +258,7 @@ class _ParkingOverviewScreenState extends State<ParkingOverviewScreen> {
     return Container(
       height: 70,
       decoration: BoxDecoration(
-        color: isTaken ? _occupiedRed.withOpacity(0.15) : _freeGreen.withOpacity(0.15),
+        color: isTaken ? _occupiedRed.withValues(alpha: 0.15) : _freeGreen.withValues(alpha: 0.15),
         border: Border.all(
           color: isTaken ? _occupiedRed : _freeGreen,
           width: 1.5,

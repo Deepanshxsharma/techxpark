@@ -54,27 +54,27 @@ class SlotPainter {
       canvas.drawRRect(
         rrect.inflate(6 * pulseValue),
         Paint()
-          ..color = AppColors.info.withOpacity(0.25 * pulseValue)
+          ..color = AppColors.info.withValues(alpha: 0.25 * pulseValue)
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10),
       );
-      canvas.drawRRect(rrect.inflate(2), Paint()..color = AppColors.info.withOpacity(0.4));
+      canvas.drawRRect(rrect.inflate(2), Paint()..color = AppColors.info.withValues(alpha: 0.4));
     } else if (status == 'available') {
       // NEW: Subtle breathing green glow for available
       canvas.drawRRect(
         rrect.inflate(3 * pulseValue),
         Paint()
-          ..color = AppColors.success.withOpacity(0.15 * pulseValue)
+          ..color = AppColors.success.withValues(alpha: 0.15 * pulseValue)
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
       );
     }
 
     // Fill
     final fillOpacity = isBooked ? (0.7 + 0.3 * pulseValue) : (isOccupied ? 0.9 : 0.6);
-    canvas.drawRRect(rrect, Paint()..color = baseColor.withOpacity(fillOpacity));
+    canvas.drawRRect(rrect, Paint()..color = baseColor.withValues(alpha: fillOpacity));
 
     // Boundary Lines
     canvas.drawRRect(rrect, Paint()
-      ..color = Colors.white.withOpacity(0.9)
+      ..color = Colors.white.withValues(alpha: 0.9)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2);
 
@@ -102,7 +102,7 @@ class SlotPainter {
       text: TextSpan(
         text: 'RESERVED',
         style: TextStyle(
-          color: Colors.white.withOpacity(0.6),
+          color: Colors.white.withValues(alpha: 0.6),
           fontSize: 6,
           fontWeight: FontWeight.w900,
           letterSpacing: 1,
@@ -137,9 +137,9 @@ class SlotPainter {
   }
 
   static void _drawCarSilhouette(Canvas canvas, Rect rect) {
-    final bodyPaint = Paint()..color = Colors.white.withOpacity(0.8);
+    final bodyPaint = Paint()..color = Colors.white.withValues(alpha: 0.8);
     final shadowPaint = Paint()
-      ..color = Colors.black.withOpacity(0.5)
+      ..color = Colors.black.withValues(alpha: 0.5)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
     
     // Draw top-down car shape (scaled to fit slot)

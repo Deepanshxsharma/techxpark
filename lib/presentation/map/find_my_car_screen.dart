@@ -139,7 +139,7 @@ class _FindMyCarScreenState extends State<FindMyCarScreen> {
                           color: Colors.blueAccent,
                           shape: BoxShape.circle,
                           border: Border.all(color: Colors.white, width: 3),
-                          boxShadow: [BoxShadow(color: Colors.blue.withOpacity(0.5), blurRadius: 10)]
+                          boxShadow: [BoxShadow(color: Colors.blue.withValues(alpha: 0.5), blurRadius: 10)]
                         ),
                       ),
                     ),
@@ -168,14 +168,14 @@ class _FindMyCarScreenState extends State<FindMyCarScreen> {
               decoration: BoxDecoration(
                 color: const Color(0xFF1E293B), // Dark Slate
                 borderRadius: BorderRadius.circular(20),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))],
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 10))],
               ),
               child: Row(
                 children: [
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
+                      color: Colors.white.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(Icons.near_me, color: Colors.blueAccent, size: 28),

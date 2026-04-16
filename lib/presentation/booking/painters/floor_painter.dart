@@ -18,7 +18,7 @@ class FloorPainter {
 
     // 2. Concrete Tiles Grid Pattern
     final gridLinePaint = Paint()
-      ..color = Colors.white.withOpacity(0.04)
+      ..color = Colors.white.withValues(alpha: 0.04)
       ..strokeWidth = 1;
 
     const double tileSize = 40.0;
@@ -83,7 +83,7 @@ class FloorPainter {
   /// Draws lane outlines and directional markings painted on concrete
   static void drawLanes(Canvas canvas, Size size) {
     final laneLinePaint = Paint()
-      ..color = Colors.white.withOpacity(0.15)
+      ..color = Colors.white.withValues(alpha: 0.15)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2;
 
@@ -123,7 +123,7 @@ class FloorPainter {
   /// Draws the hazard zones near wall edges
   static void drawHazardLines(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = const Color.fromARGB(255, 60, 52, 28).withOpacity(0.5)
+      ..color = const Color.fromARGB(255, 60, 52, 28).withValues(alpha: 0.5)
       ..strokeWidth = 4;
 
     for (double i = 0; i < ParkingMapConfig.mapW; i += 30) {
@@ -155,11 +155,11 @@ class FloorPainter {
 
   static void _drawOverheadLights(Canvas canvas) {
     final lightGlow = Paint()
-      ..color = const Color(0xFFFEF08A).withOpacity(0.04)
+      ..color = const Color(0xFFFEF08A).withValues(alpha: 0.04)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 20);
 
     final lightFixture = Paint()
-      ..color = Colors.white.withOpacity(0.15)
+      ..color = Colors.white.withValues(alpha: 0.15)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1);
 
     for (double x = 100; x < ParkingMapConfig.mapW; x += 200) {
@@ -176,7 +176,7 @@ class FloorPainter {
     canvas.drawCircle(
       center, 
       24, 
-      Paint()..color = Colors.white.withOpacity(0.05)
+      Paint()..color = Colors.white.withValues(alpha: 0.05)
              ..style = PaintingStyle.fill
     );
     
@@ -184,7 +184,7 @@ class FloorPainter {
     canvas.drawCircle(
       center, 
       24, 
-      Paint()..color = Colors.white.withOpacity(0.2)
+      Paint()..color = Colors.white.withValues(alpha: 0.2)
              ..style = PaintingStyle.stroke
              ..strokeWidth = 1
     );
@@ -195,7 +195,7 @@ class FloorPainter {
       ..lineTo(center.dx - 6, center.dy)
       ..lineTo(center.dx + 6, center.dy)
       ..close();
-    canvas.drawPath(northPath, Paint()..color = const Color(0xFFEF4444).withOpacity(0.8));
+    canvas.drawPath(northPath, Paint()..color = const Color(0xFFEF4444).withValues(alpha: 0.8));
 
     // South/East/West Pointers (White)
     final otherPath = Path()
@@ -211,10 +211,10 @@ class FloorPainter {
       ..lineTo(center.dx, center.dy - 6)
       ..lineTo(center.dx, center.dy + 6)
       ..close();
-    canvas.drawPath(otherPath, Paint()..color = Colors.white.withOpacity(0.2));
+    canvas.drawPath(otherPath, Paint()..color = Colors.white.withValues(alpha: 0.2));
     
     // Center Dot
-    canvas.drawCircle(center, 3, Paint()..color = Colors.white.withOpacity(0.8));
+    canvas.drawCircle(center, 3, Paint()..color = Colors.white.withValues(alpha: 0.8));
 
     // 'N' Label
     final tp = TextPainter(
@@ -229,7 +229,7 @@ class FloorPainter {
       text: TextSpan(
         text: label,
         style: TextStyle(
-          color: Colors.white.withOpacity(0.15), 
+          color: Colors.white.withValues(alpha: 0.15), 
           fontSize: 24,
           fontWeight: FontWeight.w900,
           letterSpacing: 4,

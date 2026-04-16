@@ -7,6 +7,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../theme/app_colors.dart';
+
+/// Edit Profile Screen — Stitch design.
+/// Premium avatar with camera overlay, grouped form fields,
+/// gradient save button, clean read-only email display.
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
 
@@ -27,12 +32,6 @@ class _EditProfileScreenState extends State<EditProfileScreen>
 
   late AnimationController _animCtrl;
   late Animation<double> _fadeAnim;
-
-  static const Color _techBlue = Color(0xFF2563EB);
-  static const Color _dark = Color(0xFF0F172A);
-  static const Color _surface = Color(0xFFF8FAFC);
-  static const Color _success = Color(0xFF10B981);
-  static const Color _danger = Color(0xFFEF4444);
 
   @override
   void initState() {
@@ -75,7 +74,6 @@ class _EditProfileScreenState extends State<EditProfileScreen>
     }
   }
 
-  /* ── Save Profile ──────────────────────────────────────────────────────── */
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -101,7 +99,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
               SizedBox(width: 8),
               Text('Profile updated successfully'),
             ]),
-            backgroundColor: _success,
+            backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -111,7 +109,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error: $e'),
-            backgroundColor: _danger,
+            backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -121,11 +119,10 @@ class _EditProfileScreenState extends State<EditProfileScreen>
     }
   }
 
-  /* ── Pick & Upload Photo ───────────────────────────────────────────────── */
-  Future<void> _pickPhoto() async {
+  Future<void> _pickPhoto(ImageSource source) async {
     final picker = ImagePicker();
     final picked = await picker.pickImage(
-        source: ImageSource.gallery, maxWidth: 512, imageQuality: 75);
+        source: source, maxWidth: 512, imageQuality: 75);
     if (picked == null) return;
 
     setState(() => _isUploadingPhoto = true);
@@ -146,7 +143,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Photo updated!'),
-            backgroundColor: _success,
+            backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -156,7 +153,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Upload failed: $e'),
-            backgroundColor: _danger,
+            backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -166,187 +163,202 @@ class _EditProfileScreenState extends State<EditProfileScreen>
     }
   }
 
-  /* ═══════════════════════════════════════════════════════════════════════ */
-  /*  BUILD                                                                 */
-  /* ═══════════════════════════════════════════════════════════════════════ */
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _surface,
-      appBar: AppBar(
-        leading: IconButton(
-          icon: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                    color: Colors.black.withOpacity(0.06),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4)),
-              ],
-            ),
-            child: const Icon(Icons.arrow_back_rounded,
-                color: _dark, size: 18),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+      child: Scaffold(
+        backgroundColor: isDark ? AppColors.bgDark : const Color(0xFFF9F9FB),
+        appBar: AppBar(
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back,
+                color: isDark ? Colors.white : const Color(0xFF0029B9)),
+            onPressed: () => Navigator.pop(context),
           ),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text('Edit Profile',
+          title: Text(
+            'Edit Profile',
             style: TextStyle(
-                fontWeight: FontWeight.w900,
-                color: _dark,
-                letterSpacing: -0.5)),
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : FadeTransition(
-              opacity: _fadeAnim,
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 20),
-                      _buildAvatar(),
-                      const SizedBox(height: 32),
+              fontFamily: 'Plus Jakarta Sans',
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: isDark ? Colors.white : const Color(0xFF1A1C1D),
+              letterSpacing: -0.3,
+            ),
+          ),
+          centerTitle: true,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          surfaceTintColor: Colors.transparent,
+        ),
+        body: _isLoading
+            ? const Center(
+                child: CircularProgressIndicator(color: AppColors.primary))
+            : FadeTransition(
+                opacity: _fadeAnim,
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 20),
 
-                      // --- Email (read-only) ---
-                      _buildField(
-                        label: 'Email',
-                        icon: Icons.email_outlined,
-                        value: FirebaseAuth.instance.currentUser?.email ?? '',
-                        readOnly: true,
-                      ),
-                      const SizedBox(height: 20),
+                        // ═══════════════════════════════════════
+                        // AVATAR
+                        // ═══════════════════════════════════════
+                        _buildAvatar(isDark),
 
-                      // --- Full Name ---
-                      _buildEditableField(
-                        label: 'Full Name',
-                        icon: Icons.person_outline_rounded,
-                        controller: _nameCtrl,
-                        validator: (val) {
-                          if (val == null || val.trim().isEmpty) {
-                            return 'Name cannot be empty';
-                          }
-                          if (val.trim().length < 2) {
-                            return 'Name must be at least 2 characters';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 20),
+                        const SizedBox(height: 36),
 
-                      // --- Phone ---
-                      _buildEditableField(
-                        label: 'Phone Number',
-                        icon: Icons.phone_android_rounded,
-                        controller: _phoneCtrl,
-                        keyboardType: TextInputType.phone,
-                        validator: (val) {
-                          if (val != null && val.isNotEmpty) {
-                            final cleaned =
-                                val.replaceAll(RegExp(r'[^0-9+]'), '');
-                            if (cleaned.length < 10) {
-                              return 'Enter a valid phone number';
+                        // ═══════════════════════════════════════
+                        // FORM FIELDS
+                        // ═══════════════════════════════════════
+                        _buildSectionLabel('PERSONAL INFORMATION'),
+                        const SizedBox(height: 12),
+
+                        // Email (read-only)
+                        _buildReadOnlyField(
+                          label: 'Email',
+                          icon: Icons.email_outlined,
+                          value: FirebaseAuth.instance.currentUser?.email ?? '',
+                          isDark: isDark,
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Full Name
+                        _buildEditableField(
+                          label: 'Full Name',
+                          icon: Icons.person_outline_rounded,
+                          controller: _nameCtrl,
+                          isDark: isDark,
+                          validator: (val) {
+                            if (val == null || val.trim().isEmpty) {
+                              return 'Name cannot be empty';
                             }
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 40),
+                            if (val.trim().length < 2) {
+                              return 'Name must be at least 2 characters';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16),
 
-                      // --- Save Button ---
-                      _buildSaveButton(),
-                      const SizedBox(height: 40),
-                    ],
+                        // Phone
+                        _buildEditableField(
+                          label: 'Phone Number',
+                          icon: Icons.phone_android_rounded,
+                          controller: _phoneCtrl,
+                          isDark: isDark,
+                          keyboardType: TextInputType.phone,
+                          validator: (val) {
+                            if (val != null && val.isNotEmpty) {
+                              final cleaned =
+                                  val.replaceAll(RegExp(r'[^0-9+]'), '');
+                              if (cleaned.length < 10) {
+                                return 'Enter a valid phone number';
+                              }
+                            }
+                            return null;
+                          },
+                        ),
+
+                        const SizedBox(height: 48),
+
+                        // ═══════════════════════════════════════
+                        // SAVE BUTTON
+                        // ═══════════════════════════════════════
+                        _buildSaveButton(isDark),
+
+                        const SizedBox(height: 40),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
+      ),
     );
   }
 
-  /* ── Avatar ────────────────────────────────────────────────────────────── */
-  Widget _buildAvatar() {
+  // ═══════════════════════════════════════════════════════════════
+  // AVATAR — Gradient border ring with camera fab
+  // ═══════════════════════════════════════════════════════════════
+  Widget _buildAvatar(bool isDark) {
     return GestureDetector(
-      onTap: _pickPhoto,
+      onTap: () => _showPhotoSheet(),
       child: Stack(
         children: [
-          Hero(
-            tag: 'profile-avatar',
+          // Gradient ring
+          Container(
+            width: 120,
+            height: 120,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: AppColors.primaryGradient,
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.2),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.all(3),
             child: Container(
-              width: 110,
-              height: 110,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: _techBlue.withOpacity(0.2), width: 3),
-                boxShadow: [
-                  BoxShadow(
-                      color: _techBlue.withOpacity(0.1),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8)),
-                ],
+                color: isDark ? AppColors.bgDark : const Color(0xFFF9F9FB),
               ),
+              padding: const EdgeInsets.all(3),
               child: ClipOval(
                 child: _isUploadingPhoto
                     ? Container(
-                        color: _surface,
+                        color: isDark ? AppColors.surfaceDark : Colors.white,
                         child: const Center(
-                            child: SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2))))
+                          child: SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ),
+                      )
                     : _photoUrl != null && _photoUrl!.isNotEmpty
                         ? Image.network(
                             _photoUrl!,
                             fit: BoxFit.cover,
                             width: 110,
                             height: 110,
-                            errorBuilder: (context, error, stackTrace) => Container(
-                              color: _techBlue.withOpacity(0.1),
-                              child: Center(
-                                child: Text(
-                                  (_nameCtrl.text.isNotEmpty ? _nameCtrl.text[0] : 'U').toUpperCase(),
-                                  style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w900, color: _techBlue),
-                                ),
-                              ),
-                            ),
+                            errorBuilder: (_, __, ___) => _buildFallbackAvatar(),
                           )
-                        : Container(
-                            color: _techBlue.withOpacity(0.1),
-                            child: Center(
-                              child: Text(
-                                (_nameCtrl.text.isNotEmpty
-                                        ? _nameCtrl.text[0]
-                                        : 'U')
-                                    .toUpperCase(),
-                                style: const TextStyle(
-                                    fontSize: 40,
-                                    fontWeight: FontWeight.w900,
-                                    color: _techBlue),
-                              ),
-                            ),
-                          ),
+                        : _buildFallbackAvatar(),
               ),
             ),
           ),
+          // Camera button
           Positioned(
             bottom: 0,
             right: 0,
             child: Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: _techBlue,
+                gradient: AppColors.primaryGradient,
                 shape: BoxShape.circle,
-                border: Border.all(color: _surface, width: 3),
+                border: Border.all(
+                  color: isDark ? AppColors.bgDark : const Color(0xFFF9F9FB),
+                  width: 3,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: const Icon(Icons.camera_alt_rounded,
                   color: Colors.white, size: 16),
@@ -357,48 +369,132 @@ class _EditProfileScreenState extends State<EditProfileScreen>
     );
   }
 
-  /* ── Read-only Field ───────────────────────────────────────────────────── */
-  Widget _buildField(
-      {required String label,
-      required IconData icon,
-      required String value,
-      bool readOnly = false}) {
+  Widget _buildFallbackAvatar() {
+    return Container(
+      color: AppColors.primary.withValues(alpha: 0.1),
+      child: Center(
+        child: Text(
+          (_nameCtrl.text.isNotEmpty ? _nameCtrl.text[0] : 'U').toUpperCase(),
+          style: const TextStyle(
+            fontSize: 40,
+            fontWeight: FontWeight.w900,
+            color: AppColors.primary,
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showPhotoSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading:
+                  const Icon(Icons.camera_alt, color: AppColors.primary),
+              title: const Text('Take Photo',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
+              onTap: () {
+                Navigator.pop(ctx);
+                _pickPhoto(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading:
+                  const Icon(Icons.photo_library, color: AppColors.primary),
+              title: const Text('Choose from Gallery',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
+              onTap: () {
+                Navigator.pop(ctx);
+                _pickPhoto(ImageSource.gallery);
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // SECTION LABEL
+  // ═══════════════════════════════════════════════════════════════
+  Widget _buildSectionLabel(String label) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Padding(
+        padding: const EdgeInsets.only(left: 4),
+        child: Text(
+          label,
+          style: const TextStyle(
+            fontFamily: 'Plus Jakarta Sans',
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF94A3B8),
+            letterSpacing: 1.5,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // READ-ONLY FIELD
+  // ═══════════════════════════════════════════════════════════════
+  Widget _buildReadOnlyField({
+    required String label,
+    required IconData icon,
+    required String value,
+    required bool isDark,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _label(label),
+        _fieldLabel(label, isDark),
         Container(
           decoration: BoxDecoration(
-            color: readOnly ? const Color(0xFFF1F5F9) : Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: readOnly
-                ? []
-                : [
-                    BoxShadow(
-                        color: Colors.black.withOpacity(0.03),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4))
-                  ],
+            color: isDark ? AppColors.inputBgDark : const Color(0xFFF1F5F9),
+            borderRadius: BorderRadius.circular(14),
           ),
           child: TextFormField(
             initialValue: value,
             readOnly: true,
             style: TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 15,
-                color: readOnly ? const Color(0xFF94A3B8) : _dark),
+              fontFamily: 'Manrope',
+              fontWeight: FontWeight.w600,
+              fontSize: 15,
+              color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
+            ),
             decoration: InputDecoration(
-              prefixIcon: Icon(icon, color: const Color(0xFF94A3B8), size: 20),
+              prefixIcon: Icon(icon,
+                  color: isDark ? Colors.white24 : const Color(0xFF94A3B8),
+                  size: 20),
               border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none),
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide.none,
+              ),
               filled: true,
               fillColor: Colors.transparent,
               contentPadding: const EdgeInsets.symmetric(vertical: 16),
-              suffixIcon: readOnly
-                  ? const Icon(Icons.lock_outline_rounded,
-                      size: 16, color: Color(0xFFCBD5E1))
-                  : null,
+              suffixIcon: Icon(Icons.lock_outline_rounded,
+                  size: 16,
+                  color: isDark ? Colors.white24 : const Color(0xFFCBD5E1)),
             ),
           ),
         ),
@@ -406,45 +502,57 @@ class _EditProfileScreenState extends State<EditProfileScreen>
     );
   }
 
-  /* ── Editable Field ────────────────────────────────────────────────────── */
+  // ═══════════════════════════════════════════════════════════════
+  // EDITABLE FIELD
+  // ═══════════════════════════════════════════════════════════════
   Widget _buildEditableField({
     required String label,
     required IconData icon,
     required TextEditingController controller,
+    required bool isDark,
     TextInputType keyboardType = TextInputType.text,
     String? Function(String?)? validator,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _label(label),
+        _fieldLabel(label, isDark),
         Container(
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
+            color: isDark ? AppColors.surfaceDark : Colors.white,
+            borderRadius: BorderRadius.circular(14),
             boxShadow: [
               BoxShadow(
-                  color: Colors.black.withOpacity(0.03),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4))
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
             ],
           ),
           child: TextFormField(
             controller: controller,
             keyboardType: keyboardType,
             validator: validator,
-            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+            style: TextStyle(
+              fontFamily: 'Manrope',
+              fontWeight: FontWeight.w600,
+              fontSize: 15,
+              color: isDark ? Colors.white : const Color(0xFF0F172A),
+            ),
             decoration: InputDecoration(
-              prefixIcon:
-                  Icon(icon, color: _techBlue.withOpacity(0.7), size: 20),
+              prefixIcon: Icon(icon,
+                  color: AppColors.primary.withValues(alpha: 0.7), size: 20),
               border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none),
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide.none,
+              ),
               filled: true,
-              fillColor: Colors.white,
+              fillColor: Colors.transparent,
               contentPadding: const EdgeInsets.symmetric(vertical: 16),
               errorStyle: const TextStyle(
-                  fontWeight: FontWeight.w600, fontSize: 11),
+                fontWeight: FontWeight.w600,
+                fontSize: 11,
+              ),
             ),
           ),
         ),
@@ -452,40 +560,63 @@ class _EditProfileScreenState extends State<EditProfileScreen>
     );
   }
 
-  Widget _label(String text) => Padding(
+  Widget _fieldLabel(String text, bool isDark) => Padding(
         padding: const EdgeInsets.only(left: 4, bottom: 8),
-        child: Text(text,
-            style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: Colors.grey.shade600)),
+        child: Text(
+          text,
+          style: TextStyle(
+            fontFamily: 'Manrope',
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: isDark ? Colors.white54 : const Color(0xFF64748B),
+          ),
+        ),
       );
 
-  /* ── Save Button ───────────────────────────────────────────────────────── */
-  Widget _buildSaveButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 58,
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: _techBlue,
-          foregroundColor: Colors.white,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-          elevation: 0,
+  // ═══════════════════════════════════════════════════════════════
+  // SAVE BUTTON — Gradient
+  // ═══════════════════════════════════════════════════════════════
+  Widget _buildSaveButton(bool isDark) {
+    return GestureDetector(
+      onTap: _isSaving ? null : _saveProfile,
+      child: Container(
+        width: double.infinity,
+        height: 58,
+        decoration: BoxDecoration(
+          gradient: _isSaving ? null : AppColors.primaryGradient,
+          color: _isSaving
+              ? AppColors.primary.withValues(alpha: 0.4)
+              : null,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: _isSaving
+              ? []
+              : [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.25),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
         ),
-        onPressed: _isSaving ? null : _saveProfile,
-        child: _isSaving
-            ? const SizedBox(
-                height: 22,
-                width: 22,
-                child: CircularProgressIndicator(
-                    color: Colors.white, strokeWidth: 2))
-            : const Text('Save Changes',
-                style: TextStyle(
+        child: Center(
+          child: _isSaving
+              ? const SizedBox(
+                  height: 22,
+                  width: 22,
+                  child: CircularProgressIndicator(
+                      color: Colors.white, strokeWidth: 2),
+                )
+              : const Text(
+                  'Save Changes',
+                  style: TextStyle(
+                    fontFamily: 'Plus Jakarta Sans',
                     fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.3)),
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+        ),
       ),
     );
   }

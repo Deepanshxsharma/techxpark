@@ -148,7 +148,7 @@ class _ParkingTimerScreenState extends State<ParkingTimerScreen> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: _techBlue.withOpacity(0.1),
+                color: _techBlue.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(Icons.update, color: _techBlue, size: 20),
@@ -374,7 +374,7 @@ class _ParkingTimerScreenState extends State<ParkingTimerScreen> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Row(
@@ -396,7 +396,7 @@ class _ParkingTimerScreenState extends State<ParkingTimerScreen> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Text('Cancelled',
@@ -421,9 +421,9 @@ class _ParkingTimerScreenState extends State<ParkingTimerScreen> {
                   child: CircularProgressIndicator(
                     value: _isCancelled ? 0 : (isExpired ? 1 : progress),
                     strokeWidth: 12,
-                    backgroundColor: Colors.white.withOpacity(0.2),
+                    backgroundColor: Colors.white.withValues(alpha: 0.2),
                     valueColor: AlwaysStoppedAnimation<Color>(
-                        Colors.white.withOpacity(0.9)),
+                        Colors.white.withValues(alpha: 0.9)),
                   ),
                 ),
                 Column(
@@ -442,7 +442,7 @@ class _ParkingTimerScreenState extends State<ParkingTimerScreen> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
@@ -523,14 +523,14 @@ class _ParkingTimerScreenState extends State<ParkingTimerScreen> {
                           color: const Color(0xFF0A0A1A),
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                              color: Colors.white.withOpacity(0.06)),
+                              color: Colors.white.withValues(alpha: 0.06)),
                         ),
                         child: Row(
                           children: [
                             Container(
                               padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(
-                                color: _techBlue.withOpacity(0.15),
+                                color: _techBlue.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: const Icon(Icons.videocam_rounded,
@@ -558,7 +558,7 @@ class _ParkingTimerScreenState extends State<ParkingTimerScreen> {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFFF3B30).withOpacity(0.15),
+                                color: const Color(0xFFFF3B30).withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: const Row(

@@ -55,7 +55,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(15),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
                 ),
                 child: TextField(
                   controller: _searchController,
@@ -148,7 +148,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
         children: [
@@ -160,7 +160,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                 // 1. DYNAMIC AVATAR
                 CircleAvatar(
                   radius: 26,
-                  backgroundColor: _primaryBlue.withOpacity(0.1),
+                  backgroundColor: _primaryBlue.withValues(alpha: 0.1),
                   child: Text(
                     name.isNotEmpty ? name[0].toUpperCase() : "?",
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: _primaryBlue),

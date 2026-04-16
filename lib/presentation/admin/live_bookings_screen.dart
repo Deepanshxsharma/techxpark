@@ -70,7 +70,7 @@ class _AdminLiveBookingsScreenState extends State<AdminLiveBookingsScreen> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(15),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
                 ),
                 child: TextField(
                   controller: _searchController,
@@ -193,7 +193,7 @@ class _AdminLiveBookingsScreenState extends State<AdminLiveBookingsScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 15, offset: const Offset(0, 8))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 15, offset: const Offset(0, 8))],
       ),
       child: Column(
         children: [
@@ -204,7 +204,7 @@ class _AdminLiveBookingsScreenState extends State<AdminLiveBookingsScreen> {
               children: [
                 Container(
                   padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(color: _primaryBlue.withOpacity(0.1), borderRadius: BorderRadius.circular(16)),
+                  decoration: BoxDecoration(color: _primaryBlue.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(16)),
                   child: Icon(vehicleType == "Bike" ? Icons.two_wheeler : Icons.directions_car, color: _primaryBlue),
                 ),
                 const SizedBox(width: 16),
@@ -319,9 +319,9 @@ class _AdminLiveBookingsScreenState extends State<AdminLiveBookingsScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: isUrgent ? _urgentRed.withOpacity(0.1) : _safeGreen.withOpacity(0.1),
+        color: isUrgent ? _urgentRed.withValues(alpha: 0.1) : _safeGreen.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isUrgent ? _urgentRed.withOpacity(0.2) : _safeGreen.withOpacity(0.2)),
+        border: Border.all(color: isUrgent ? _urgentRed.withValues(alpha: 0.2) : _safeGreen.withValues(alpha: 0.2)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

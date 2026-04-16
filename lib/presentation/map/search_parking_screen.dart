@@ -158,12 +158,12 @@ class _SearchParkingScreenState extends State<SearchParkingScreen>
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: _blue.withOpacity(0.12),
+              color: _blue.withValues(alpha: 0.12),
               blurRadius: 24,
               offset: const Offset(0, 8),
             ),
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -271,7 +271,7 @@ class _SearchParkingScreenState extends State<SearchParkingScreen>
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: _blue.withOpacity(0.1),
+                    color: _blue.withValues(alpha: 0.1),
                     blurRadius: 30,
                     offset: const Offset(0, 10),
                   ),
@@ -295,7 +295,7 @@ class _SearchParkingScreenState extends State<SearchParkingScreen>
             const SizedBox(height: 8),
             Text(
               'Try a different name or area',
-              style: TextStyle(fontSize: 14, color: _slate.withOpacity(0.7)),
+              style: TextStyle(fontSize: 14, color: _slate.withValues(alpha: 0.7)),
             ),
           ],
         ),
@@ -353,7 +353,7 @@ class _SearchResultCardState extends State<_SearchResultCard> {
             border: Border.all(color: const Color(0xFFE2E8F0)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.04),
+                color: Colors.black.withValues(alpha: 0.04),
                 blurRadius: 16,
                 offset: const Offset(0, 6),
               ),
@@ -376,7 +376,7 @@ class _SearchResultCardState extends State<_SearchResultCard> {
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.primary.withOpacity(0.25),
+                        color: AppColors.primary.withValues(alpha: 0.25),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -455,8 +455,8 @@ class _SlotsChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: available
-            ? const Color(0xFF22C55E).withOpacity(0.1)
-            : const Color(0xFFEF4444).withOpacity(0.1),
+            ? const Color(0xFF22C55E).withValues(alpha: 0.1)
+            : const Color(0xFFEF4444).withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(

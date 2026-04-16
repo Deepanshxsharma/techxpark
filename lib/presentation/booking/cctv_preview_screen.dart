@@ -159,7 +159,7 @@ class _CCTVPreviewScreenState extends State<CCTVPreviewScreen>
             child: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
+                color: Colors.white.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(Icons.arrow_back_rounded,
@@ -178,7 +178,7 @@ class _CCTVPreviewScreenState extends State<CCTVPreviewScreen>
                         fontWeight: FontWeight.w700)),
                 Text(widget.parkingName,
                     style: TextStyle(
-                        color: Colors.white.withOpacity(0.5),
+                        color: Colors.white.withValues(alpha: 0.5),
                         fontSize: 12)),
               ],
             ),
@@ -190,10 +190,10 @@ class _CCTVPreviewScreenState extends State<CCTVPreviewScreen>
               padding:
                   const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: _liveRed.withOpacity(_pulseAnim.value * 0.3),
+                color: _liveRed.withValues(alpha: _pulseAnim.value * 0.3),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                    color: _liveRed.withOpacity(_pulseAnim.value)),
+                    color: _liveRed.withValues(alpha: _pulseAnim.value)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -202,7 +202,7 @@ class _CCTVPreviewScreenState extends State<CCTVPreviewScreen>
                     width: 6,
                     height: 6,
                     decoration: BoxDecoration(
-                      color: _liveRed.withOpacity(_pulseAnim.value),
+                      color: _liveRed.withValues(alpha: _pulseAnim.value),
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -229,10 +229,10 @@ class _CCTVPreviewScreenState extends State<CCTVPreviewScreen>
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-            color: Colors.white.withOpacity(0.08), width: 1),
+            color: Colors.white.withValues(alpha: 0.08), width: 1),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF4D6FFF).withOpacity(0.1),
+            color: const Color(0xFF4D6FFF).withValues(alpha: 0.1),
             blurRadius: 30,
             spreadRadius: 2,
           ),
@@ -281,7 +281,7 @@ class _CCTVPreviewScreenState extends State<CCTVPreviewScreen>
                     gradient: LinearGradient(
                       colors: [
                         Colors.transparent,
-                        Colors.white.withOpacity(0.06),
+                        Colors.white.withValues(alpha: 0.06),
                         Colors.transparent,
                       ],
                     ),
@@ -303,7 +303,7 @@ class _CCTVPreviewScreenState extends State<CCTVPreviewScreen>
           // ── Connecting overlay ───────────────────────────────────────
           if (_isConnecting)
             Container(
-              color: Colors.black.withOpacity(0.7),
+              color: Colors.black.withValues(alpha: 0.7),
               child: const Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -332,7 +332,7 @@ class _CCTVPreviewScreenState extends State<CCTVPreviewScreen>
                 decoration: BoxDecoration(
                   border: Border.all(color: Colors.greenAccent, width: 1.5),
                   borderRadius: BorderRadius.circular(4),
-                  color: Colors.greenAccent.withOpacity(0.1),
+                  color: Colors.greenAccent.withValues(alpha: 0.1),
                 ),
                 child: const Text('🚗 Vehicle Detected',
                     style: TextStyle(
@@ -356,7 +356,7 @@ class _CCTVPreviewScreenState extends State<CCTVPreviewScreen>
                     padding: const EdgeInsets.symmetric(
                         horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.5),
+                      color: Colors.black.withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(_currentTime,
@@ -371,7 +371,7 @@ class _CCTVPreviewScreenState extends State<CCTVPreviewScreen>
                     padding: const EdgeInsets.symmetric(
                         horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.5),
+                      color: Colors.black.withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: const Row(
@@ -415,13 +415,13 @@ class _CCTVPreviewScreenState extends State<CCTVPreviewScreen>
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
                 color: isActive
-                    ? const Color(0xFF4D6FFF).withOpacity(0.2)
-                    : Colors.white.withOpacity(0.06),
+                    ? const Color(0xFF4D6FFF).withValues(alpha: 0.2)
+                    : Colors.white.withValues(alpha: 0.06),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                     color: isActive
                         ? const Color(0xFF4D6FFF)
-                        : Colors.white.withOpacity(0.1)),
+                        : Colors.white.withValues(alpha: 0.1)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -506,7 +506,7 @@ class _CCTVPreviewScreenState extends State<CCTVPreviewScreen>
                       fontWeight: FontWeight.w600, fontSize: 13)),
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.white70,
-                side: BorderSide(color: Colors.white.withOpacity(0.15)),
+                side: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14)),
                 padding: const EdgeInsets.symmetric(vertical: 14),
@@ -525,7 +525,7 @@ class _CCTVPreviewScreenState extends State<CCTVPreviewScreen>
                   style: TextStyle(
                       fontWeight: FontWeight.w600, fontSize: 13)),
               style: ElevatedButton.styleFrom(
-                backgroundColor: _liveRed.withOpacity(0.15),
+                backgroundColor: _liveRed.withValues(alpha: 0.15),
                 foregroundColor: _liveRed,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
@@ -559,7 +559,7 @@ class _CCTVPreviewScreenState extends State<CCTVPreviewScreen>
                       fontWeight: FontWeight.w800)),
               const SizedBox(height: 8),
               Text('Our security team will be notified immediately.',
-                  style: TextStyle(color: Colors.white.withOpacity(0.5))),
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.5))),
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
@@ -600,7 +600,7 @@ class _ParkingGridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.04)
+      ..color = Colors.white.withValues(alpha: 0.04)
       ..strokeWidth = 1
       ..style = PaintingStyle.stroke;
 
@@ -621,7 +621,7 @@ class _ParkingGridPainter extends CustomPainter {
 
     // Draw some "parked car" rectangles
     final carPaint = Paint()
-      ..color = Colors.white.withOpacity(0.06)
+      ..color = Colors.white.withValues(alpha: 0.06)
       ..style = PaintingStyle.fill;
 
     final rng = Random(42); // deterministic "random"

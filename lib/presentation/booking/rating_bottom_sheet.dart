@@ -136,7 +136,7 @@ class _RatingSheetState extends State<_RatingSheet>
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: const Color(0xFF00C853).withOpacity(0.1),
+                color: const Color(0xFF00C853).withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.check_rounded,
@@ -258,7 +258,7 @@ class _RatingSheetState extends State<_RatingSheet>
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   decoration: BoxDecoration(
                     color: isActive
-                        ? _primary.withOpacity(0.1)
+                        ? _primary.withValues(alpha: 0.1)
                         : const Color(0xFFF5F7FB),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
@@ -306,7 +306,7 @@ class _RatingSheetState extends State<_RatingSheet>
               onPressed: _rating > 0 && !_isSubmitting ? _submit : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: _primary,
-                disabledBackgroundColor: _primary.withOpacity(0.3),
+                disabledBackgroundColor: _primary.withValues(alpha: 0.3),
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(18)),

@@ -209,7 +209,7 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
                   duration: const Duration(milliseconds: 200),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: hasText ? _primary : _primary.withOpacity(0.3),
+                    color: hasText ? _primary : _primary.withValues(alpha: 0.3),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(Icons.send_rounded,
@@ -276,7 +276,7 @@ class _AdminBubble extends StatelessWidget {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
+                    color: Colors.black.withValues(alpha: 0.04),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -297,7 +297,7 @@ class _AdminBubble extends StatelessWidget {
                   Text(time,
                       style: TextStyle(
                           color: isAdmin
-                              ? Colors.white.withOpacity(0.6)
+                              ? Colors.white.withValues(alpha: 0.6)
                               : const Color(0xFFAAAAAA),
                           fontSize: 10)),
                 ],

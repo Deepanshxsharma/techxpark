@@ -2,10 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:techxpark/services/google_auth_service.dart';
-import 'package:techxpark/presentation/auth/signup/signup_screen.dart';
-import 'package:techxpark/theme/app_colors.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
+import '../../../services/google_auth_service.dart';
+import '../../../theme/app_colors.dart';
+import 'email_login_screen.dart';
+import 'phone_login_screen.dart';
+
+/// Auth Gateway Screen — matches the Stitch design.
+/// Four sign-in options: Phone, Apple, Google, Email.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -15,18 +20,8 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen>
     with SingleTickerProviderStateMixin {
-  final TextEditingController _emailCtrl = TextEditingController();
-  final TextEditingController _passCtrl = TextEditingController();
-
-  final FocusNode _emailFocus = FocusNode();
-  final FocusNode _passFocus = FocusNode();
-
-  bool _obscurePassword = true;
-  bool _isLoading = false;
   bool _isGoogleLoading = false;
-
-  String? _emailError;
-  String? _passError;
+  bool _isAppleLoading = false;
 
   late AnimationController _fadeController;
   late Animation<double> _fadeAnim;
@@ -35,594 +30,555 @@ class _LoginScreenState extends State<LoginScreen>
   void initState() {
     super.initState();
     _fadeController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1000))
-      ..forward();
-    _fadeAnim =
-        CurvedAnimation(parent: _fadeController, curve: Curves.easeOutCubic);
-
-    _emailFocus.addListener(() => setState(() {}));
-    _passFocus.addListener(() => setState(() {}));
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..forward();
+    _fadeAnim = CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeOutCubic,
+    );
   }
 
   @override
   void dispose() {
-    _emailCtrl.dispose();
-    _passCtrl.dispose();
-    _emailFocus.dispose();
-    _passFocus.dispose();
     _fadeController.dispose();
     super.dispose();
   }
 
-  bool _isValidEmail(String email) {
-    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
-  }
-
-  void _validate() {
-    setState(() {
-      _emailError = null;
-      _passError = null;
-
-      final email = _emailCtrl.text.trim();
-      final pass = _passCtrl.text.trim();
-
-      if (email.isEmpty) {
-        _emailError = "Email is required";
-      } else if (!_isValidEmail(email)) {
-        _emailError = "Enter a valid email address";
-      }
-
-      if (pass.isEmpty) {
-        _passError = "Password is required";
-      } else if (pass.length < 6) {
-        _passError = "Password must be at least 6 characters";
-      }
-    });
-  }
-
-  Future<void> _handleLogin() async {
-    _validate();
-    if (_emailError != null || _passError != null) {
-      HapticFeedback.lightImpact();
-      return;
-    }
-
-    setState(() => _isLoading = true);
-    HapticFeedback.mediumImpact();
-
-    try {
-      final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: _emailCtrl.text.trim(),
-        password: _passCtrl.text.trim(),
-      );
-      // Ensure user document has role field
-      if (cred.user != null) {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(cred.user!.uid)
-            .set({'role': 'customer'}, SetOptions(merge: true));
-      }
-      // AuthWrapper handles navigation automatically upon auth state change.
-      HapticFeedback.heavyImpact(); 
-    } on FirebaseAuthException catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.message ?? "Login failed"),
-          backgroundColor: AppColors.error,
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
+  // ─── Google Sign-In ────────────────────────────────────────
   Future<void> _handleGoogleLogin() async {
     setState(() => _isGoogleLoading = true);
     HapticFeedback.lightImpact();
 
-    final user = await GoogleAuthService().signInWithGoogle();
+    try {
+      final user = await GoogleAuthService().signInWithGoogle();
 
-    // Ensure user document has role field after Google sign-in
-    if (user != null) {
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .set({
-        'uid': user.uid,
-        'name': user.displayName ?? '',
-        'email': user.email ?? '',
-        'phone': user.phoneNumber ?? '',
-        'provider': 'google',
-        'role': 'customer',
-        'banned': false,
-        'isOnline': false,
-        'accessStatus': 'none',
-        'createdAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-    }
-
-    if (mounted) {
-      setState(() => _isGoogleLoading = false);
-      if (user == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Google Sign-In cancelled")),
-        );
+      if (user != null) {
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+          'uid': user.uid,
+          'name': user.displayName ?? '',
+          'email': user.email ?? '',
+          'phone': user.phoneNumber ?? '',
+          'provider': 'google',
+          'role': 'customer',
+          'banned': false,
+          'isOnline': false,
+          'accessStatus': 'none',
+          'createdAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+        HapticFeedback.heavyImpact();
       } else {
-        HapticFeedback.heavyImpact(); 
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Google Sign-In cancelled'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
       }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Google Sign-In failed: $e'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isGoogleLoading = false);
+    }
+  }
+
+  // ─── Apple Sign-In ─────────────────────────────────────────
+  Future<void> _handleAppleLogin() async {
+    setState(() => _isAppleLoading = true);
+    HapticFeedback.lightImpact();
+
+    try {
+      final appleCredential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+      );
+
+      final oauthCredential = OAuthProvider('apple.com').credential(
+        idToken: appleCredential.identityToken,
+        accessToken: appleCredential.authorizationCode,
+      );
+
+      final userCredential =
+          await FirebaseAuth.instance.signInWithCredential(oauthCredential);
+      final user = userCredential.user;
+
+      if (user != null) {
+        // Apple only returns name on first sign-in
+        String displayName = user.displayName ?? '';
+        if (displayName.isEmpty) {
+          final givenName = appleCredential.givenName ?? '';
+          final familyName = appleCredential.familyName ?? '';
+          displayName = '$givenName $familyName'.trim();
+        }
+
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .set({
+          'uid': user.uid,
+          'name': displayName,
+          'email': user.email ?? appleCredential.email ?? '',
+          'phone': '',
+          'provider': 'apple',
+          'role': 'customer',
+          'banned': false,
+          'isOnline': false,
+          'accessStatus': 'none',
+          'createdAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+
+        HapticFeedback.heavyImpact();
+      }
+    } on SignInWithAppleAuthorizationException catch (e) {
+      if (e.code == AuthorizationErrorCode.canceled) {
+        // User cancelled — do nothing
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Apple Sign-In failed: ${e.message}'),
+              backgroundColor: AppColors.error,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Apple Sign-In failed: $e'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isAppleLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Determine overall brightness for the scaffold
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    
-    return Scaffold(
-      backgroundColor: isDark ? AppColors.bgDark : AppColors.bgLight,
-      body: FadeTransition(
-        opacity: _fadeAnim,
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          child: Column(
-            children: [
-              // ─── TOP GRADIENT BACKGROUND ──────────
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.only(top: 80, bottom: 60),
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [AppColors.primary, AppColors.primaryLight],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    const Icon(
-                      Icons.local_parking_rounded,
-                      size: 64,
-                      color: Colors.white,
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      "TechXPark",
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      "Your digital parking companion",
-                      style: TextStyle(
-                        fontSize: 15,
-                        color: Colors.white.withOpacity(0.85),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-              // ─── OVERLAPPING WHITE CARD ──────────
-              Transform.translate(
-                offset: const Offset(0, -30),
-                child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 20),
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.06),
-                        blurRadius: 24,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+      child: Scaffold(
+        backgroundColor:
+            isDark ? const Color(0xFF111321) : const Color(0xFFF6F6F8),
+        body: FadeTransition(
+          opacity: _fadeAnim,
+          child: SafeArea(
+            child: Column(
+              children: [
+                // ═══════════════════════════════════════
+                // TOP APP BAR
+                // ═══════════════════════════════════════
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  child: Row(
                     children: [
+                      // App logo
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: Image.asset(
+                          'assets/icons/app_icon.png',
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
                       Text(
-                        "Welcome Back",
+                        'TechXPark',
                         style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          color: isDark ? Colors.white : AppColors.textPrimaryLight,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-
-                      // ── EMAIL INPUT ──
-                      _buildInputField(
-                        controller: _emailCtrl,
-                        focusNode: _emailFocus,
-                        hintText: "Enter your email",
-                        icon: Icons.email_outlined,
-                        errorText: _emailError,
-                        isDark: isDark,
-                      ),
-                      const SizedBox(height: 16),
-
-                      // ── PASSWORD INPUT ──
-                      _buildInputField(
-                        controller: _passCtrl,
-                        focusNode: _passFocus,
-                        hintText: "Enter your password",
-                        icon: Icons.lock_outline_rounded,
-                        isPassword: true,
-                        errorText: _passError,
-                        isDark: isDark,
-                      ),
-
-                      // ── FORGOT PASSWORD ──
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: _showForgotPasswordDialog,
-                          style: TextButton.styleFrom(
-                            foregroundColor: AppColors.primary,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                          ),
-                          child: const Text(
-                            "Forgot Password?",
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-
-                      // ── LOGIN BUTTON ──
-                      _buildPrimaryBtn(
-                        text: "Login",
-                        isLoading: _isLoading,
-                        onPressed: _handleLogin,
-                      ),
-                      const SizedBox(height: 24),
-
-                      // ── DIVIDER ──
-                      Row(
-                        children: [
-                          Expanded(
-                              child: Divider(
-                                  color: isDark ? AppColors.borderDark : AppColors.borderLight)),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Text(
-                              "or continue with",
-                              style: TextStyle(
-                                color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                              child: Divider(
-                                  color: isDark ? AppColors.borderDark : AppColors.borderLight)),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-
-                      // ── GOOGLE BUTTON ──
-                      OutlinedButton.icon(
-                        onPressed: _isGoogleLoading ? null : _handleGoogleLogin,
-                        icon: _isGoogleLoading
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: AppColors.primary,
-                                ),
-                              )
-                            : Image.asset("assets/images/google.png",
-                                height: 20),
-                        label: Text(
-                          "Google",
-                          style: TextStyle(
-                            color: isDark ? Colors.white : AppColors.textPrimaryLight,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          side: BorderSide(
-                              color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                              width: 1.5),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
+                          fontFamily: 'Inter',
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                          letterSpacing: -0.3,
                         ),
                       ),
                     ],
                   ),
                 ),
-              ),
 
-              const SizedBox(height: 16),
+                // ═══════════════════════════════════════
+                // ILLUSTRATION + TEXT + BUTTONS
+                // ═══════════════════════════════════════
+                Expanded(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 16),
 
-              // ── SIGN UP LINK ──
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    "Don't have an account? ",
-                    style: TextStyle(
-                      color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
-                      fontWeight: FontWeight.w500,
+                        // ── Hero Illustration ────────────
+                        _buildHeroIllustration(isDark),
+
+                        const SizedBox(height: 32),
+
+                        // ── Headline ─────────────────────
+                        Text(
+                          'Smart Parking for\nYour Modern Life',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 28,
+                            fontWeight: FontWeight.w800,
+                            color: isDark
+                                ? Colors.white
+                                : const Color(0xFF0F172A),
+                            height: 1.2,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Join TechXPark and discover the easiest\nway to find and book parking spots.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 15,
+                            fontWeight: FontWeight.w400,
+                            color: isDark
+                                ? const Color(0xFF94A3B8)
+                                : const Color(0xFF64748B),
+                            height: 1.5,
+                          ),
+                        ),
+
+                        const SizedBox(height: 36),
+
+                        // ═══════════════════════════════════
+                        // AUTH BUTTONS
+                        // ═══════════════════════════════════
+
+                        // 1) Continue with Phone
+                        _AuthButton(
+                          label: 'Continue with Phone',
+                          icon: Icons.smartphone,
+                          backgroundColor: AppColors.primary,
+                          textColor: Colors.white,
+                          shadowColor: AppColors.primary.withValues(alpha: 0.2),
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const PhoneLoginScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 12),
+
+                        // 2) Continue with Apple
+                        _AuthButton(
+                          label: 'Continue with Apple',
+                          svgIcon: _appleIcon(),
+                          backgroundColor: isDark
+                              ? Colors.white
+                              : const Color(0xFF0F172A),
+                          textColor: isDark
+                              ? const Color(0xFF0F172A)
+                              : Colors.white,
+                          shadowColor: const Color(0xFF0F172A)
+                              .withValues(alpha: 0.1),
+                          isLoading: _isAppleLoading,
+                          onTap: _isAppleLoading ? null : _handleAppleLogin,
+                        ),
+                        const SizedBox(height: 12),
+
+                        // 3) Continue with Google
+                        _AuthButton(
+                          label: 'Continue with Google',
+                          customIcon: Image.asset(
+                            'assets/images/google.png',
+                            width: 20,
+                            height: 20,
+                          ),
+                          backgroundColor: isDark
+                              ? const Color(0xFF1E293B)
+                              : Colors.white,
+                          textColor: isDark
+                              ? Colors.white
+                              : const Color(0xFF0F172A),
+                          borderColor: isDark
+                              ? const Color(0xFF334155)
+                              : const Color(0xFFE2E8F0),
+                          isLoading: _isGoogleLoading,
+                          onTap:
+                              _isGoogleLoading ? null : _handleGoogleLogin,
+                        ),
+                        const SizedBox(height: 12),
+
+                        // 4) Continue with Email
+                        _AuthButton(
+                          label: 'Continue with Email',
+                          icon: Icons.mail_outline_rounded,
+                          backgroundColor: isDark
+                              ? const Color(0xFF1E293B)
+                              : Colors.white,
+                          textColor: isDark
+                              ? Colors.white
+                              : const Color(0xFF0F172A),
+                          borderColor: isDark
+                              ? const Color(0xFF334155)
+                              : const Color(0xFFE2E8F0),
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const EmailLoginScreen(),
+                              ),
+                            );
+                          },
+                        ),
+
+                        const SizedBox(height: 32),
+
+                        // ── Footer ───────────────────────
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 24),
+                          child: Text.rich(
+                            TextSpan(
+                              text: 'By continuing, you agree to our ',
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 12,
+                                color: isDark
+                                    ? const Color(0xFF64748B)
+                                    : const Color(0xFF94A3B8),
+                                height: 1.5,
+                              ),
+                              children: [
+                                TextSpan(
+                                  text: 'Terms of Service',
+                                  style: TextStyle(
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const TextSpan(text: ' and '),
+                                TextSpan(
+                                  text: 'Privacy Policy',
+                                  style: TextStyle(
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  GestureDetector(
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const SignupScreen()),
-                      );
-                    },
-                    child: const Text(
-                      "Register",
-                      style: TextStyle(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 48),
-            ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  // ----------------------------------------------------------------------
-  // COMPONENT BUILDERS
-  // ----------------------------------------------------------------------
-
-  Widget _buildInputField({
-    required TextEditingController controller,
-    required FocusNode focusNode,
-    required String hintText,
-    required IconData icon,
-    bool isPassword = false,
-    String? errorText,
-    required bool isDark,
-  }) {
-    final bool hasError = errorText != null;
-    final bool isFocused = focusNode.hasFocus;
-
-    Color borderColor = Colors.transparent;
-    if (hasError) borderColor = AppColors.error;
-    else if (isFocused) borderColor = AppColors.primary;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          decoration: BoxDecoration(
-            color: isDark ? AppColors.inputBgDark : AppColors.inputBgLight,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: borderColor,
-              width: isFocused || hasError ? 1.5 : 1.0,
-            ),
+  // ═══════════════════════════════════════════════════════════════
+  // HERO ILLUSTRATION — Image
+  // ═══════════════════════════════════════════════════════════════
+  Widget _buildHeroIllustration(bool isDark) {
+    return AspectRatio(
+      aspectRatio: 1.0,
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          image: const DecorationImage(
+            image: AssetImage('assets/images/login_skyline.jpg'),
+            fit: BoxFit.cover,
           ),
-          child: TextField(
-            controller: controller,
-            focusNode: focusNode,
-            obscureText: isPassword && _obscurePassword,
-            keyboardType: isPassword
-                ? TextInputType.text
-                : TextInputType.emailAddress,
-            cursorColor: AppColors.primary,
-            style: TextStyle(
-              color: isDark ? Colors.white : AppColors.textPrimaryLight,
-              fontWeight: FontWeight.w500,
-            ),
-            decoration: InputDecoration(
-              hintText: hintText,
-              hintStyle: TextStyle(
-                color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
-              ),
-              prefixIcon: Icon(
-                icon,
-                color: hasError
-                    ? AppColors.error
-                    : (isFocused ? AppColors.primary : Colors.grey),
-                size: 22,
-              ),
-              suffixIcon: isPassword
-                  ? IconButton(
-                      icon: Icon(
-                        _obscurePassword
-                            ? Icons.visibility_off_outlined
-                            : Icons.visibility_outlined,
-                        color: Colors.grey,
-                        size: 20,
-                      ),
-                      onPressed: () => setState(
-                          () => _obscurePassword = !_obscurePassword),
-                    )
-                  : null,
-              border: InputBorder.none,
-              enabledBorder: InputBorder.none,
-              focusedBorder: InputBorder.none,
-              errorBorder: InputBorder.none,
-              focusedErrorBorder: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 16,
-              ),
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            gradient: LinearGradient(
+              begin: Alignment.bottomCenter,
+              end: Alignment.topCenter,
+              colors: [
+                (isDark ? const Color(0xFF111321) : const Color(0xFFF6F6F8)).withValues(alpha: 0.8),
+                Colors.transparent,
+              ],
+              stops: const [0.0, 0.5],
             ),
           ),
         ),
-        if (hasError)
-          Padding(
-            padding: const EdgeInsets.only(top: 6, left: 12),
-            child: Text(
-              errorText,
-              style: const TextStyle(
-                color: AppColors.error,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-      ],
+      ),
     );
   }
 
-  Widget _buildPrimaryBtn({
-    required String text,
-    required bool isLoading,
-    required VoidCallback onPressed,
-  }) {
-    return StatefulBuilder(
-      builder: (context, setStateBtn) {
-        bool isPressed = false;
-        
-        bool isDisabled = _emailCtrl.text.isEmpty || _passCtrl.text.isEmpty;
-
-        return GestureDetector(
-          onTapDown: isDisabled || isLoading ? null : (_) => setStateBtn(() => isPressed = true),
-          onTapUp: isDisabled || isLoading ? null : (_) {
-            setStateBtn(() => isPressed = false);
-            onPressed();
-          },
-          onTapCancel: () => setStateBtn(() => isPressed = false),
-          child: AnimatedScale(
-            scale: isPressed ? 0.97 : 1.0,
-            duration: const Duration(milliseconds: 100),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              height: 54,
-              decoration: BoxDecoration(
-                color: isDisabled || isLoading ? AppColors.primary.withOpacity(0.5) : AppColors.primary,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: isDisabled || isLoading ? [] : [
-                  BoxShadow(
-                    color: AppColors.primary.withOpacity(0.35),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: Center(
-                child: isLoading
-                    ? const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.5,
-                          color: Colors.white,
-                        ),
-                      )
-                    : Text(
-                        text,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.3,
-                        ),
-                      ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
+  Widget _appleIcon() {
+    return const Icon(Icons.apple, size: 22);
   }
+}
 
-  void _showForgotPasswordDialog() {
-    final TextEditingController resetEmailController = TextEditingController();
-    final theme = Theme.of(context);
+// ═══════════════════════════════════════════════════════════════
+// AUTH BUTTON — Reusable for all sign-in methods
+// ═══════════════════════════════════════════════════════════════
+class _AuthButton extends StatefulWidget {
+  final String label;
+  final IconData? icon;
+  final Widget? svgIcon;
+  final Widget? customIcon;
+  final Color backgroundColor;
+  final Color textColor;
+  final Color? borderColor;
+  final Color? shadowColor;
+  final bool isLoading;
+  final VoidCallback? onTap;
 
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: theme.colorScheme.surface,
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20)),
-          title: Text(
-            "Reset Password",
-            style: theme.textTheme.headlineSmall
-                ?.copyWith(fontWeight: FontWeight.bold),
+  const _AuthButton({
+    required this.label,
+    this.icon,
+    this.svgIcon,
+    this.customIcon,
+    required this.backgroundColor,
+    required this.textColor,
+    this.borderColor,
+    this.shadowColor,
+    this.isLoading = false,
+    this.onTap,
+  });
+
+  @override
+  State<_AuthButton> createState() => _AuthButtonState();
+}
+
+class _AuthButtonState extends State<_AuthButton> {
+  bool _isPressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final Widget iconWidget;
+    if (widget.isLoading) {
+      iconWidget = SizedBox(
+        width: 20,
+        height: 20,
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          color: widget.textColor,
+        ),
+      );
+    } else if (widget.customIcon != null) {
+      iconWidget = widget.customIcon!;
+    } else if (widget.svgIcon != null) {
+      iconWidget = IconTheme(
+        data: IconThemeData(color: widget.textColor, size: 22),
+        child: widget.svgIcon!,
+      );
+    } else {
+      iconWidget = Icon(widget.icon, color: widget.textColor, size: 22);
+    }
+
+    return GestureDetector(
+      onTapDown: widget.onTap == null ? null : (_) => setState(() => _isPressed = true),
+      onTapUp: widget.onTap == null
+          ? null
+          : (_) {
+              setState(() => _isPressed = false);
+              widget.onTap!();
+            },
+      onTapCancel: () => setState(() => _isPressed = false),
+      child: AnimatedScale(
+        scale: _isPressed ? 0.97 : 1.0,
+        duration: const Duration(milliseconds: 100),
+        child: Container(
+          height: 56,
+          decoration: BoxDecoration(
+            color: widget.backgroundColor,
+            borderRadius: BorderRadius.circular(14),
+            border: widget.borderColor != null
+                ? Border.all(color: widget.borderColor!, width: 1.5)
+                : null,
+            boxShadow: widget.shadowColor != null
+                ? [
+                    BoxShadow(
+                      color: widget.shadowColor!,
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ]
+                : null,
           ),
-          content: TextField(
-            controller: resetEmailController,
-            decoration: InputDecoration(
-              hintText: "Enter your registered email",
-              labelText: "Email",
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: AppColors.primary, width: 2),
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel"),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              iconWidget,
+              const SizedBox(width: 12),
+              Text(
+                widget.label,
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: widget.textColor,
                 ),
               ),
-              onPressed: () async {
-                final email = resetEmailController.text.trim();
-                if (email.isEmpty) return;
-                try {
-                  await FirebaseAuth.instance
-                      .sendPasswordResetEmail(email: email);
-                  if (!context.mounted) return;
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("Reset link sent to your email!"),
-                    ),
-                  );
-                } catch (e) {
-                  if (!context.mounted) return;
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text("Error: $e"),
-                      backgroundColor: AppColors.error,
-                    ),
-                  );
-                }
-              },
-              child: const Text("Send Link"),
-            ),
-          ],
-        );
-      },
+            ],
+          ),
+        ),
+      ),
     );
   }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GRID PATTERN PAINTER — Subtle background decoration
+// ═══════════════════════════════════════════════════════════════
+class _GridPatternPainter extends CustomPainter {
+  final Color color;
+
+  _GridPatternPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 0.5;
+
+    const spacing = 30.0;
+
+    for (double x = 0; x < size.width; x += spacing) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+    }
+
+    for (double y = 0; y < size.height; y += spacing) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

@@ -219,7 +219,7 @@ class _ParkingTicketScreenState extends State<ParkingTicketScreen>
             Container(
               width: 64, height: 64,
               decoration: BoxDecoration(
-                color: AppColors.success.withOpacity(0.1),
+                color: AppColors.success.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.check_circle_rounded,
@@ -356,9 +356,9 @@ class _ParkingTicketScreenState extends State<ParkingTicketScreen>
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.3)),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
         ),
         child: Row(
           children: [
@@ -385,7 +385,7 @@ class _ParkingTicketScreenState extends State<ParkingTicketScreen>
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 24,
             offset: const Offset(0, 8),
           ),
@@ -550,9 +550,9 @@ class _ParkingTicketScreenState extends State<ParkingTicketScreen>
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 40),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.06),
+        color: color.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.15)),
+        border: Border.all(color: color.withValues(alpha: 0.15)),
       ),
       child: Column(
         children: [
@@ -623,9 +623,9 @@ class _ParkingTicketScreenState extends State<ParkingTicketScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
-        color: AppColors.success.withOpacity(0.1),
+        color: AppColors.success.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.success.withOpacity(0.3)),
+        border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,

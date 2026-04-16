@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:ui';
 
-import '../presentation/map/dashboard_map_screen.dart';
+import '../presentation/home/home_screen.dart';
 import '../presentation/search/search_parking_screen.dart';
 import '../presentation/booking/my_bookings_screen.dart';
 import '../presentation/messages/messages_screen.dart';
@@ -33,12 +34,12 @@ class _MainShellState extends State<MainShell> {
   void initState() {
     super.initState();
     _currentIndex = widget.initialIndex;
-    _screens = const [
-      DashboardMapScreen(),
-      SearchParkingScreen(),
-      MyBookingsScreen(),
-      MessagesScreen(),
-      ProfileScreen(),
+    _screens = [
+      HomeScreen(onTabSelected: _selectTab),
+      const SearchParkingScreen(),
+      const MyBookingsScreen(),
+      const MessagesScreen(),
+      const ProfileScreen(),
     ];
     _listenUnreadMessages();
   }
@@ -52,120 +53,187 @@ class _MainShellState extends State<MainShell> {
         .where('participants', arrayContains: uid)
         .snapshots()
         .listen((snapshot) {
-      int count = 0;
-      for (var doc in snapshot.docs) {
-        final data = doc.data();
-        final unreadMap = data['unreadCount'] as Map<String, dynamic>? ?? {};
-        final unread = (unreadMap[uid] as num?)?.toInt() ?? 0;
-        count += unread;
-      }
-      if (mounted) setState(() => _unreadCount = count);
-    });
+          int count = 0;
+          for (var doc in snapshot.docs) {
+            final data = doc.data();
+            final unreadMap =
+                data['unreadCount'] as Map<String, dynamic>? ?? {};
+            final unread = (unreadMap[uid] as num?)?.toInt() ?? 0;
+            count += unread;
+          }
+          if (mounted) setState(() => _unreadCount = count);
+        });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
-      ),
-      bottomNavigationBar: _buildBottomNavBar(),
+      body: IndexedStack(index: _currentIndex, children: _screens),
+      bottomNavigationBar: _buildBottomNavBar(context),
     );
   }
 
-  Widget _buildBottomNavBar() {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(
-          top: BorderSide(color: Color(0xFFE8ECF4), width: 1),
+  void _selectTab(int index) {
+    if (_currentIndex == index) return;
+    HapticFeedback.selectionClick();
+    setState(() => _currentIndex = index);
+  }
+
+  Widget _buildBottomNavBar(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+    const destinations = <_ShellDestination>[
+      _ShellDestination(
+        label: 'Home',
+        icon: Icons.home_outlined,
+        selectedIcon: Icons.home_rounded,
+      ),
+      _ShellDestination(
+        label: 'Search',
+        icon: Icons.search_rounded,
+        selectedIcon: Icons.search_rounded,
+      ),
+      _ShellDestination(
+        label: 'Bookings',
+        icon: Icons.confirmation_number_outlined,
+        selectedIcon: Icons.confirmation_number_rounded,
+      ),
+      _ShellDestination(
+        label: 'Messages',
+        icon: Icons.chat_bubble_outline_rounded,
+        selectedIcon: Icons.chat_bubble_rounded,
+      ),
+      _ShellDestination(
+        label: 'Profile',
+        icon: Icons.person_outline_rounded,
+        selectedIcon: Icons.person_rounded,
+      ),
+    ];
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16, 0, 16, 16 + bottomInset),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(32),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.88),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 24,
+                  offset: const Offset(0, -10),
+                ),
+              ],
+            ),
+            child: Row(
+              children: List.generate(destinations.length, (index) {
+                final destination = destinations[index];
+                return Expanded(
+                  child: _NavBarItem(
+                    label: destination.label,
+                    icon: _currentIndex == index
+                        ? destination.selectedIcon
+                        : destination.icon,
+                    isSelected: _currentIndex == index,
+                    unreadCount: destination.label == 'Messages'
+                        ? _unreadCount
+                        : 0,
+                    onTap: () => _selectTab(index),
+                  ),
+                );
+              }),
+            ),
+          ),
         ),
       ),
-      child: NavigationBarTheme(
-        data: NavigationBarThemeData(
-          labelTextStyle: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.selected)) {
-              return const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF2845D6),
-              );
-            }
-            return const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: Color(0xFF94A3B8),
-            );
-          }),
-          iconTheme: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.selected)) {
-              return const IconThemeData(
-                color: Color(0xFF2845D6),
-                size: 24,
-              );
-            }
-            return const IconThemeData(
-              color: Color(0xFF94A3B8),
-              size: 24,
-            );
-          }),
-        ),
-        child: NavigationBar(
-          height: 65,
-          backgroundColor: Colors.white,
-          elevation: 0,
-          indicatorColor: const Color(0xFF2845D6).withValues(alpha: 0.1),
-          selectedIndex: _currentIndex,
-          onDestinationSelected: (index) {
-            if (_currentIndex != index) {
-              HapticFeedback.selectionClick();
-              setState(() {
-                _currentIndex = index;
-              });
-            }
-          },
-          destinations: [
-            const NavigationDestination(
-              icon: Icon(Icons.home_outlined),
-              selectedIcon: Icon(Icons.home),
-              label: "Home",
+    );
+  }
+}
+
+class _NavBarItem extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool isSelected;
+  final int unreadCount;
+  final VoidCallback onTap;
+
+  const _NavBarItem({
+    required this.label,
+    required this.icon,
+    required this.isSelected,
+    required this.unreadCount,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isSelected
+        ? const Color(0xFF0029B9)
+        : const Color(0xFF444655);
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(24),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Icon(icon, color: color, size: 24),
+                if (unreadCount > 0)
+                  Positioned(
+                    top: -6,
+                    right: -11,
+                    child: Container(
+                      constraints: const BoxConstraints(minWidth: 18),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 5,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE5393B),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        unreadCount > 99 ? '99+' : '$unreadCount',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
-            const NavigationDestination(
-              icon: Icon(Icons.search_outlined),
-              selectedIcon: Icon(Icons.search),
-              label: "Search",
-            ),
-            const NavigationDestination(
-              icon: Icon(Icons.calendar_today_outlined),
-              selectedIcon: Icon(Icons.calendar_today),
-              label: "Bookings",
-            ),
-            NavigationDestination(
-              icon: Badge(
-                isLabelVisible: _unreadCount > 0,
-                label: Text(
-                  _unreadCount > 99 ? '99+' : '$_unreadCount',
-                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
-                ),
-                backgroundColor: const Color(0xFFE5393B),
-                child: const Icon(Icons.chat_bubble_outline),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 1.2,
               ),
-              selectedIcon: Badge(
-                isLabelVisible: _unreadCount > 0,
-                label: Text(
-                  _unreadCount > 99 ? '99+' : '$_unreadCount',
-                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
-                ),
-                backgroundColor: const Color(0xFFE5393B),
-                child: const Icon(Icons.chat_bubble),
-              ),
-              label: "Messages",
             ),
-            const NavigationDestination(
-              icon: Icon(Icons.person_outline),
-              selectedIcon: Icon(Icons.person),
-              label: "Profile",
+            const SizedBox(height: 4),
+            AnimatedOpacity(
+              duration: const Duration(milliseconds: 180),
+              opacity: isSelected ? 1 : 0,
+              child: Container(
+                width: 4,
+                height: 4,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF0029B9),
+                  shape: BoxShape.circle,
+                ),
+              ),
             ),
           ],
         ),
@@ -174,3 +242,14 @@ class _MainShellState extends State<MainShell> {
   }
 }
 
+class _ShellDestination {
+  final String label;
+  final IconData icon;
+  final IconData selectedIcon;
+
+  const _ShellDestination({
+    required this.label,
+    required this.icon,
+    required this.selectedIcon,
+  });
+}

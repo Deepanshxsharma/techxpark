@@ -60,7 +60,7 @@ class _ParkingLandscapeScreenState extends State<ParkingLandscapeScreen> {
                   children: [
                     Container(
                       padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(color: Colors.blueAccent.withOpacity(0.1), shape: BoxShape.circle),
+                      decoration: BoxDecoration(color: Colors.blueAccent.withValues(alpha: 0.1), shape: BoxShape.circle),
                       child: const Icon(Icons.local_parking_rounded, color: Colors.blueAccent, size: 32),
                     ),
                     const SizedBox(width: 16),
@@ -160,15 +160,15 @@ class _ParkingLandscapeScreenState extends State<ParkingLandscapeScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(value, style: TextStyle(color: color, fontSize: 42, fontWeight: FontWeight.w900, height: 1.0)),
-          Text(label, style: TextStyle(color: color.withOpacity(0.8), fontSize: 14, fontWeight: FontWeight.bold)),
+          Text(label, style: TextStyle(color: color.withValues(alpha: 0.8), fontSize: 14, fontWeight: FontWeight.bold)),
         ],
       ),
     );
@@ -254,7 +254,7 @@ class _ParkingLandscapeScreenState extends State<ParkingLandscapeScreen> {
   }
 
   Widget _visualCard(String id, bool isOccupied) {
-    Color bg = isOccupied ? _occupiedRed.withOpacity(0.15) : _freeGreen.withOpacity(0.15);
+    Color bg = isOccupied ? _occupiedRed.withValues(alpha: 0.15) : _freeGreen.withValues(alpha: 0.15);
     Color border = isOccupied ? _occupiedRed : _freeGreen;
 
     return MouseRegion(
@@ -263,8 +263,8 @@ class _ParkingLandscapeScreenState extends State<ParkingLandscapeScreen> {
         decoration: BoxDecoration(
           color: bg,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: border.withOpacity(0.6), width: 2),
-          boxShadow: [BoxShadow(color: border.withOpacity(0.15), blurRadius: 12)]
+          border: Border.all(color: border.withValues(alpha: 0.6), width: 2),
+          boxShadow: [BoxShadow(color: border.withValues(alpha: 0.15), blurRadius: 12)]
         ),
         child: Center(
           child: Column(

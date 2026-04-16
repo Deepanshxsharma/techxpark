@@ -3,10 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 import '../../theme/app_colors.dart';
-import '../../theme/app_text_styles.dart';
-
 import 'select_vehicle_screen.dart';
 
+/// Booking Time Screen — Stitch design.
+/// Horizontal date carousel, time picker card, duration slider,
+/// dark summary card, and gradient proceed CTA with dark mode.
 class BookingTimeScreen extends StatefulWidget {
   final Map<String, dynamic> parking;
   final String parkingId;
@@ -46,14 +47,10 @@ class _BookingTimeScreenState extends State<BookingTimeScreen> {
 
   void _continue() {
     final now = DateTime.now();
-
-    // ── Validate: start must be in the future ─────────────────────────
     if (_startDateTime.isBefore(now)) {
       _showError('Start time must be in the future.');
       return;
     }
-
-    // ── Validate: booking must be at least 30 min ─────────────────────
     if (_durationHours < 0.5) {
       _showError('Minimum booking duration is 30 minutes.');
       return;
@@ -79,64 +76,85 @@ class _BookingTimeScreenState extends State<BookingTimeScreen> {
         content: Text(msg),
         backgroundColor: AppColors.error,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.bgLight,
-      appBar: AppBar(
-        title: Text('Select Time', style: AppTextStyles.h2),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        centerTitle: true,
-        leading: const BackButton(color: AppColors.textPrimaryLight),
-      ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildHorizontalCalendar(),
-          Expanded(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _sectionTitle('Start Time'),
-                  _buildTimeCard(),
-                  const SizedBox(height: 32),
-                  _sectionTitle('Parking Duration'),
-                  _buildDurationSlider(),
-                  const SizedBox(height: 32),
-                  _buildSummaryCard(),
-                ],
-              ),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+      child: Scaffold(
+        backgroundColor:
+            isDark ? AppColors.bgDark : const Color(0xFFF9F9FB),
+        appBar: AppBar(
+          title: Text(
+            'Select Time',
+            style: TextStyle(
+              fontFamily: 'Plus Jakarta Sans',
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: isDark ? Colors.white : const Color(0xFF0F172A),
             ),
           ),
-          _buildBottomAction(),
-        ],
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          surfaceTintColor: Colors.transparent,
+          centerTitle: true,
+          leading: GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: const Icon(Icons.arrow_back_ios_new, size: 20),
+          ),
+        ),
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHorizontalCalendar(isDark),
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _sectionTitle('Start Time', isDark),
+                    _buildTimeCard(isDark),
+                    const SizedBox(height: 28),
+                    _sectionTitle('Parking Duration', isDark),
+                    _buildDurationSlider(isDark),
+                    const SizedBox(height: 28),
+                    _buildSummaryCard(isDark),
+                  ],
+                ),
+              ),
+            ),
+            _buildBottomAction(isDark),
+          ],
+        ),
       ),
     );
   }
 
-  /* ── Horizontal Calendar ───────────────────────────────────────────────── */
-  Widget _buildHorizontalCalendar() {
-    return Container(
+  // ═══════════════════════════════════════════════════════════════
+  // HORIZONTAL CALENDAR
+  // ═══════════════════════════════════════════════════════════════
+  Widget _buildHorizontalCalendar(bool isDark) {
+    return SizedBox(
       height: 100,
-      color: AppColors.surfaceLight,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: 14,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         itemBuilder: (context, index) {
           final date = DateTime.now().add(Duration(days: index));
           final isSelected = date.day == _selectedDate.day &&
               date.month == _selectedDate.month;
+
           return GestureDetector(
             onTap: () {
               HapticFeedback.selectionClick();
@@ -145,29 +163,61 @@ class _BookingTimeScreenState extends State<BookingTimeScreen> {
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               width: 64,
-              margin: const EdgeInsets.symmetric(horizontal: 6),
+              margin: const EdgeInsets.symmetric(horizontal: 5),
               decoration: BoxDecoration(
-                color: isSelected ? AppColors.primary : AppColors.surfaceLight,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                    color: isSelected ? AppColors.primary : AppColors.borderLight),
+                gradient: isSelected ? AppColors.primaryGradient : null,
+                color: isSelected
+                    ? null
+                    : (isDark
+                        ? AppColors.surfaceDark
+                        : Colors.white),
+                borderRadius: BorderRadius.circular(18),
+                border: isSelected
+                    ? null
+                    : Border.all(
+                        color: isDark
+                            ? Colors.white10
+                            : const Color(0xFFE2E8F0)),
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: AppColors.primary
+                              .withValues(alpha: 0.2),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ]
+                    : [],
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
                     DateFormat('EEE').format(date),
-                    style: AppTextStyles.captionBold.copyWith(
-                      color: isSelected ? Colors.white70 : AppColors.textSecondaryLight,
-                    )
+                    style: TextStyle(
+                      fontFamily: 'Manrope',
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: isSelected
+                          ? Colors.white70
+                          : (isDark
+                              ? Colors.white54
+                              : const Color(0xFF94A3B8)),
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     date.day.toString(),
-                    style: AppTextStyles.h1.copyWith(
-                      color: isSelected ? Colors.white : AppColors.textPrimaryLight,
+                    style: TextStyle(
+                      fontFamily: 'Plus Jakarta Sans',
                       fontSize: 20,
-                    )
+                      fontWeight: FontWeight.w800,
+                      color: isSelected
+                          ? Colors.white
+                          : (isDark
+                              ? Colors.white
+                              : const Color(0xFF0F172A)),
+                    ),
                   ),
                 ],
               ),
@@ -178,18 +228,20 @@ class _BookingTimeScreenState extends State<BookingTimeScreen> {
     );
   }
 
-  /* ── Time Card ─────────────────────────────────────────────────────────── */
-  Widget _buildTimeCard() {
+  // ═══════════════════════════════════════════════════════════════
+  // TIME CARD
+  // ═══════════════════════════════════════════════════════════════
+  Widget _buildTimeCard(bool isDark) {
     return GestureDetector(
       onTap: _pickStartTime,
       child: Container(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: AppColors.surfaceLight,
-          borderRadius: BorderRadius.circular(20),
+          color: isDark ? AppColors.surfaceDark : Colors.white,
+          borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withOpacity(0.04),
+                color: Colors.black.withValues(alpha: 0.03),
                 blurRadius: 16,
                 offset: const Offset(0, 4)),
           ],
@@ -199,42 +251,62 @@ class _BookingTimeScreenState extends State<BookingTimeScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(16),
+                color: AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(14),
               ),
               child: const Icon(Icons.access_time_rounded,
                   color: AppColors.primary, size: 24),
             ),
-            const SizedBox(width: 20),
+            const SizedBox(width: 16),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Arriving At', style: AppTextStyles.caption),
+                Text(
+                  'Arriving At',
+                  style: TextStyle(
+                    fontFamily: 'Manrope',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: isDark
+                        ? Colors.white38
+                        : const Color(0xFF94A3B8),
+                  ),
+                ),
                 const SizedBox(height: 4),
                 Text(
                   _startTime.format(context),
-                  style: AppTextStyles.h1.copyWith(fontSize: 20),
+                  style: TextStyle(
+                    fontFamily: 'Plus Jakarta Sans',
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: isDark
+                        ? Colors.white
+                        : const Color(0xFF0F172A),
+                  ),
                 ),
               ],
             ),
             const Spacer(),
-            const Icon(Icons.edit_rounded, color: AppColors.primary, size: 24),
+            Icon(Icons.edit_rounded,
+                color: AppColors.primary, size: 22),
           ],
         ),
       ),
     );
   }
 
-  /* ── Duration Slider ───────────────────────────────────────────────────── */
-  Widget _buildDurationSlider() {
+  // ═══════════════════════════════════════════════════════════════
+  // DURATION SLIDER
+  // ═══════════════════════════════════════════════════════════════
+  Widget _buildDurationSlider(bool isDark) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
       decoration: BoxDecoration(
-        color: AppColors.surfaceLight,
-        borderRadius: BorderRadius.circular(20),
+        color: isDark ? AppColors.surfaceDark : Colors.white,
+        borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.03),
               blurRadius: 16,
               offset: const Offset(0, 4)),
         ],
@@ -244,12 +316,32 @@ class _BookingTimeScreenState extends State<BookingTimeScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Stay Length', style: AppTextStyles.body1),
               Text(
-                '${_durationHours.toInt()} Hours',
-                style: AppTextStyles.body1.copyWith(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w800,
+                'Stay Length',
+                style: TextStyle(
+                  fontFamily: 'Plus Jakarta Sans',
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: isDark
+                      ? Colors.white
+                      : const Color(0xFF0F172A),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 5),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '${_durationHours.toInt()} Hours',
+                  style: const TextStyle(
+                    fontFamily: 'Plus Jakarta Sans',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                  ),
                 ),
               ),
             ],
@@ -257,16 +349,19 @@ class _BookingTimeScreenState extends State<BookingTimeScreen> {
           SliderTheme(
             data: SliderThemeData(
               activeTrackColor: AppColors.primary,
-              inactiveTrackColor: AppColors.primary.withOpacity(0.1),
+              inactiveTrackColor:
+                  AppColors.primary.withValues(alpha: 0.1),
               thumbColor: AppColors.primary,
-              overlayColor: AppColors.primary.withOpacity(0.1),
+              overlayColor:
+                  AppColors.primary.withValues(alpha: 0.1),
             ),
             child: Slider(
               value: _durationHours,
               min: 1,
               max: 12,
               divisions: 11,
-              onChanged: (v) => setState(() => _durationHours = v),
+              onChanged: (v) =>
+                  setState(() => _durationHours = v),
             ),
           ),
         ],
@@ -274,13 +369,17 @@ class _BookingTimeScreenState extends State<BookingTimeScreen> {
     );
   }
 
-  /* ── Summary Card ──────────────────────────────────────────────────────── */
-  Widget _buildSummaryCard() {
+  // ═══════════════════════════════════════════════════════════════
+  // SUMMARY CARD — Dark gradient
+  // ═══════════════════════════════════════════════════════════════
+  Widget _buildSummaryCard(bool isDark) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.bgDark,
-        borderRadius: BorderRadius.circular(20),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+        ),
+        borderRadius: BorderRadius.circular(18),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -288,29 +387,50 @@ class _BookingTimeScreenState extends State<BookingTimeScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Leaving At',
-                  style: AppTextStyles.captionBold.copyWith(
-                    color: Colors.white60,
-                  )),
+              Text(
+                'Leaving At',
+                style: TextStyle(
+                  fontFamily: 'Manrope',
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white.withValues(alpha: 0.5),
+                ),
+              ),
               const SizedBox(height: 6),
               Text(
                 DateFormat('hh:mm a').format(_endDateTime),
-                style: AppTextStyles.h2.copyWith(color: Colors.white),
+                style: const TextStyle(
+                  fontFamily: 'Plus Jakarta Sans',
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                ),
               ),
             ],
           ),
-          Container(height: 40, width: 1, color: AppColors.borderDark),
+          Container(
+              height: 40, width: 1, color: Colors.white12),
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text('Parking Fee',
-                  style: AppTextStyles.captionBold.copyWith(
-                    color: Colors.white60,
-                  )),
-              const SizedBox(height: 6),
               Text(
+                'Parking Fee',
+                style: TextStyle(
+                  fontFamily: 'Manrope',
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white.withValues(alpha: 0.5),
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
                 'FREE',
-                style: AppTextStyles.h2.copyWith(color: AppColors.success),
+                style: TextStyle(
+                  fontFamily: 'Plus Jakarta Sans',
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.success,
+                ),
               ),
             ],
           ),
@@ -319,45 +439,69 @@ class _BookingTimeScreenState extends State<BookingTimeScreen> {
     );
   }
 
-  /* ── Bottom Action ─────────────────────────────────────────────────────── */
-  Widget _buildBottomAction() {
+  // ═══════════════════════════════════════════════════════════════
+  // BOTTOM ACTION — Gradient next step
+  // ═══════════════════════════════════════════════════════════════
+  Widget _buildBottomAction(bool isDark) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
       decoration: BoxDecoration(
-        color: AppColors.surfaceLight,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        color: isDark ? AppColors.surfaceDark : Colors.white,
+        borderRadius:
+            const BorderRadius.vertical(top: Radius.circular(28)),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 24,
               offset: const Offset(0, -8)),
         ],
       ),
       child: SafeArea(
-        child: SizedBox(
-          width: double.infinity,
-          height: 56,
-          child: ElevatedButton(
-            onPressed: _continue,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16)
-              ),
-              elevation: 4,
-              shadowColor: AppColors.primary.withOpacity(0.4),
+        child: GestureDetector(
+          onTap: _continue,
+          child: Container(
+            height: 56,
+            decoration: BoxDecoration(
+              gradient: AppColors.primaryGradient,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color:
+                      AppColors.primary.withValues(alpha: 0.3),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
+              ],
             ),
-            child: const Text('Next Step', style: AppTextStyles.buttonText),
+            child: const Center(
+              child: Text(
+                'Next Step',
+                style: TextStyle(
+                  fontFamily: 'Plus Jakarta Sans',
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _sectionTitle(String title) {
+  Widget _sectionTitle(String title, bool isDark) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16, left: 4),
-      child: Text(title, style: AppTextStyles.h2),
+      padding: const EdgeInsets.only(bottom: 14, left: 4),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontFamily: 'Plus Jakarta Sans',
+          fontSize: 18,
+          fontWeight: FontWeight.w800,
+          color: isDark ? Colors.white : const Color(0xFF0F172A),
+        ),
+      ),
     );
   }
 }

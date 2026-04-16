@@ -4,15 +4,15 @@ import 'app_text_styles.dart';
 
 class AppTheme {
   // LIGHT THEME
-  static ThemeData lightTheme = ThemeData(
+  static final ThemeData lightTheme = ThemeData(
     brightness: Brightness.light,
     primaryColor: AppColors.primary,
     scaffoldBackgroundColor: AppColors.bgLight,
-    fontFamily: 'Inter',
+    fontFamily: 'Poppins',
     colorScheme: ColorScheme.light(
       primary: AppColors.primary,
       onPrimary: Colors.white,
-      background: AppColors.bgLight,
+      surface: AppColors.bgLight,
     ),
     cardColor: AppColors.cardLight,
     textTheme: const TextTheme(
@@ -24,15 +24,15 @@ class AppTheme {
   );
 
   // DARK THEME
-  static ThemeData darkTheme = ThemeData(
+  static final ThemeData darkTheme = ThemeData(
     brightness: Brightness.dark,
     primaryColor: AppColors.primary,
     scaffoldBackgroundColor: AppColors.bgDark,
-    fontFamily: 'Inter',
+    fontFamily: 'Poppins',
     colorScheme: const ColorScheme.dark(
       primary: AppColors.primary,
       onPrimary: Colors.white,
-      background: AppColors.bgDark,
+      surface: AppColors.bgDark,
     ),
     cardColor: AppColors.cardDark,
     textTheme: const TextTheme(

@@ -175,19 +175,19 @@ class _HeatmapMarkerWidgetState extends State<_HeatmapMarkerWidget>
                 gradient: LinearGradient(
                   colors: [
                     color,
-                    color.withOpacity(0.85),
+                    color.withValues(alpha: 0.85),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: color.withOpacity(0.4),
+                    color: color.withValues(alpha: 0.4),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
                 ],
                 border: Border.all(
-                  color: Colors.white.withOpacity(0.6),
+                  color: Colors.white.withValues(alpha: 0.6),
                   width: 1.5,
                 ),
               ),
@@ -350,7 +350,7 @@ void showAvailabilityBottomSheet(
             Text(
               'Last updated: ${DateFormat('h:mm a, MMM d').format(lastUpdated.toDate())}',
               style: TextStyle(
-                color: Colors.white.withOpacity(0.4),
+                color: Colors.white.withValues(alpha: 0.4),
                 fontSize: 12,
               ),
             ),
@@ -398,7 +398,7 @@ class _StatCard extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            color: Colors.white.withOpacity(0.5),
+            color: Colors.white.withValues(alpha: 0.5),
             fontSize: 11,
           ),
         ),

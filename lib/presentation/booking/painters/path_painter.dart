@@ -88,13 +88,13 @@ class PathPainter {
 
   static void _drawChevrons(Canvas canvas, ui.PathMetric metric, double maxDist, double phase) {
     final chevronPaint = Paint()
-      ..color = Colors.white.withOpacity(0.8)
+      ..color = Colors.white.withValues(alpha: 0.8)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.5
       ..strokeCap = StrokeCap.round;
 
     final chevronShadow = Paint()
-      ..color = AppColors.info.withOpacity(0.5)
+      ..color = AppColors.info.withValues(alpha: 0.5)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 4
       ..strokeCap = StrokeCap.round
@@ -132,7 +132,7 @@ class PathPainter {
 
     // Top-down car vector shadow
     final shadowPaint = Paint()
-      ..color = Colors.black.withOpacity(0.4)
+      ..color = Colors.black.withValues(alpha: 0.4)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
     canvas.drawRRect(RRect.fromRectAndRadius(carRect.shift(const Offset(0, 4)), const Radius.circular(4)), shadowPaint);
 
@@ -149,7 +149,7 @@ class PathPainter {
       ..shader = ui.Gradient.radial(
         const Offset(12, 0), 
         15, 
-        [Colors.yellow.withOpacity(0.6), Colors.yellow.withOpacity(0.0)],
+        [Colors.yellow.withValues(alpha: 0.6), Colors.yellow.withValues(alpha: 0.0)],
       );
     canvas.drawArc(Rect.fromCenter(center: const Offset(12, 0), width: 30, height: 40), -math.pi/4, math.pi/2, true, lightPaint);
     
@@ -163,7 +163,7 @@ class PathPainter {
 
   static void _drawArrivalRipples(Canvas canvas, Offset pos, double phase) {
      final paint = Paint()
-       ..color = AppColors.success.withOpacity(1.0 - phase)
+       ..color = AppColors.success.withValues(alpha: 1.0 - phase)
        ..style = PaintingStyle.stroke
        ..strokeWidth = 2;
      
@@ -171,7 +171,7 @@ class PathPainter {
      
      final phase2 = (phase + 0.5) % 1.0;
      final paint2 = Paint()
-       ..color = AppColors.success.withOpacity(1.0 - phase2)
+       ..color = AppColors.success.withValues(alpha: 1.0 - phase2)
        ..style = PaintingStyle.stroke
        ..strokeWidth = 2;
      canvas.drawCircle(pos, 5 + (20 * phase2), paint2);

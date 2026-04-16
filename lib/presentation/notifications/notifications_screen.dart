@@ -240,7 +240,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.1),
+                color: AppColors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
@@ -273,7 +273,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.06),
+                    color: Colors.black.withValues(alpha: 0.06),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -311,7 +311,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.04),
+                      color: Colors.black.withValues(alpha: 0.04),
                       blurRadius: 8,
                     ),
                   ],
@@ -344,7 +344,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.primary.withOpacity(0.08),
+                  color: AppColors.primary.withValues(alpha: 0.08),
                   blurRadius: 30,
                   offset: const Offset(0, 10),
                 ),
@@ -499,19 +499,19 @@ class _NotifCardState extends State<_NotifCard> {
           child: Container(
             margin: const EdgeInsets.only(bottom: 10),
             decoration: BoxDecoration(
-              color: isUnread ? Colors.white : Colors.white.withOpacity(0.65),
+              color: isUnread ? Colors.white : Colors.white.withValues(alpha: 0.65),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: isUnread
-                    ? _accentColor.withOpacity(0.25)
+                    ? _accentColor.withValues(alpha: 0.25)
                     : AppColors.borderLight,
                 width: isUnread ? 1.5 : 1.0,
               ),
               boxShadow: [
                 BoxShadow(
                   color: isUnread
-                      ? _accentColor.withOpacity(0.08)
-                      : Colors.black.withOpacity(0.02),
+                      ? _accentColor.withValues(alpha: 0.08)
+                      : Colors.black.withValues(alpha: 0.02),
                   blurRadius: 16,
                   offset: const Offset(0, 6),
                 ),
@@ -528,12 +528,12 @@ class _NotifCardState extends State<_NotifCard> {
                     width: 46,
                     height: 46,
                     decoration: BoxDecoration(
-                      color: _accentColor.withOpacity(isUnread ? 0.15 : 0.08),
+                      color: _accentColor.withValues(alpha: isUnread ? 0.15 : 0.08),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Icon(
                       _icon,
-                      color: _accentColor.withOpacity(isUnread ? 1.0 : 0.6),
+                      color: _accentColor.withValues(alpha: isUnread ? 1.0 : 0.6),
                       size: 22,
                     ),
                   ),
@@ -554,7 +554,7 @@ class _NotifCardState extends State<_NotifCard> {
                                   fontSize: 14,
                                   color: const Color(
                                     0xFF0F172A,
-                                  ).withOpacity(isUnread ? 1.0 : 0.6),
+                                  ).withValues(alpha: isUnread ? 1.0 : 0.6),
                                   letterSpacing: -0.2,
                                 ),
                               ),
@@ -579,7 +579,7 @@ class _NotifCardState extends State<_NotifCard> {
                             fontSize: 13,
                             color: const Color(
                               0xFF64748B,
-                            ).withOpacity(isUnread ? 1.0 : 0.7),
+                            ).withValues(alpha: isUnread ? 1.0 : 0.7),
                             height: 1.4,
                           ),
                         ),

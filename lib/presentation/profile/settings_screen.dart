@@ -1,6 +1,15 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../theme/app_colors.dart';
+import '../notifications/notifications_screen.dart';
+import 'privacy_security_screen.dart';
+import 'payment_methods_screen.dart';
+
+/// Settings screen — Stitch "Settings" design.
+/// Premium glassmorphic header with profile card, categorized groups.
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
@@ -9,131 +18,653 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  // Toggle States
   bool _darkMode = false;
-  bool _notifications = true;
-  bool _biometric = true;
+  String _language = 'English';
+  String _unitSystem = 'Metric (km)';
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFBFBFF),
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text("Settings", 
-          style: TextStyle(fontWeight: FontWeight.w900, color: Colors.black, letterSpacing: -0.5)),
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        systemOverlayStyle: SystemUiOverlayStyle.dark,
-      ),
-      body: ListView(
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        children: [
-          const SizedBox(height: 10),
-          _buildSectionTitle("PREFERENCES"),
-          _buildSettingsGroup([
-            _buildSwitchTile(
-              icon: Icons.dark_mode_outlined,
-              title: "Dark Mode",
-              value: _darkMode,
-              onChanged: (val) => setState(() => _darkMode = val),
-            ),
-            _buildSwitchTile(
-              icon: Icons.notifications_active_outlined,
-              title: "Push Notifications",
-              value: _notifications,
-              onChanged: (val) => setState(() => _notifications = val),
-            ),
-          ]),
-          
-          const SizedBox(height: 30),
-          _buildSectionTitle("SECURITY"),
-          _buildSettingsGroup([
-            _buildSwitchTile(
-              icon: Icons.fingerprint_rounded,
-              title: "Biometric Login",
-              value: _biometric,
-              onChanged: (val) => setState(() => _biometric = val),
-            ),
-            _buildActionTile(Icons.lock_outline_rounded, "Change Password"),
-          ]),
+    final user = FirebaseAuth.instance.currentUser;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-          const SizedBox(height: 30),
-          _buildSectionTitle("SUPPORT"),
-          _buildSettingsGroup([
-            _buildActionTile(Icons.help_outline_rounded, "Help Center"),
-            _buildActionTile(Icons.privacy_tip_outlined, "Privacy Policy"),
-            _buildActionTile(Icons.info_outline_rounded, "About TechXPark", isLast: true),
-          ]),
-          
-          const SizedBox(height: 40),
-          Center(
-            child: Text(
-              "BUILD VERSION 1.0.0 (25)",
-              style: TextStyle(color: Colors.grey.shade400, fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+      child: Scaffold(
+        backgroundColor: isDark ? AppColors.bgDark : const Color(0xFFF9F9FB),
+        body: CustomScrollView(
+          physics: const BouncingScrollPhysics(),
+          slivers: [
+            // ═══════════════════════════════════════
+            // STICKY APP BAR
+            // ═══════════════════════════════════════
+            SliverAppBar(
+              pinned: true,
+              floating: false,
+              backgroundColor: (isDark ? AppColors.bgDark : Colors.white)
+                  .withValues(alpha: 0.7),
+              surfaceTintColor: Colors.transparent,
+              elevation: 0,
+              leading: IconButton(
+                icon: Icon(Icons.arrow_back,
+                    color: isDark ? Colors.white : const Color(0xFF0029B9)),
+                onPressed: () => Navigator.pop(context),
+              ),
+              title: Text(
+                'Settings',
+                style: TextStyle(
+                  fontFamily: 'Plus Jakarta Sans',
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? Colors.white : const Color(0xFF1A1C1D),
+                  letterSpacing: -0.3,
+                ),
+              ),
+              actions: [
+                IconButton(
+                  icon: Icon(Icons.search,
+                      color:
+                          isDark ? Colors.white70 : const Color(0xFF64748B)),
+                  onPressed: () {},
+                ),
+              ],
             ),
+
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  const SizedBox(height: 16),
+
+                  // ═══════════════════════════════════════
+                  // PROFILE QUICK CARD
+                  // ═══════════════════════════════════════
+                  _buildProfileCard(user, isDark),
+
+                  const SizedBox(height: 32),
+
+                  // ═══════════════════════════════════════
+                  // ACCOUNT SETTINGS
+                  // ═══════════════════════════════════════
+                  _buildSectionLabel('ACCOUNT SETTINGS'),
+                  const SizedBox(height: 10),
+                  _buildSettingsGroup(isDark, [
+                    _SettingsTile(
+                      icon: Icons.person,
+                      iconBg: Colors.blue,
+                      title: 'Personal Info',
+                      subtitle: 'Name, email, and phone',
+                      onTap: () {},
+                    ),
+                    _SettingsTile(
+                      icon: Icons.security,
+                      iconBg: Colors.indigo,
+                      title: 'Security',
+                      subtitle: 'Password, biometrics',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const PrivacySecurityScreen()),
+                      ),
+                    ),
+                    _SettingsTile(
+                      icon: Icons.notifications,
+                      iconBg: Colors.amber.shade700,
+                      title: 'Notifications',
+                      subtitle: 'Push, email, and SMS',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const NotificationsScreen()),
+                      ),
+                    ),
+                  ]),
+
+                  const SizedBox(height: 28),
+
+                  // ═══════════════════════════════════════
+                  // APP PREFERENCES
+                  // ═══════════════════════════════════════
+                  _buildSectionLabel('APP PREFERENCES'),
+                  const SizedBox(height: 10),
+                  _buildSettingsGroup(isDark, [
+                    _SettingsTile(
+                      icon: Icons.dark_mode,
+                      iconBg: Colors.deepPurple,
+                      title: 'Theme',
+                      subtitle: _darkMode ? 'Dark mode' : 'Light mode',
+                      trailing: Switch.adaptive(
+                        value: _darkMode,
+                        activeColor: AppColors.primary,
+                        onChanged: (val) {
+                          HapticFeedback.lightImpact();
+                          setState(() => _darkMode = val);
+                        },
+                      ),
+                    ),
+                    _SettingsTile(
+                      icon: Icons.language,
+                      iconBg: Colors.teal,
+                      title: 'Language',
+                      subtitle: _language,
+                      onTap: () => _showLanguagePicker(),
+                    ),
+                    _SettingsTile(
+                      icon: Icons.straighten,
+                      iconBg: Colors.orange,
+                      title: 'Unit System',
+                      subtitle: _unitSystem,
+                      onTap: () => _showUnitPicker(),
+                    ),
+                  ]),
+
+                  const SizedBox(height: 28),
+
+                  // ═══════════════════════════════════════
+                  // PAYMENTS & WALLET
+                  // ═══════════════════════════════════════
+                  _buildSectionLabel('PAYMENTS'),
+                  const SizedBox(height: 10),
+                  _buildSettingsGroup(isDark, [
+                    _SettingsTile(
+                      icon: Icons.account_balance_wallet,
+                      iconBg: Colors.green.shade700,
+                      title: 'Payments & Wallet',
+                      subtitle: 'Cards, UPI, wallet',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const PaymentMethodsScreen()),
+                      ),
+                    ),
+                  ]),
+
+                  const SizedBox(height: 28),
+
+                  // ═══════════════════════════════════════
+                  // SUPPORT & LEGAL
+                  // ═══════════════════════════════════════
+                  _buildSectionLabel('SUPPORT & LEGAL'),
+                  const SizedBox(height: 10),
+                  _buildSettingsGroup(isDark, [
+                    _SettingsTile(
+                      icon: Icons.help_outline,
+                      iconBg: Colors.blueGrey,
+                      title: 'Help Center',
+                      onTap: () {},
+                    ),
+                    _SettingsTile(
+                      icon: Icons.description_outlined,
+                      iconBg: Colors.blueGrey,
+                      title: 'Terms of Service',
+                      onTap: () {},
+                    ),
+                    _SettingsTile(
+                      icon: Icons.privacy_tip_outlined,
+                      iconBg: Colors.blueGrey,
+                      title: 'Privacy Policy',
+                      onTap: () {},
+                    ),
+                    _SettingsTile(
+                      icon: Icons.info_outline,
+                      iconBg: Colors.blueGrey,
+                      title: 'About App',
+                      onTap: () {
+                        showAboutDialog(
+                          context: context,
+                          applicationName: 'TechXPark',
+                          applicationVersion: '2.4.1 (Build 108)',
+                          applicationLegalese:
+                              '© 2026 TechXPark. All rights reserved.',
+                        );
+                      },
+                    ),
+                  ]),
+
+                  const SizedBox(height: 32),
+
+                  // ═══════════════════════════════════════
+                  // LOGOUT BUTTON
+                  // ═══════════════════════════════════════
+                  _buildLogoutButton(context, isDark),
+
+                  const SizedBox(height: 24),
+
+                  // Version
+                  Center(
+                    child: Text(
+                      'Version 2.4.1 (Build 108)',
+                      style: TextStyle(
+                        fontFamily: 'Manrope',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: isDark
+                            ? Colors.white38
+                            : const Color(0xFF94A3B8),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 40),
+                ]),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // PROFILE QUICK CARD — Blue gradient with user info
+  // ═══════════════════════════════════════════════════════════════
+  Widget _buildProfileCard(User? user, bool isDark) {
+    return StreamBuilder<DocumentSnapshot>(
+      stream: user != null
+          ? FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .snapshots()
+          : null,
+      builder: (context, snapshot) {
+        String name = 'User';
+        String subtitle = 'Premium Member • TechXPark Platinum';
+        String? photoUrl;
+
+        if (snapshot.hasData && snapshot.data!.exists) {
+          final data = snapshot.data!.data() as Map<String, dynamic>;
+          name = data['name'] ?? 'User';
+          photoUrl = data['photoUrl'] as String?;
+        }
+
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF1C31D4), Color(0xFF2845D6)],
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF1C31D4).withValues(alpha: 0.25),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Stack(
+            children: [
+              // Decorative circle
+              Positioned(
+                right: -30,
+                top: -30,
+                child: Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withValues(alpha: 0.08),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  // Avatar
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          width: 2),
+                    ),
+                    child: CircleAvatar(
+                      radius: 26,
+                      backgroundColor: Colors.white.withValues(alpha: 0.15),
+                      backgroundImage:
+                          photoUrl != null ? NetworkImage(photoUrl) : null,
+                      child: photoUrl == null
+                          ? Text(
+                              name.isNotEmpty ? name[0].toUpperCase() : 'U',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 22,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            )
+                          : null,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          name,
+                          style: const TextStyle(
+                            fontFamily: 'Plus Jakarta Sans',
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          subtitle,
+                          style: TextStyle(
+                            fontFamily: 'Manrope',
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white.withValues(alpha: 0.7),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // SECTION LABEL
+  // ═══════════════════════════════════════════════════════════════
+  Widget _buildSectionLabel(String label) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontFamily: 'Plus Jakarta Sans',
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          color: const Color(0xFF94A3B8),
+          letterSpacing: 1.5,
+        ),
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // SETTINGS GROUP — Card container with items
+  // ═══════════════════════════════════════════════════════════════
+  Widget _buildSettingsGroup(bool isDark, List<_SettingsTile> tiles) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceDark : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-    );
-  }
-
-  // ================= UI HELPERS =================
-
-  Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 12, bottom: 8),
-      child: Text(title, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.grey.shade500, letterSpacing: 1)),
-    );
-  }
-
-  Widget _buildSettingsGroup(List<Widget> children) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 15, offset: const Offset(0, 5))],
+      child: Column(
+        children: tiles.asMap().entries.map((entry) {
+          final index = entry.key;
+          final tile = entry.value;
+          return Column(
+            children: [
+              _buildTileWidget(tile, isDark),
+              if (index < tiles.length - 1)
+                Divider(
+                  height: 0.5,
+                  thickness: 0.5,
+                  indent: 64,
+                  color: isDark
+                      ? Colors.white10
+                      : const Color(0xFFF1F5F9),
+                ),
+            ],
+          );
+        }).toList(),
       ),
-      child: Column(children: children),
     );
   }
 
-  Widget _buildSwitchTile({required IconData icon, required String title, required bool value, required Function(bool) onChanged}) {
-    return Column(
-      children: [
-        ListTile(
-          leading: Icon(icon, color: const Color(0xFF0081C9), size: 22),
-          title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-          trailing: Switch.adaptive(
-            value: value,
-            activeColor: const Color(0xFF0081C9),
-            onChanged: (val) {
-              HapticFeedback.lightImpact();
-              onChanged(val);
-            },
+  Widget _buildTileWidget(_SettingsTile tile, bool isDark) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: tile.onTap != null
+            ? () {
+                HapticFeedback.selectionClick();
+                tile.onTap!();
+              }
+            : null,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              // Icon circle
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: tile.iconBg.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(tile.icon, color: tile.iconBg, size: 20),
+              ),
+              const SizedBox(width: 14),
+              // Text
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      tile.title,
+                      style: TextStyle(
+                        fontFamily: 'Manrope',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? Colors.white : const Color(0xFF1A1C1D),
+                      ),
+                    ),
+                    if (tile.subtitle != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        tile.subtitle!,
+                        style: TextStyle(
+                          fontFamily: 'Manrope',
+                          fontSize: 12,
+                          color: isDark
+                              ? Colors.white54
+                              : const Color(0xFF64748B),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              // Trailing
+              tile.trailing ??
+                  Icon(
+                    Icons.chevron_right,
+                    color: isDark ? Colors.white24 : const Color(0xFFC5C5D8),
+                    size: 22,
+                  ),
+            ],
           ),
         ),
-        Divider(height: 1, indent: 55, color: Colors.grey.shade50),
-      ],
+      ),
     );
   }
 
-  Widget _buildActionTile(IconData icon, String title, {bool isLast = false}) {
-    return Column(
-      children: [
-        ListTile(
-          leading: Icon(icon, color: Colors.grey.shade600, size: 22),
-          title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-          trailing: const Icon(Icons.chevron_right_rounded, color: Colors.grey),
-          onTap: () => HapticFeedback.lightImpact(),
+  // ═══════════════════════════════════════════════════════════════
+  // LOGOUT BUTTON
+  // ═══════════════════════════════════════════════════════════════
+  Widget _buildLogoutButton(BuildContext context, bool isDark) {
+    return GestureDetector(
+      onTap: () async {
+        HapticFeedback.mediumImpact();
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Sign Out'),
+            content: const Text('Are you sure you want to sign out?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Sign Out',
+                    style: TextStyle(color: Color(0xFFBA1A1A))),
+              ),
+            ],
+          ),
+        );
+        if (confirmed == true) {
+          await FirebaseAuth.instance.signOut();
+        }
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFBA1A1A).withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: const Color(0xFFBA1A1A).withValues(alpha: 0.12),
+          ),
         ),
-        if (!isLast) Divider(height: 1, indent: 55, color: Colors.grey.shade50),
-      ],
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.logout, color: Color(0xFFBA1A1A), size: 20),
+            const SizedBox(width: 10),
+            Text(
+              'Sign Out',
+              style: TextStyle(
+                fontFamily: 'Manrope',
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFFBA1A1A),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
+
+  // ═══════════════════════════════════════════════════════════════
+  // PICKERS
+  // ═══════════════════════════════════════════════════════════════
+  void _showLanguagePicker() {
+    final languages = ['English', 'Hindi', 'Punjabi', 'Tamil', 'Telugu'];
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ...languages.map(
+              (lang) => ListTile(
+                title: Text(lang,
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                trailing: _language == lang
+                    ? const Icon(Icons.check_circle,
+                        color: AppColors.primary, size: 22)
+                    : null,
+                onTap: () {
+                  setState(() => _language = lang);
+                  Navigator.pop(ctx);
+                },
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showUnitPicker() {
+    final units = ['Metric (km)', 'Imperial (mi)'];
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ...units.map(
+              (unit) => ListTile(
+                title: Text(unit,
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                trailing: _unitSystem == unit
+                    ? const Icon(Icons.check_circle,
+                        color: AppColors.primary, size: 22)
+                    : null,
+                onTap: () {
+                  setState(() => _unitSystem = unit);
+                  Navigator.pop(ctx);
+                },
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SETTINGS TILE MODEL
+// ═══════════════════════════════════════════════════════════════
+class _SettingsTile {
+  final IconData icon;
+  final Color iconBg;
+  final String title;
+  final String? subtitle;
+  final Widget? trailing;
+  final VoidCallback? onTap;
+
+  const _SettingsTile({
+    required this.icon,
+    required this.iconBg,
+    required this.title,
+    this.subtitle,
+    this.trailing,
+    this.onTap,
+  });
 }

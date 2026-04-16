@@ -1,0 +1,17 @@
+@@ -420,13 +420,11 @@
+ }
+ 
+ class _OnboardingPage {
+-  final IconData icon;
++  final Widget imageWidget;
+   final String title;
+   final String subtitle;
+-  final List<Color> gradientColors;
+ 
+-  const _OnboardingPage({
+-    required this.icon,
++  _OnboardingPage({
++    required this.imageWidget,
+     required this.title,
+     required this.subtitle,
+-    required this.gradientColors,

@@ -371,13 +371,13 @@ class _SlotSelectionScreenState extends State<SlotSelectionScreen> {
           boxShadow: [
             if (isSelected)
               BoxShadow(
-                color: const Color(0xFF2845D6).withOpacity(0.3),
+                color: const Color(0xFF2845D6).withValues(alpha: 0.3),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               )
             else
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 6,
                 offset: const Offset(0, 2),
               ),
@@ -434,7 +434,7 @@ class _SlotSelectionScreenState extends State<SlotSelectionScreen> {
               disabledBackgroundColor: const Color(0xFFE8ECF4),
               elevation: 0,
               shadowColor: hasSelection
-                  ? const Color(0xFF2845D6).withOpacity(0.3)
+                  ? const Color(0xFF2845D6).withValues(alpha: 0.3)
                   : Colors.transparent,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),

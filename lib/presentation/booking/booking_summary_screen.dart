@@ -74,7 +74,7 @@ class BookingSummaryScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.primary.withOpacity(0.08),
+                    color: AppColors.primary.withValues(alpha: 0.08),
                     blurRadius: 32,
                     offset: const Offset(0, 12),
                   ),
@@ -210,7 +210,7 @@ class BookingSummaryScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
-                  BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 8)),
+                  BoxShadow(color: AppColors.primary.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 8)),
                 ],
               ),
               child: ElevatedButton.icon(
@@ -307,10 +307,10 @@ class BookingSummaryScreen extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: AppColors.success.withOpacity(0.1),
+            color: AppColors.success.withValues(alpha: 0.1),
             shape: BoxShape.circle,
             boxShadow: [
-              BoxShadow(color: AppColors.success.withOpacity(0.2), blurRadius: 24, spreadRadius: 4)
+              BoxShadow(color: AppColors.success.withValues(alpha: 0.2), blurRadius: 24, spreadRadius: 4)
             ]
           ),
           child: const Icon(Icons.check_rounded, color: AppColors.success, size: 48),
