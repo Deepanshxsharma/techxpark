@@ -13,10 +13,10 @@
 
 | Category | Highlights |
 |---|---|
-| 🔐 **Authentication** | Email/Password & Google Sign-In via Firebase Auth |
+| 🔐 **Authentication** | Email/Password, Google & Apple Sign-In via Firebase Auth |
 | 📅 **Smart Booking** | Real-time slot selection with overlap protection and double-booking prevention using Firestore transactions |
 | 🗺️ **Interactive Map** | Discover nearby parking locations on a live dashboard map |
-| 🚗 **My Garage** | Manage your vehicles (add, edit, delete) with instant booking integration |
+| 🚗 **My Garage** | Manage your vehicles with real-time RapidAPI lookup and instant booking integration |
 | 💬 **Live Messaging** | Real-time chat with user-to-user and admin support channels |
 | 🔔 **Notifications** | Push notifications for booking statuses, messages, and reminders |
 | 🏢 **Parking Overview** | Visual floor-by-floor parking grid with dynamic availability indicators |
@@ -24,7 +24,7 @@
 | 👤 **Profile Management** | Edit profile, upload photos, and manage account settings |
 | 🛡️ **Admin Panel** | Full admin dashboard for managing users, bookings, and parking locations |
 | 📺 **Owner Panel** | Parking lot owner dashboard for managing their facilities |
-| 🎨 **Material 3 UI** | Premium design system with reusable widgets, micro-animations, and dark mode support |
+| 🎨 **Premium UI/UX** | Apple/Tesla-inspired aesthetic, Stitch design system integration, and fluid micro-animations |
 
 ---
 
