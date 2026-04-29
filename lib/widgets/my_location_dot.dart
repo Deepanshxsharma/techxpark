@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_colors.dart';
+
 class MyLocationDot extends StatefulWidget {
   const MyLocationDot({super.key});
 
@@ -9,7 +11,6 @@ class MyLocationDot extends StatefulWidget {
 
 class _MyLocationDotState extends State<MyLocationDot>
     with SingleTickerProviderStateMixin {
-
   late AnimationController _controller;
   late Animation<double> _pulse;
 
@@ -22,9 +23,10 @@ class _MyLocationDotState extends State<MyLocationDot>
       duration: const Duration(seconds: 2),
     )..repeat(reverse: false);
 
-    _pulse = Tween<double>(begin: 0.0, end: 50.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
+    _pulse = Tween<double>(
+      begin: 0.0,
+      end: 50.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
   }
 
   @override
@@ -50,7 +52,7 @@ class _MyLocationDotState extends State<MyLocationDot>
                 height: 40 + _pulse.value,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.blue.withValues(alpha: 0.15),
+                  color: AppColors.primary.withValues(alpha: 0.15),
                 ),
               ),
 
@@ -60,11 +62,8 @@ class _MyLocationDotState extends State<MyLocationDot>
                 height: 18,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.blue,
-                  border: Border.all(
-                    color: Colors.white,
-                    width: 3,
-                  ),
+                  color: AppColors.primary,
+                  border: Border.all(color: Colors.white, width: 3),
                 ),
               ),
             ],

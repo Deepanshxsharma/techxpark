@@ -2,8 +2,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../theme/app_colors.dart';
+import '../../theme/theme_controller.dart';
 import '../notifications/notifications_screen.dart';
 import 'privacy_security_screen.dart';
 import 'payment_methods_screen.dart';
@@ -23,6 +25,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _unitSystem = 'Metric (km)';
 
   @override
+  void initState() {
+    super.initState();
+    _darkMode = ThemeController.themeMode.value == ThemeMode.dark;
+  }
+
+  @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -30,7 +38,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
       child: Scaffold(
-        backgroundColor: isDark ? AppColors.bgDark : const Color(0xFFF9F9FB),
+        backgroundColor: isDark ? AppColors.bgDark : AppColors.bgLight,
         body: CustomScrollView(
           physics: const BouncingScrollPhysics(),
           slivers: [
@@ -45,25 +53,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
               surfaceTintColor: Colors.transparent,
               elevation: 0,
               leading: IconButton(
-                icon: Icon(Icons.arrow_back,
-                    color: isDark ? Colors.white : const Color(0xFF0029B9)),
+                icon: Icon(
+                  Icons.arrow_back,
+                  color: isDark ? Colors.white : AppColors.primary,
+                ),
                 onPressed: () => Navigator.pop(context),
               ),
               title: Text(
                 'Settings',
-                style: TextStyle(
-                  fontFamily: 'Plus Jakarta Sans',
+                style: GoogleFonts.poppins(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
-                  color: isDark ? Colors.white : const Color(0xFF1A1C1D),
-                  letterSpacing: -0.3,
+                  color: isDark
+                      ? AppColors.textPrimaryDark
+                      : AppColors.textPrimaryLight,
                 ),
               ),
               actions: [
                 IconButton(
-                  icon: Icon(Icons.search,
-                      color:
-                          isDark ? Colors.white70 : const Color(0xFF64748B)),
+                  icon: Icon(
+                    Icons.search,
+                    color: isDark ? Colors.white70 : const Color(0xFF64748B),
+                  ),
                   onPressed: () {},
                 ),
               ],
@@ -90,20 +101,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _buildSettingsGroup(isDark, [
                     _SettingsTile(
                       icon: Icons.person,
-                      iconBg: Colors.blue,
+                      iconBg: AppColors.primary,
                       title: 'Personal Info',
                       subtitle: 'Name, email, and phone',
                       onTap: () {},
                     ),
                     _SettingsTile(
                       icon: Icons.security,
-                      iconBg: Colors.indigo,
+                      iconBg: AppColors.primary,
                       title: 'Security',
                       subtitle: 'Password, biometrics',
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (_) => const PrivacySecurityScreen()),
+                          builder: (_) => const PrivacySecurityScreen(),
+                        ),
                       ),
                     ),
                     _SettingsTile(
@@ -114,7 +126,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (_) => const NotificationsScreen()),
+                          builder: (_) => const NotificationsScreen(),
+                        ),
                       ),
                     ),
                   ]),
@@ -134,9 +147,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       subtitle: _darkMode ? 'Dark mode' : 'Light mode',
                       trailing: Switch.adaptive(
                         value: _darkMode,
-                        activeColor: AppColors.primary,
+                        activeTrackColor: AppColors.primary,
+                        activeThumbColor: Colors.white,
                         onChanged: (val) {
                           HapticFeedback.lightImpact();
+                          ThemeController.toggle(val);
                           setState(() => _darkMode = val);
                         },
                       ),
@@ -173,7 +188,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (_) => const PaymentMethodsScreen()),
+                          builder: (_) => const PaymentMethodsScreen(),
+                        ),
                       ),
                     ),
                   ]),
@@ -233,13 +249,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Center(
                     child: Text(
                       'Version 2.4.1 (Build 108)',
-                      style: TextStyle(
-                        fontFamily: 'Manrope',
+                      style: GoogleFonts.poppins(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: isDark
-                            ? Colors.white38
-                            : const Color(0xFF94A3B8),
+                            ? AppColors.textTertiaryDark
+                            : AppColors.textTertiaryLight,
                       ),
                     ),
                   ),
@@ -261,9 +276,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return StreamBuilder<DocumentSnapshot>(
       stream: user != null
           ? FirebaseFirestore.instance
-              .collection('users')
-              .doc(user.uid)
-              .snapshots()
+                .collection('users')
+                .doc(user.uid)
+                .snapshots()
           : null,
       builder: (context, snapshot) {
         String name = 'User';
@@ -282,12 +297,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             gradient: const LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Color(0xFF1C31D4), Color(0xFF2845D6)],
+              colors: [AppColors.primary, AppColors.primaryDark],
             ),
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF1C31D4).withValues(alpha: 0.25),
+                color: AppColors.primary.withValues(alpha: 0.25),
                 blurRadius: 24,
                 offset: const Offset(0, 8),
               ),
@@ -317,14 +332,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          width: 2),
+                        color: Colors.white.withValues(alpha: 0.2),
+                        width: 2,
+                      ),
                     ),
                     child: CircleAvatar(
                       radius: 26,
                       backgroundColor: Colors.white.withValues(alpha: 0.15),
-                      backgroundImage:
-                          photoUrl != null ? NetworkImage(photoUrl) : null,
+                      backgroundImage: photoUrl != null
+                          ? NetworkImage(photoUrl)
+                          : null,
                       child: photoUrl == null
                           ? Text(
                               name.isNotEmpty ? name[0].toUpperCase() : 'U',
@@ -344,8 +361,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       children: [
                         Text(
                           name,
-                          style: const TextStyle(
-                            fontFamily: 'Plus Jakarta Sans',
+                          style: GoogleFonts.poppins(
                             fontSize: 18,
                             fontWeight: FontWeight.w700,
                             color: Colors.white,
@@ -354,8 +370,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         const SizedBox(height: 4),
                         Text(
                           subtitle,
-                          style: TextStyle(
-                            fontFamily: 'Manrope',
+                          style: GoogleFonts.poppins(
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
                             color: Colors.white.withValues(alpha: 0.7),
@@ -381,12 +396,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       padding: const EdgeInsets.only(left: 4),
       child: Text(
         label,
-        style: TextStyle(
-          fontFamily: 'Plus Jakarta Sans',
+        style: GoogleFonts.poppins(
           fontSize: 11,
-          fontWeight: FontWeight.w800,
-          color: const Color(0xFF94A3B8),
-          letterSpacing: 1.5,
+          fontWeight: FontWeight.w600,
+          color: AppColors.textTertiaryLight,
+          letterSpacing: 1,
         ),
       ),
     );
@@ -399,10 +413,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Container(
       decoration: BoxDecoration(
         color: isDark ? AppColors.surfaceDark : Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark ? AppColors.borderDark : AppColors.borderLight,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 20,
             offset: const Offset(0, 4),
           ),
@@ -420,9 +437,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   height: 0.5,
                   thickness: 0.5,
                   indent: 64,
-                  color: isDark
-                      ? Colors.white10
-                      : const Color(0xFFF1F5F9),
+                  color: isDark ? Colors.white10 : const Color(0xFFF1F5F9),
                 ),
             ],
           );
@@ -464,23 +479,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   children: [
                     Text(
                       tile.title,
-                      style: TextStyle(
-                        fontFamily: 'Manrope',
+                      style: GoogleFonts.poppins(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
-                        color: isDark ? Colors.white : const Color(0xFF1A1C1D),
+                        color: isDark
+                            ? AppColors.textPrimaryDark
+                            : AppColors.textPrimaryLight,
                       ),
                     ),
                     if (tile.subtitle != null) ...[
                       const SizedBox(height: 2),
                       Text(
                         tile.subtitle!,
-                        style: TextStyle(
-                          fontFamily: 'Manrope',
+                        style: GoogleFonts.poppins(
                           fontSize: 12,
                           color: isDark
-                              ? Colors.white54
-                              : const Color(0xFF64748B),
+                              ? AppColors.textSecondaryDark
+                              : AppColors.textSecondaryLight,
                         ),
                       ),
                     ],
@@ -520,8 +535,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               TextButton(
                 onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Sign Out',
-                    style: TextStyle(color: Color(0xFFBA1A1A))),
+                child: const Text(
+                  'Sign Out',
+                  style: TextStyle(color: Color(0xFFBA1A1A)),
+                ),
               ),
             ],
           ),
@@ -534,24 +551,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
-          color: const Color(0xFFBA1A1A).withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: const Color(0xFFBA1A1A).withValues(alpha: 0.12),
-          ),
+          color: AppColors.error.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.error),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.logout, color: Color(0xFFBA1A1A), size: 20),
+            const Icon(Icons.logout, color: AppColors.error, size: 20),
             const SizedBox(width: 10),
             Text(
               'Sign Out',
-              style: TextStyle(
-                fontFamily: 'Manrope',
+              style: GoogleFonts.poppins(
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
-                color: const Color(0xFFBA1A1A),
+                color: AppColors.error,
               ),
             ),
           ],
@@ -586,11 +600,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 16),
             ...languages.map(
               (lang) => ListTile(
-                title: Text(lang,
-                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                title: Text(
+                  lang,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
                 trailing: _language == lang
-                    ? const Icon(Icons.check_circle,
-                        color: AppColors.primary, size: 22)
+                    ? const Icon(
+                        Icons.check_circle,
+                        color: AppColors.primary,
+                        size: 22,
+                      )
                     : null,
                 onTap: () {
                   setState(() => _language = lang);
@@ -628,11 +647,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 16),
             ...units.map(
               (unit) => ListTile(
-                title: Text(unit,
-                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                title: Text(
+                  unit,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
                 trailing: _unitSystem == unit
-                    ? const Icon(Icons.check_circle,
-                        color: AppColors.primary, size: 22)
+                    ? const Icon(
+                        Icons.check_circle,
+                        color: AppColors.primary,
+                        size: 22,
+                      )
                     : null,
                 onTap: () {
                   setState(() => _unitSystem = unit);

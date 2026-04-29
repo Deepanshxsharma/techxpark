@@ -9,7 +9,7 @@ class WalletScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bottomPadding = MediaQuery.of(context).padding.bottom + 80.0;
-    
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Wallet'),
@@ -42,10 +42,7 @@ class WalletScreen extends StatelessWidget {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            AppColors.primary,
-            AppColors.primary.withValues(alpha: 0.8),
-          ],
+          colors: [AppColors.primary, AppColors.primary.withValues(alpha: 0.8)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -55,7 +52,7 @@ class WalletScreen extends StatelessWidget {
             color: AppColors.primary.withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 10),
-          )
+          ),
         ],
       ),
       child: Column(
@@ -71,10 +68,7 @@ class WalletScreen extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             '₹2,450.00',
-            style: AppTextStyles.h1.copyWith(
-              color: Colors.white,
-              fontSize: 36,
-            ),
+            style: AppTextStyles.h1.copyWith(color: Colors.white, fontSize: 36),
           ),
           const SizedBox(height: 24),
           Row(
@@ -97,7 +91,7 @@ class WalletScreen extends StatelessWidget {
                 ),
               ),
             ],
-          )
+          ),
         ],
       ),
     );
@@ -117,9 +111,13 @@ class WalletScreen extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: isPrimary ? Colors.white : Colors.white.withValues(alpha: 0.15),
+            color: isPrimary
+                ? Colors.white
+                : Colors.white.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(16),
-            border: !isPrimary ? Border.all(color: Colors.white.withValues(alpha: 0.3)) : null,
+            border: !isPrimary
+                ? Border.all(color: Colors.white.withValues(alpha: 0.3))
+                : null,
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -205,7 +203,7 @@ class WalletScreen extends StatelessWidget {
               color: AppColors.primary.withValues(alpha: 0.1),
               blurRadius: 10,
               offset: const Offset(0, 4),
-            )
+            ),
         ],
       ),
       child: Row(
@@ -238,7 +236,7 @@ class WalletScreen extends StatelessWidget {
                 ),
               ],
             ),
-          )
+          ),
         ],
       ),
     );
@@ -255,9 +253,7 @@ class WalletScreen extends StatelessWidget {
           style: BorderStyle.solid,
         ),
       ),
-      child: Center(
-        child: Icon(Icons.add, color: AppColors.primary),
-      ),
+      child: Center(child: Icon(Icons.add, color: AppColors.primary)),
     );
   }
 
@@ -342,7 +338,9 @@ class WalletScreen extends StatelessWidget {
           Text(
             amount,
             style: AppTextStyles.body2SemiBold.copyWith(
-              color: isNegative ? AppColors.textPrimaryLight : AppColors.success,
+              color: isNegative
+                  ? AppColors.textPrimaryLight
+                  : AppColors.success,
             ),
           ),
         ],

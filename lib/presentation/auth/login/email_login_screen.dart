@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../services/google_auth_service.dart';
 import '../../../theme/app_colors.dart';
 import '../signup/signup_screen.dart';
 
@@ -85,10 +85,13 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
       );
 
       if (cred.user != null) {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(cred.user!.uid)
-            .set({'role': 'customer'}, SetOptions(merge: true));
+        if (!mounted) return;
+        final synced = await GoogleAuthService().syncUserAfterSignIn(
+          context,
+          cred.user!,
+          provider: 'email',
+        );
+        if (!synced) return;
       }
 
       HapticFeedback.heavyImpact();
@@ -112,7 +115,9 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF111321) : const Color(0xFFF6F6F8),
+      backgroundColor: isDark
+          ? const Color(0xFF111321)
+          : const Color(0xFFF6F6F8),
       body: SafeArea(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
@@ -120,7 +125,10 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
             children: [
               // ── App Bar ──────────────────────────
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 child: Row(
                   children: [
                     GestureDetector(
@@ -142,7 +150,9 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                         child: Icon(
                           Icons.arrow_back_ios_new_rounded,
                           size: 18,
-                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                          color: isDark
+                              ? Colors.white
+                              : const Color(0xFF0F172A),
                         ),
                       ),
                     ),
@@ -175,7 +185,7 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                     Text(
                       'Welcome Back',
                       style: TextStyle(
-                        fontFamily: 'Inter',
+                        fontFamily: 'Poppins',
                         fontSize: 28,
                         fontWeight: FontWeight.w800,
                         color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -186,7 +196,7 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                     Text(
                       'Sign in with your email and password',
                       style: TextStyle(
-                        fontFamily: 'Inter',
+                        fontFamily: 'Poppins',
                         fontSize: 15,
                         fontWeight: FontWeight.w400,
                         color: isDark
@@ -281,7 +291,7 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                   Text(
                     "Don't have an account? ",
                     style: TextStyle(
-                      fontFamily: 'Inter',
+                      fontFamily: 'Poppins',
                       color: isDark
                           ? const Color(0xFF94A3B8)
                           : const Color(0xFF64748B),
@@ -300,7 +310,7 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                     child: const Text(
                       'Register',
                       style: TextStyle(
-                        fontFamily: 'Inter',
+                        fontFamily: 'Poppins',
                         color: AppColors.primary,
                         fontWeight: FontWeight.w800,
                         fontSize: 14,
@@ -358,14 +368,14 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
             keyboardType: keyboardType,
             cursorColor: AppColors.primary,
             style: TextStyle(
-              fontFamily: 'Inter',
+              fontFamily: 'Poppins',
               color: isDark ? Colors.white : const Color(0xFF0F172A),
               fontWeight: FontWeight.w500,
             ),
             decoration: InputDecoration(
               hintText: hintText,
               hintStyle: TextStyle(
-                fontFamily: 'Inter',
+                fontFamily: 'Poppins',
                 color: isDark
                     ? const Color(0xFF94A3B8)
                     : const Color(0xFF64748B),
@@ -406,7 +416,7 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
             child: Text(
               errorText,
               style: const TextStyle(
-                fontFamily: 'Inter',
+                fontFamily: 'Poppins',
                 color: AppColors.error,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
@@ -452,7 +462,7 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
               : const Text(
                   'Login',
                   style: TextStyle(
-                    fontFamily: 'Inter',
+                    fontFamily: 'Poppins',
                     color: Colors.white,
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
@@ -473,8 +483,9 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
       builder: (ctx) {
         return AlertDialog(
           backgroundColor: Theme.of(context).colorScheme.surface,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           title: const Text(
             'Reset Password',
             style: TextStyle(fontWeight: FontWeight.bold),
@@ -487,8 +498,10 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
               labelText: 'Email',
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
-                borderSide:
-                    const BorderSide(color: AppColors.primary, width: 2),
+                borderSide: const BorderSide(
+                  color: AppColors.primary,
+                  width: 2,
+                ),
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
@@ -512,8 +525,9 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                 final email = resetEmailCtrl.text.trim();
                 if (email.isEmpty) return;
                 try {
-                  await FirebaseAuth.instance
-                      .sendPasswordResetEmail(email: email);
+                  await FirebaseAuth.instance.sendPasswordResetEmail(
+                    email: email,
+                  );
                   if (!ctx.mounted) return;
                   Navigator.pop(ctx);
                   ScaffoldMessenger.of(ctx).showSnackBar(

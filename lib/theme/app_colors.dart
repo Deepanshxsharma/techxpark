@@ -1,77 +1,63 @@
 import 'package:flutter/material.dart';
 
-/// Centralized color system for TechXPark — synced with Stitch design system.
-/// Primary: #1C31D4 (Deep Royal Blue), Roundness: 12px, Saturation: 2
 class AppColors {
-  // ── Brand Colors (Stitch Design System) ───────────────────────────────
-  static const Color primary = Color(0xFF1C31D4); // Deep Royal Blue
-  static const Color primaryLight = Color(0xFF4558E8);
-  static const Color primaryDark = Color(0xFF1526A8);
-  static const Color primarySurface = Color(0xFFE8EAFF); // Light blue surface
+  static const Color primary = Color(0xFF2F2FE4);
+  static const Color primaryLight = Color(0xFF5A5AF0);
+  static const Color primaryDark = Color(0xFF1C1CB3);
+  static const Color activeBlueLight = Color(0xFFEDEDFF);
 
-  // ── Gradient (Stitch blue header gradient) ────────────────────────────
   static const LinearGradient primaryGradient = LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [Color(0xFF1C31D4), Color(0xFF3B4FEF)],
-  );
-
-  static const LinearGradient splashGradient = LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
-    colors: [Color(0xFF1526A8), Color(0xFF1C31D4), Color(0xFF3B4FEF)],
+    colors: [primary, primaryLight],
   );
 
   static const LinearGradient headerGradient = LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [Color(0xFF1C31D4), Color(0xFF4558E8)],
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [primary, primaryLight],
   );
 
-  // ── Status Colors ─────────────────────────────────────────────────────
-  static const Color success = Color(0xFF10B981); // Emerald Green
-  static const Color error = Color(0xFFEF4444); // Muted Red
-  static const Color warning = Color(0xFFF59E0B); // Soft Amber
-  static const Color info = Color(0xFF1C31D4); // Primary Blue
+  static const Color bgLight = Color(0xFFF8F9FC);
+  static const Color bgDark = Color(0xFF0B1120);
 
-  // ── Background Colors ─────────────────────────────────────────────────
-  static const Color bgLight = Color(0xFFF8FAFC); // Very light grey blue
-  static const Color bgDark = Color(0xFF0F172A); // Deep slate
+  static const Color surfaceLight = Color(0xFFFFFFFF);
+  static const Color surfaceDark = Color(0xFF111B31);
 
-  // ── Surface Colors (Cards, Dialogs) ───────────────────────────────────
-  static const Color surfaceLight = Colors.white;
-  static const Color surfaceDark = Color(0xFF1E293B);
-
-  // ── Text Colors ───────────────────────────────────────────────────────
-  static const Color textPrimaryLight = Color(0xFF0F172A);
-  static const Color textSecondaryLight = Color(0xFF64748B);
+  static const Color textPrimaryLight = Color(0xFF1A1A1A);
+  static const Color textSecondaryLight = Color(0xFF6B7280);
   static const Color textTertiaryLight = Color(0xFF94A3B8);
 
   static const Color textPrimaryDark = Color(0xFFF8FAFC);
-  static const Color textSecondaryDark = Color(0xFF94A3B8);
+  static const Color textSecondaryDark = Color(0xFFCBD5E1);
+  static const Color textTertiaryDark = Color(0xFF94A3B8);
 
-  // ── Borders & Dividers ────────────────────────────────────────────────
-  static const Color borderLight = Color(0xFFE2E8F0);
-  static const Color borderDark = Color(0xFF334155);
+  static const Color borderLight = Color(0xFFE5E7EB);
+  static const Color borderDark = Color(0xFF22304A);
+  static const Color dividerLight = borderLight;
+  static const Color dividerDark = borderDark;
 
-  // ── Input Backgrounds ─────────────────────────────────────────────────
-  static const Color inputBgLight = Color(0xFFF1F5F9);
-  static const Color inputBgDark = Color(0xFF0F172A);
+  static const Color inputBgLight = Color(0xFFFFFFFF);
+  static const Color inputBgDark = Color(0xFF162238);
 
-  // ── Shadows ───────────────────────────────────────────────────────────
+  static const Color success = Color(0xFF22C55E);
+  static const Color warning = Color(0xFFF59E0B);
+  static const Color error = Color(0xFFEF4444);
+  static const Color info = primary;
+  static const Color evGreen = Color(0xFF00C853);
+  static const Color evGreenLight = Color(0xFFE0F7E9);
+
+  static const Color background = bgLight;
+  static const Color surface = surfaceLight;
+  static const Color textPrimary = textPrimaryLight;
+  static const Color textSecondary = textSecondaryLight;
+  static const Color border = borderLight;
+
   static List<BoxShadow> get cardShadow => [
-        BoxShadow(
-          color: const Color(0xFF0F172A).withValues(alpha: 0.06),
-          blurRadius: 16,
-          offset: const Offset(0, 4),
-        ),
-      ];
-
-  static List<BoxShadow> get elevatedShadow => [
-        BoxShadow(
-          color: primary.withValues(alpha: 0.15),
-          blurRadius: 24,
-          offset: const Offset(0, 8),
-        ),
-      ];
+    BoxShadow(
+      color: Colors.black.withValues(alpha: 0.06),
+      blurRadius: 20,
+      offset: const Offset(0, 4),
+    ),
+  ];
 }

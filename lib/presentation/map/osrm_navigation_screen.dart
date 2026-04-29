@@ -2,11 +2,14 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
-import 'package:location/location.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
+import 'package:location/location.dart';
+import 'package:techxpark/theme/app_colors.dart';
+import 'package:techxpark/utils/navigation_utils.dart';
 
 import '../booking/parking_timer_screen.dart';
 
@@ -34,13 +37,11 @@ class OsrmNavigationScreen extends StatefulWidget {
   });
 
   @override
-  State<OsrmNavigationScreen> createState() =>
-      _OsrmNavigationScreenState();
+  State<OsrmNavigationScreen> createState() => _OsrmNavigationScreenState();
 }
 
-class _OsrmNavigationScreenState
-    extends State<OsrmNavigationScreen> {
-  final MapController _mapController = MapController();
+class _OsrmNavigationScreenState extends State<OsrmNavigationScreen> {
+  GoogleMapController? _mapController;
   final Location _location = Location();
 
   LatLng? _current;
@@ -63,10 +64,9 @@ class _OsrmNavigationScreenState
   @override
   void dispose() {
     _locSub?.cancel();
+    _mapController?.dispose();
     super.dispose();
   }
-
-  // ================= LOCATION =================
 
   Future<void> _initLocation() async {
     if (!await _location.serviceEnabled()) {
@@ -80,26 +80,25 @@ class _OsrmNavigationScreenState
     }
 
     final loc = await _location.getLocation();
-    _current = LatLng(loc.latitude!, loc.longitude!);
+    if (loc.latitude == null || loc.longitude == null) return;
 
-    _mapController.move(_current!, 15);
+    _current = LatLng(loc.latitude!, loc.longitude!);
+    if (mounted) setState(() {});
+    _moveToLocation(_current!, zoom: 15);
 
     await _fetchRoute();
 
     _locSub = _location.onLocationChanged.listen((loc) async {
+      if (loc.latitude == null || loc.longitude == null) return;
       final newPos = LatLng(loc.latitude!, loc.longitude!);
       _current = newPos;
 
       if (mounted) setState(() {});
-      _mapController.move(newPos, _mapController.zoom);
+      _moveToLocation(newPos, zoom: 15);
 
-      final dest =
-          LatLng(widget.destinationLat, widget.destinationLng);
+      final dest = LatLng(widget.destinationLat, widget.destinationLng);
+      final dist = _distanceMeters(newPos, dest);
 
-      final dist =
-          Distance().as(LengthUnit.Meter, newPos, dest);
-
-      // Auto open timer when arrived
       if (dist < 30 &&
           !_timerOpened &&
           widget.bookingId != null &&
@@ -107,37 +106,30 @@ class _OsrmNavigationScreenState
           widget.end != null) {
         _timerOpened = true;
 
-        Navigator.push(
+        if (!mounted) return;
+        // Use safePush to avoid navigator crashes when the route is
+        // being disposed rapidly.
+        safePush(
           context,
-          MaterialPageRoute(
-            builder: (_) => ParkingTimerScreen(
-              bookingId: widget.bookingId!,
-              parking: widget.parking!,
-              slot: widget.slot!,
-              floorIndex: widget.floorIndex!,
-              start: widget.start!,
-              end: widget.end!,
-            ),
+          ParkingTimerScreen(
+            bookingId: widget.bookingId!,
+            parking: widget.parking!,
+            slot: widget.slot!,
+            floorIndex: widget.floorIndex!,
+            start: widget.start!,
+            end: widget.end!,
           ),
         );
       }
 
-      // Refresh route if user deviates
       if (_routePoints.isNotEmpty) {
-        final moved = Distance().as(
-          LengthUnit.Meter,
-          _routePoints.first,
-          newPos,
-        );
-
+        final moved = _distanceMeters(_routePoints.first, newPos);
         if (moved > 40) {
           _fetchRoute();
         }
       }
     });
   }
-
-  // ================= ROUTE =================
 
   Future<void> _fetchRoute() async {
     if (_current == null) return;
@@ -158,8 +150,7 @@ class _OsrmNavigationScreenState
       final response = await http.get(url);
 
       if (response.statusCode != 200) {
-        setState(() =>
-            _routeError = "OSRM error: ${response.statusCode}");
+        setState(() => _routeError = "OSRM error: ${response.statusCode}");
         return;
       }
 
@@ -171,29 +162,76 @@ class _OsrmNavigationScreenState
         return;
       }
 
-      final coords =
-          (route["geometry"]["coordinates"] as List);
+      final coords = route["geometry"]["coordinates"] as List;
 
       _routePoints = coords
-          .map((c) =>
-              LatLng(c[1].toDouble(), c[0].toDouble()))
+          .map((c) => LatLng(c[1].toDouble(), c[0].toDouble()))
           .toList();
 
-      _routeDistanceMeters =
-          (route["distance"] as num).toDouble();
-      _routeDurationSeconds =
-          (route["duration"] as num).toDouble();
+      _routeDistanceMeters = (route["distance"] as num).toDouble();
+      _routeDurationSeconds = (route["duration"] as num).toDouble();
 
-      _mapController.fitBounds(
-        LatLngBounds.fromPoints(_routePoints),
-        options:
-            const FitBoundsOptions(padding: EdgeInsets.all(50)),
-      );
+      _fitRouteBounds();
     } catch (e) {
       setState(() => _routeError = "Route error: $e");
     } finally {
       setState(() => _loadingRoute = false);
     }
+  }
+
+  void _moveToLocation(LatLng target, {double zoom = 15}) {
+    try {
+      if (_mapController != null) {
+        _mapController!.animateCamera(CameraUpdate.newLatLngZoom(target, zoom));
+      }
+    } catch (e) {
+      debugPrint('Failed to animate camera: $e');
+    }
+  }
+
+  void _fitRouteBounds() {
+    if (_routePoints.isEmpty || _mapController == null) return;
+
+    var minLat = _routePoints.first.latitude;
+    var maxLat = _routePoints.first.latitude;
+    var minLng = _routePoints.first.longitude;
+    var maxLng = _routePoints.first.longitude;
+
+    for (final point in _routePoints) {
+      if (point.latitude < minLat) minLat = point.latitude;
+      if (point.latitude > maxLat) maxLat = point.latitude;
+      if (point.longitude < minLng) minLng = point.longitude;
+      if (point.longitude > maxLng) maxLng = point.longitude;
+    }
+
+    _mapController!.animateCamera(
+      CameraUpdate.newLatLngBounds(
+        LatLngBounds(
+          southwest: LatLng(minLat, minLng),
+          northeast: LatLng(maxLat, maxLng),
+        ),
+        50,
+      ),
+    );
+  }
+
+  double _distanceMeters(LatLng a, LatLng b) {
+    const earthRadiusMeters = 6371000.0;
+    final dLat = _degreesToRadians(b.latitude - a.latitude);
+    final dLng = _degreesToRadians(b.longitude - a.longitude);
+    final lat1 = _degreesToRadians(a.latitude);
+    final lat2 = _degreesToRadians(b.latitude);
+    final h =
+        math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(lat1) *
+            math.cos(lat2) *
+            math.sin(dLng / 2) *
+            math.sin(dLng / 2);
+    return earthRadiusMeters * 2 * math.atan2(math.sqrt(h), math.sqrt(1 - h));
+  }
+
+  double _degreesToRadians(double degrees) {
+    return degrees * math.pi / 180;
   }
 
   String _formatDistance(double meters) {
@@ -209,12 +247,35 @@ class _OsrmNavigationScreenState
     return "${mins ~/ 60} h ${mins % 60} m";
   }
 
-  // ================= UI =================
-
   @override
   Widget build(BuildContext context) {
-    final dest =
-        LatLng(widget.destinationLat, widget.destinationLng);
+    final dest = LatLng(widget.destinationLat, widget.destinationLng);
+    final markers = <Marker>{
+      if (_current != null)
+        Marker(
+          markerId: const MarkerId('current'),
+          position: _current!,
+          infoWindow: const InfoWindow(title: 'Current location'),
+          icon: BitmapDescriptor.defaultMarkerWithHue(
+            BitmapDescriptor.hueAzure,
+          ),
+        ),
+      Marker(
+        markerId: const MarkerId('destination'),
+        position: dest,
+        infoWindow: const InfoWindow(title: 'Destination'),
+      ),
+    };
+
+    final polylines = <Polyline>{
+      if (_routePoints.isNotEmpty)
+        Polyline(
+          polylineId: const PolylineId('route'),
+          points: _routePoints,
+          width: 6,
+          color: AppColors.primary,
+        ),
+    };
 
     return Scaffold(
       appBar: AppBar(
@@ -223,67 +284,30 @@ class _OsrmNavigationScreenState
         foregroundColor: Colors.black,
         elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _fetchRoute,
-          )
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _fetchRoute),
         ],
       ),
       body: Stack(
         children: [
-          FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              center: _current ?? dest,
+          GoogleMap(
+            initialCameraPosition: CameraPosition(
+              target: _current ?? dest,
               zoom: 14.5,
             ),
-            children: [
-              // ✅ FREE + SAFE CARTO TILE (NO 403)
-              TileLayer(
-                urlTemplate:
-                    "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-                subdomains: const ['a', 'b', 'c', 'd'],
-              ),
-
-              if (_routePoints.isNotEmpty)
-                PolylineLayer(
-                  polylines: [
-                    Polyline(
-                      points: _routePoints,
-                      strokeWidth: 6,
-                      color: Colors.blue,
-                    ),
-                  ],
-                ),
-
-              MarkerLayer(
-                markers: [
-                  if (_current != null)
-                    Marker(
-                      width: 40,
-                      height: 40,
-                      point: _current!,
-                      child: const Icon(
-                        Icons.my_location,
-                        color: Colors.blue,
-                        size: 28,
-                      ),
-                    ),
-                  Marker(
-                    width: 50,
-                    height: 50,
-                    point: dest,
-                    child: const Icon(
-                      Icons.location_pin,
-                      color: Colors.red,
-                      size: 36,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+            myLocationEnabled: _current != null,
+            myLocationButtonEnabled: true,
+            zoomControlsEnabled: false,
+            markers: markers,
+            polylines: polylines,
+            onMapCreated: (controller) {
+              _mapController = controller;
+              if (_routePoints.isNotEmpty) {
+                _fitRouteBounds();
+              } else if (_current != null) {
+                _moveToLocation(_current!, zoom: 15);
+              }
+            },
           ),
-
           Positioned(
             left: 16,
             right: 16,
@@ -291,18 +315,17 @@ class _OsrmNavigationScreenState
             child: Card(
               elevation: 4,
               child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 child: Row(
                   children: [
                     if (_loadingRoute)
                       const SizedBox(
                         height: 20,
                         width: 20,
-                        child:
-                            CircularProgressIndicator(
-                                strokeWidth: 2),
+                        child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     else
                       const Icon(Icons.directions_car),
@@ -312,17 +335,17 @@ class _OsrmNavigationScreenState
                           ? Text(
                               _routeError!,
                               style: const TextStyle(
-                                  color: Colors.red,
-                                  fontWeight:
-                                      FontWeight.bold),
+                                color: Colors.red,
+                                fontWeight: FontWeight.bold,
+                              ),
                             )
                           : Text(
                               "${_formatDistance(_routeDistanceMeters)} • "
                               "${_formatDuration(_routeDurationSeconds)}",
                               style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight:
-                                      FontWeight.w600),
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                     ),
                   ],

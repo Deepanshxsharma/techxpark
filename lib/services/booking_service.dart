@@ -188,11 +188,13 @@ class BookingService {
         final resolvedPaymentStatus = paymentStatus.trim().isEmpty
             ? 'simulated_success'
             : paymentStatus.trim();
-        final resolvedPaymentMode =
-            paymentMode.trim().isEmpty ? 'mock' : paymentMode.trim();
+        final resolvedPaymentMode = paymentMode.trim().isEmpty
+            ? 'mock'
+            : paymentMode.trim();
         final resolvedPaymentGateway = paymentGateway.trim().isEmpty
             ? 'test_bypass'
             : paymentGateway.trim();
+        final paymentCaptured = _paymentIsCaptured(resolvedPaymentStatus);
         final entryCode = _buildEntryCode(bookingRef.id);
         final qrData = _buildQrData(
           bookingId: bookingRef.id,
@@ -241,7 +243,7 @@ class BookingService {
           'hours': hours.ceil(),
           'durationMinutes': endTime.difference(startTime).inMinutes,
           'amount': totalAmount,
-          'amountPaid': totalAmount,
+          'amountPaid': paymentCaptured ? totalAmount : 0,
           'totalAmount': totalAmount,
           'pricePerHour': ratePerHour,
           'baseFee': baseFee,
@@ -263,7 +265,9 @@ class BookingService {
           'reminderScheduled': false,
           'createdAt': FieldValue.serverTimestamp(),
           'updatedAt': FieldValue.serverTimestamp(),
-          'paymentCapturedAt': FieldValue.serverTimestamp(),
+          'paymentCapturedAt': paymentCaptured
+              ? FieldValue.serverTimestamp()
+              : null,
         }, SetOptions(merge: true));
 
         // ── Update slot status ──────────────────────────────────────────
@@ -282,11 +286,9 @@ class BookingService {
           'lastUpdated': FieldValue.serverTimestamp(),
         });
 
-        tx.set(
-          userRef,
-          {'activeBookings': FieldValue.increment(1)},
-          SetOptions(merge: true),
-        );
+        tx.set(userRef, {
+          'activeBookings': FieldValue.increment(1),
+        }, SetOptions(merge: true));
 
         return BookingCreationResult(
           bookingId: bookingRef.id,
@@ -332,8 +334,9 @@ class BookingService {
       );
     }
 
-    final normalizedVehicleType =
-        vehicleType.trim().isEmpty ? 'Car' : vehicleType.trim();
+    final normalizedVehicleType = vehicleType.trim().isEmpty
+        ? 'Car'
+        : vehicleType.trim();
     final resolvedStart = bookingTime ?? DateTime.now();
     final resolvedDuration = durationHours.clamp(1, 24);
     final resolvedEnd = resolvedStart.add(Duration(hours: resolvedDuration));
@@ -523,11 +526,7 @@ class BookingService {
         'hours': resolvedDuration,
         'durationMinutes': resolvedDuration * 60,
         'bookingDate': Timestamp.fromDate(
-          DateTime(
-            resolvedStart.year,
-            resolvedStart.month,
-            resolvedStart.day,
-          ),
+          DateTime(resolvedStart.year, resolvedStart.month, resolvedStart.day),
         ),
         'startTime': Timestamp.fromDate(resolvedStart),
         'endTime': Timestamp.fromDate(resolvedEnd),
@@ -559,14 +558,10 @@ class BookingService {
         'zoneOccupancy': updatedOccupancy,
         'lastUpdated': FieldValue.serverTimestamp(),
       });
-      tx.set(
-        userRef,
-        {
-          'activeBookings': FieldValue.increment(1),
-          'currentBookingId': bookingRef.id,
-        },
-        SetOptions(merge: true),
-      );
+      tx.set(userRef, {
+        'activeBookings': FieldValue.increment(1),
+        'currentBookingId': bookingRef.id,
+      }, SetOptions(merge: true));
 
       return SmartParkingBookingResult(
         bookingId: bookingRef.id,
@@ -692,8 +687,9 @@ class BookingService {
       final data = bookingSnap.data()!;
       if (data['userId'] != user.uid) throw const UnauthorizedException();
 
-      final currentStatus =
-          BookingStatusHelper.normalize(data['status'].toString());
+      final currentStatus = BookingStatusHelper.normalize(
+        data['status'].toString(),
+      );
       _validateTransition(currentStatus, 'cancelled');
 
       final startTs = (data['startTime'] as Timestamp?)?.toDate();
@@ -704,9 +700,7 @@ class BookingService {
         if (now.isAfter(cutoff) &&
             BookingStatusHelper.isUpcoming(currentStatus)) {
           final minutesLeft = startTs.difference(now).inMinutes;
-          throw CancellationNotAllowedException(
-            minutesRemaining: minutesLeft,
-          );
+          throw CancellationNotAllowedException(minutesRemaining: minutesLeft);
         }
       }
 
@@ -741,8 +735,9 @@ class BookingService {
       final data = bookingSnap.data()!;
       if (data['userId'] != user.uid) throw const UnauthorizedException();
 
-      final currentStatus =
-          BookingStatusHelper.normalize(data['status'].toString());
+      final currentStatus = BookingStatusHelper.normalize(
+        data['status'].toString(),
+      );
       if (!BookingStatusHelper.isLive(currentStatus) &&
           currentStatus != 'active') {
         throw InvalidStatusTransitionException(
@@ -836,8 +831,9 @@ class BookingService {
       if (!bookingSnap.exists) throw const BookingNotFoundException();
 
       final data = bookingSnap.data()!;
-      final currentStatus =
-          BookingStatusHelper.normalize(data['status'].toString());
+      final currentStatus = BookingStatusHelper.normalize(
+        data['status'].toString(),
+      );
       _validateTransition(currentStatus, 'completed');
 
       tx.update(bookingRef, {
@@ -998,14 +994,10 @@ class BookingService {
   ) async {
     if (userId == null || userId.isEmpty) return;
     final userRef = _fs.collection('users').doc(userId);
-    tx.set(
-      userRef,
-      {
-        'activeBookings': FieldValue.increment(-1),
-        'currentBookingId': FieldValue.delete(),
-      },
-      SetOptions(merge: true),
-    );
+    tx.set(userRef, {
+      'activeBookings': FieldValue.increment(-1),
+      'currentBookingId': FieldValue.delete(),
+    }, SetOptions(merge: true));
   }
 
   // ─── VALIDATION ─────────────────────────────────────────────────────────
@@ -1036,6 +1028,15 @@ class BookingService {
         status == 'disabled' ||
         status == 'unavailable' ||
         status == 'blocked';
+  }
+
+  bool _paymentIsCaptured(String status) {
+    final normalized = BookingStatusHelper.normalize(status);
+    return normalized == 'paid' ||
+        normalized == 'success' ||
+        normalized == 'simulated_success' ||
+        normalized == 'skipped' ||
+        normalized == 'captured';
   }
 
   // ─── ZONE / SLOT RESOLUTION ─────────────────────────────────────────────
@@ -1184,8 +1185,9 @@ class BookingService {
   }
 
   String _buildEntryCode(String bookingId) {
-    final compact =
-        bookingId.replaceAll(RegExp(r'[^A-Za-z0-9]'), '').toUpperCase();
+    final compact = bookingId
+        .replaceAll(RegExp(r'[^A-Za-z0-9]'), '')
+        .toUpperCase();
     if (compact.isEmpty) return 'TXP000';
     if (compact.length >= 6) return compact.substring(compact.length - 6);
     return compact.padRight(6, '0');
@@ -1206,16 +1208,18 @@ class BookingService {
     required String bookingId,
     required String paymentMethod,
   }) {
-    final methodPrefix =
-        paymentMethod.replaceAll(RegExp(r'[^A-Za-z0-9]'), '').toUpperCase();
+    final methodPrefix = paymentMethod
+        .replaceAll(RegExp(r'[^A-Za-z0-9]'), '')
+        .toUpperCase();
     final compactMethod = methodPrefix.isEmpty
         ? 'PAY'
         : methodPrefix.substring(
             0,
             methodPrefix.length > 4 ? 4 : methodPrefix.length,
           );
-    final compactBooking =
-        bookingId.replaceAll(RegExp(r'[^A-Za-z0-9]'), '').toUpperCase();
+    final compactBooking = bookingId
+        .replaceAll(RegExp(r'[^A-Za-z0-9]'), '')
+        .toUpperCase();
     final bookingSuffix = compactBooking.isEmpty
         ? '0000'
         : compactBooking.substring(
@@ -1236,17 +1240,18 @@ class BookingService {
     required String? preferredZoneName,
     required int durationHours,
   }) async {
-    final result =
-        await _functions.httpsCallable('createSmartParkingBooking').call({
-      'parkingId': parkingId,
-      'parkingName': parkingName,
-      'parkingAddress': parkingAddress,
-      'vehicleNumber': vehicleNumber,
-      'vehicleType': vehicleType,
-      'bookingTimeMs': bookingTime.millisecondsSinceEpoch,
-      'preferredZoneName': preferredZoneName,
-      'durationHours': durationHours,
-    });
+    final result = await _functions
+        .httpsCallable('createSmartParkingBooking')
+        .call({
+          'parkingId': parkingId,
+          'parkingName': parkingName,
+          'parkingAddress': parkingAddress,
+          'vehicleNumber': vehicleNumber,
+          'vehicleType': vehicleType,
+          'bookingTimeMs': bookingTime.millisecondsSinceEpoch,
+          'preferredZoneName': preferredZoneName,
+          'durationHours': durationHours,
+        });
 
     final data = Map<String, dynamic>.from(result.data as Map);
     return SmartParkingBookingResult(
@@ -1261,25 +1266,21 @@ class BookingService {
       startTime: DateTime.fromMillisecondsSinceEpoch(
         _intValue(data['startTimeMs']),
       ),
-      endTime:
-          DateTime.fromMillisecondsSinceEpoch(_intValue(data['endTimeMs'])),
+      endTime: DateTime.fromMillisecondsSinceEpoch(
+        _intValue(data['endTimeMs']),
+      ),
     );
   }
 
-  Future<String> _cancelBookingViaFunction({
-    required String bookingId,
-  }) async {
-    final result =
-        await _functions.httpsCallable('cancelParkingBooking').call({
+  Future<String> _cancelBookingViaFunction({required String bookingId}) async {
+    final result = await _functions.httpsCallable('cancelParkingBooking').call({
       'bookingId': bookingId,
     });
     final data = Map<String, dynamic>.from(result.data as Map);
     return data['message']?.toString() ?? 'Booking cancelled successfully.';
   }
 
-  Future<void> _completeBookingViaFunction({
-    required String bookingId,
-  }) async {
+  Future<void> _completeBookingViaFunction({required String bookingId}) async {
     await _functions.httpsCallable('completeParkingBooking').call({
       'bookingId': bookingId,
     });

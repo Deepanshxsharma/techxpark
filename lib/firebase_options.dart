@@ -45,7 +45,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyDXC3hMXVhPVWlYM5z_wX2a3b-tCg7jjfs',
-    appId: '1:457287100758:android:b8fb3f0500dc7028028ef7',
+    appId: '1:457287100758:android:cb96449638f5000a028ef7',
     messagingSenderId: '457287100758',
     projectId: 'techxpark-67c25',
     databaseURL: 'https://techxpark-67c25-default-rtdb.asia-southeast1.firebasedatabase.app',
@@ -54,14 +54,14 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyCzidstWOerTu2owYuYs8uiO5NRUrvVdxc',
-    appId: '1:457287100758:ios:f67f4f3ccf37f9e5028ef7',
+    appId: '1:457287100758:ios:0339dd318207d1e6028ef7',
     messagingSenderId: '457287100758',
     projectId: 'techxpark-67c25',
     databaseURL: 'https://techxpark-67c25-default-rtdb.asia-southeast1.firebasedatabase.app',
     storageBucket: 'techxpark-67c25.firebasestorage.app',
-    androidClientId: '457287100758-0c9c64tqngsga5fd63gsu54imk8pku74.apps.googleusercontent.com',
-    iosClientId: '457287100758-7n7t7fem1bkjicsu5ogs2jhs3j6i2bcl.apps.googleusercontent.com',
-    iosBundleId: 'com.example.techxparkClean',
+    androidClientId: '457287100758-023eia10ogm5mbqr9acmvac9tfqc6og5.apps.googleusercontent.com',
+    iosClientId: '457287100758-13o6nc7ua6ejkir0rbvv2strp471c5ns.apps.googleusercontent.com',
+    iosBundleId: 'com.techxpark.parking',
   );
 
   static const FirebaseOptions web = FirebaseOptions(

@@ -371,7 +371,7 @@ class _SearchResultCardState extends State<_SearchResultCard> {
                     gradient: const LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
-                      colors: [Color(0xFF2563EB), AppColors.primary],
+                      colors: [AppColors.primary, AppColors.primary],
                     ),
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [

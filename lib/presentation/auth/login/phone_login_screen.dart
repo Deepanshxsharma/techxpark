@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../services/google_auth_service.dart';
 import '../../../theme/app_colors.dart';
 
 /// Phone Login Screen — Enter phone number, verify OTP.
@@ -118,26 +118,19 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
 
   Future<void> _signInWithCredential(PhoneAuthCredential credential) async {
     try {
-      final userCredential =
-          await FirebaseAuth.instance.signInWithCredential(credential);
+      final userCredential = await FirebaseAuth.instance.signInWithCredential(
+        credential,
+      );
       final user = userCredential.user;
 
       if (user != null) {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .set({
-          'uid': user.uid,
-          'name': user.displayName ?? '',
-          'email': user.email ?? '',
-          'phone': user.phoneNumber ?? '',
-          'provider': 'phone',
-          'role': 'customer',
-          'banned': false,
-          'isOnline': false,
-          'accessStatus': 'none',
-          'createdAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
+        if (!mounted) return;
+        final synced = await GoogleAuthService().syncUserAfterSignIn(
+          context,
+          user,
+          provider: 'phone',
+        );
+        if (!synced) return;
 
         HapticFeedback.heavyImpact();
         // AuthWrapper handles navigation
@@ -160,8 +153,9 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor:
-          isDark ? const Color(0xFF111321) : const Color(0xFFF6F6F8),
+      backgroundColor: isDark
+          ? const Color(0xFF111321)
+          : const Color(0xFFF6F6F8),
       body: SafeArea(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
@@ -169,8 +163,10 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
             children: [
               // ── App Bar ──────────────────────────
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 child: Row(
                   children: [
                     GestureDetector(
@@ -192,8 +188,9 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
                         child: Icon(
                           Icons.arrow_back_ios_new_rounded,
                           size: 18,
-                          color:
-                              isDark ? Colors.white : const Color(0xFF0F172A),
+                          color: isDark
+                              ? Colors.white
+                              : const Color(0xFF0F172A),
                         ),
                       ),
                     ),
@@ -226,11 +223,10 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
                     Text(
                       'Enter Your\nPhone Number',
                       style: TextStyle(
-                        fontFamily: 'Inter',
+                        fontFamily: 'Poppins',
                         fontSize: 28,
                         fontWeight: FontWeight.w800,
-                        color:
-                            isDark ? Colors.white : const Color(0xFF0F172A),
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
                         height: 1.2,
                         letterSpacing: -0.5,
                       ),
@@ -239,7 +235,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
                     Text(
                       "We'll send you a verification code via SMS",
                       style: TextStyle(
-                        fontFamily: 'Inter',
+                        fontFamily: 'Poppins',
                         fontSize: 15,
                         fontWeight: FontWeight.w400,
                         color: isDark
@@ -281,7 +277,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
                           child: Text(
                             _phoneError!,
                             style: const TextStyle(
-                              fontFamily: 'Inter',
+                              fontFamily: 'Poppins',
                               color: AppColors.error,
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
@@ -306,8 +302,9 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
                                 ? []
                                 : [
                                     BoxShadow(
-                                      color: AppColors.primary
-                                          .withValues(alpha: 0.35),
+                                      color: AppColors.primary.withValues(
+                                        alpha: 0.35,
+                                      ),
                                       blurRadius: 16,
                                       offset: const Offset(0, 6),
                                     ),
@@ -326,7 +323,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
                                 : const Text(
                                     'Send Verification Code',
                                     style: TextStyle(
-                                      fontFamily: 'Inter',
+                                      fontFamily: 'Poppins',
                                       color: Colors.white,
                                       fontSize: 16,
                                       fontWeight: FontWeight.w700,
@@ -379,15 +376,12 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               child: Row(
                 children: [
-                  Text(
-                    '🇮🇳',
-                    style: const TextStyle(fontSize: 20),
-                  ),
+                  Text('🇮🇳', style: const TextStyle(fontSize: 20)),
                   const SizedBox(width: 6),
                   Text(
                     _countryCode,
                     style: TextStyle(
-                      fontFamily: 'Inter',
+                      fontFamily: 'Poppins',
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
                       color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -410,9 +404,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
           Container(
             height: 28,
             width: 1,
-            color: isDark
-                ? const Color(0xFF334155)
-                : const Color(0xFFE2E8F0),
+            color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
           ),
 
           // Phone input
@@ -427,7 +419,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
                 LengthLimitingTextInputFormatter(10),
               ],
               style: TextStyle(
-                fontFamily: 'Inter',
+                fontFamily: 'Poppins',
                 color: isDark ? Colors.white : const Color(0xFF0F172A),
                 fontWeight: FontWeight.w500,
                 fontSize: 16,
@@ -436,7 +428,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
               decoration: InputDecoration(
                 hintText: 'Enter phone number',
                 hintStyle: TextStyle(
-                  fontFamily: 'Inter',
+                  fontFamily: 'Poppins',
                   color: isDark
                       ? const Color(0xFF94A3B8)
                       : const Color(0xFF64748B),
@@ -490,7 +482,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
               const Text(
                 'Select Country',
                 style: TextStyle(
-                  fontFamily: 'Inter',
+                  fontFamily: 'Poppins',
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                 ),
@@ -502,14 +494,14 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
                   title: Text(
                     c.$3,
                     style: const TextStyle(
-                      fontFamily: 'Inter',
+                      fontFamily: 'Poppins',
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                   trailing: Text(
                     c.$1,
                     style: TextStyle(
-                      fontFamily: 'Inter',
+                      fontFamily: 'Poppins',
                       fontWeight: FontWeight.w600,
                       color: _countryCode == c.$1
                           ? AppColors.primary
@@ -546,15 +538,15 @@ class _OTPVerificationScreen extends StatefulWidget {
   });
 
   @override
-  State<_OTPVerificationScreen> createState() =>
-      _OTPVerificationScreenState();
+  State<_OTPVerificationScreen> createState() => _OTPVerificationScreenState();
 }
 
 class _OTPVerificationScreenState extends State<_OTPVerificationScreen> {
-  final List<TextEditingController> _otpControllers =
-      List.generate(6, (_) => TextEditingController());
-  final List<FocusNode> _otpFocusNodes =
-      List.generate(6, (_) => FocusNode());
+  final List<TextEditingController> _otpControllers = List.generate(
+    6,
+    (_) => TextEditingController(),
+  );
+  final List<FocusNode> _otpFocusNodes = List.generate(6, (_) => FocusNode());
 
   bool _isVerifying = false;
   bool _canResend = false;
@@ -598,8 +590,7 @@ class _OTPVerificationScreenState extends State<_OTPVerificationScreen> {
     });
   }
 
-  String get _otpCode =>
-      _otpControllers.map((c) => c.text).join();
+  String get _otpCode => _otpControllers.map((c) => c.text).join();
 
   Future<void> _verifyOTP() async {
     final code = _otpCode;
@@ -622,26 +613,19 @@ class _OTPVerificationScreenState extends State<_OTPVerificationScreen> {
         smsCode: code,
       );
 
-      final userCredential =
-          await FirebaseAuth.instance.signInWithCredential(credential);
+      final userCredential = await FirebaseAuth.instance.signInWithCredential(
+        credential,
+      );
       final user = userCredential.user;
 
       if (user != null) {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .set({
-          'uid': user.uid,
-          'name': user.displayName ?? '',
-          'email': user.email ?? '',
-          'phone': user.phoneNumber ?? '',
-          'provider': 'phone',
-          'role': 'customer',
-          'banned': false,
-          'isOnline': false,
-          'accessStatus': 'none',
-          'createdAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
+        if (!mounted) return;
+        final synced = await GoogleAuthService().syncUserAfterSignIn(
+          context,
+          user,
+          provider: 'phone',
+        );
+        if (!synced) return;
 
         HapticFeedback.heavyImpact();
         // AuthWrapper handles navigation — pop back to root
@@ -672,7 +656,16 @@ class _OTPVerificationScreenState extends State<_OTPVerificationScreen> {
         timeout: const Duration(seconds: 60),
         forceResendingToken: widget.resendToken,
         verificationCompleted: (credential) async {
-          await FirebaseAuth.instance.signInWithCredential(credential);
+          final userCredential = await FirebaseAuth.instance
+              .signInWithCredential(credential);
+          final user = userCredential.user;
+          if (user != null && mounted) {
+            await GoogleAuthService().syncUserAfterSignIn(
+              context,
+              user,
+              provider: 'phone',
+            );
+          }
         },
         verificationFailed: (e) {
           if (mounted) {
@@ -718,8 +711,9 @@ class _OTPVerificationScreenState extends State<_OTPVerificationScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor:
-          isDark ? const Color(0xFF111321) : const Color(0xFFF6F6F8),
+      backgroundColor: isDark
+          ? const Color(0xFF111321)
+          : const Color(0xFFF6F6F8),
       body: SafeArea(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
@@ -727,8 +721,10 @@ class _OTPVerificationScreenState extends State<_OTPVerificationScreen> {
             children: [
               // ── App Bar ──────────────────────────
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 child: Row(
                   children: [
                     GestureDetector(
@@ -750,8 +746,9 @@ class _OTPVerificationScreenState extends State<_OTPVerificationScreen> {
                         child: Icon(
                           Icons.arrow_back_ios_new_rounded,
                           size: 18,
-                          color:
-                              isDark ? Colors.white : const Color(0xFF0F172A),
+                          color: isDark
+                              ? Colors.white
+                              : const Color(0xFF0F172A),
                         ),
                       ),
                     ),
@@ -784,11 +781,10 @@ class _OTPVerificationScreenState extends State<_OTPVerificationScreen> {
                     Text(
                       'Verify Your\nPhone Number',
                       style: TextStyle(
-                        fontFamily: 'Inter',
+                        fontFamily: 'Poppins',
                         fontSize: 28,
                         fontWeight: FontWeight.w800,
-                        color:
-                            isDark ? Colors.white : const Color(0xFF0F172A),
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
                         height: 1.2,
                         letterSpacing: -0.5,
                       ),
@@ -798,7 +794,7 @@ class _OTPVerificationScreenState extends State<_OTPVerificationScreen> {
                       TextSpan(
                         text: 'Enter the 6-digit code sent to ',
                         style: TextStyle(
-                          fontFamily: 'Inter',
+                          fontFamily: 'Poppins',
                           fontSize: 15,
                           color: isDark
                               ? const Color(0xFF94A3B8)
@@ -857,7 +853,7 @@ class _OTPVerificationScreenState extends State<_OTPVerificationScreen> {
                                 FilteringTextInputFormatter.digitsOnly,
                               ],
                               style: TextStyle(
-                                fontFamily: 'Inter',
+                                fontFamily: 'Poppins',
                                 fontSize: 22,
                                 fontWeight: FontWeight.w700,
                                 color: isDark
@@ -916,8 +912,9 @@ class _OTPVerificationScreenState extends State<_OTPVerificationScreen> {
                                 ? []
                                 : [
                                     BoxShadow(
-                                      color: AppColors.primary
-                                          .withValues(alpha: 0.35),
+                                      color: AppColors.primary.withValues(
+                                        alpha: 0.35,
+                                      ),
                                       blurRadius: 16,
                                       offset: const Offset(0, 6),
                                     ),
@@ -936,7 +933,7 @@ class _OTPVerificationScreenState extends State<_OTPVerificationScreen> {
                                 : const Text(
                                     'Verify & Continue',
                                     style: TextStyle(
-                                      fontFamily: 'Inter',
+                                      fontFamily: 'Poppins',
                                       color: Colors.white,
                                       fontSize: 16,
                                       fontWeight: FontWeight.w700,
@@ -955,7 +952,7 @@ class _OTPVerificationScreenState extends State<_OTPVerificationScreen> {
                           Text(
                             "Didn't receive the code? ",
                             style: TextStyle(
-                              fontFamily: 'Inter',
+                              fontFamily: 'Poppins',
                               fontSize: 13,
                               color: isDark
                                   ? const Color(0xFF94A3B8)
@@ -969,7 +966,7 @@ class _OTPVerificationScreenState extends State<_OTPVerificationScreen> {
                                   ? 'Resend Code'
                                   : 'Resend in ${_resendTimer}s',
                               style: TextStyle(
-                                fontFamily: 'Inter',
+                                fontFamily: 'Poppins',
                                 fontSize: 13,
                                 fontWeight: FontWeight.w700,
                                 color: _canResend

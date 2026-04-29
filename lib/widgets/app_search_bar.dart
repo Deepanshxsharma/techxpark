@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_colors.dart';
+
 /// Reusable pill-shaped search bar matching the TechXPark design spec.
 ///
 /// Usage:
@@ -38,7 +40,7 @@ class AppSearchBar extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x1F2845D6), // rgba(40,69,214,0.12)
+            color: Color(0x1F1A1953),
             blurRadius: 16,
             offset: Offset(0, 4),
           ),
@@ -64,11 +66,7 @@ class AppSearchBar extends StatelessWidget {
           ),
           prefixIcon: const Padding(
             padding: EdgeInsets.only(left: 16, right: 8),
-            child: Icon(
-              Icons.location_on,
-              color: Color(0xFF2845D6),
-              size: 20,
-            ),
+            child: Icon(Icons.location_on, color: AppColors.primary, size: 20),
           ),
           prefixIconConstraints: const BoxConstraints(
             minWidth: 44,
@@ -81,7 +79,7 @@ class AppSearchBar extends StatelessWidget {
                     onPressed: onFilterTap,
                     icon: const Icon(
                       Icons.tune,
-                      color: Color(0xFF2845D6),
+                      color: AppColors.primary,
                       size: 20,
                     ),
                     splashRadius: 20,
@@ -89,9 +87,7 @@ class AppSearchBar extends StatelessWidget {
                 )
               : null,
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(
-            vertical: 16,
-          ),
+          contentPadding: const EdgeInsets.symmetric(vertical: 16),
         ),
       ),
     );

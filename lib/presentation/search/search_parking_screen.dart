@@ -1,15 +1,16 @@
 import 'dart:async';
 import 'dart:ui';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:flutter_map/flutter_map.dart';
-import '../../config/map_config.dart';
-import '../booking/booking_screen.dart';
+
+import '../../services/map_service.dart';
+import '../../services/parking_filter_service.dart';
+import '../../theme/app_colors.dart';
+import '../parking_details/lot_detail_navigation.dart';
 
 /// Premium Search Parking Screen based on HTML template.
 class SearchParkingScreen extends StatefulWidget {
@@ -22,19 +23,19 @@ class SearchParkingScreen extends StatefulWidget {
 }
 
 class _SearchParkingScreenState extends State<SearchParkingScreen> {
-  // Theme colors from the HTML
-  static const Color _primary = Color(0xFF0018AB);
-  static const Color _primaryContainer = Color(0xFF1C31D4);
+  // Theme colors from the shared app palette
+  static const Color _primary = AppColors.primary;
+  static const Color _primaryContainer = AppColors.primaryLight;
   static const Color _onSurface = Color(0xFF1A1C1D);
   static const Color _onSurfaceVariant = Color(0xFF454655);
   static const Color _surfaceContainerLow = Color(0xFFF3F3F5);
   static const Color _surfaceVariant = Color(0xFFE2E2E4);
   static const Color _error = Color(0xFFBA1A1A);
-  static const Color _primaryFixed = Color(0xFFDFE0FF);
   static const Color _white = Colors.white;
 
   final TextEditingController _controller = TextEditingController();
   Timer? _debounce;
+  GoogleMapController? _mapController;
 
   List<Map<String, dynamic>> _allParks = [];
   List<Map<String, dynamic>> _suggestions = [];
@@ -55,6 +56,9 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
   void initState() {
     super.initState();
     _controller.addListener(_onQueryChanged);
+    MapService.loadMarkerIcons().then((_) {
+      if (mounted) setState(() {});
+    });
     _initLocation();
     _loadData();
   }
@@ -63,6 +67,7 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
   void dispose() {
     _controller.dispose();
     _debounce?.cancel();
+    _mapController?.dispose();
     super.dispose();
   }
 
@@ -71,8 +76,15 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
       if (widget.userLocation != null) {
         _myLocation = widget.userLocation;
       } else {
-        final pos = await Geolocator.getCurrentPosition();
-        _myLocation = LatLng(pos.latitude, pos.longitude);
+        _myLocation = await MapService.getUserLocation();
+      }
+      if (mounted) {
+        setState(() {});
+        if (_myLocation != null) {
+          _mapController?.animateCamera(
+            CameraUpdate.newLatLngZoom(_myLocation!, 14),
+          );
+        }
       }
     } catch (_) {}
   }
@@ -80,7 +92,10 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
   Future<void> _loadData() async {
     await Future.delayed(const Duration(milliseconds: 300));
     try {
-      final snap = await FirebaseFirestore.instance.collection('parking_locations').get();
+      final snap = await ParkingFilterService.fetchParking(
+        _sortOptions[_selectedSortIndex].label,
+      );
+      debugPrint('TOTAL DOCS: ${snap.docs.length}');
       final data = snap.docs.map((d) {
         final data = d.data();
         return {
@@ -93,7 +108,15 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
           'address': data['address'] ?? '',
           'image': data['image'],
           'imageUrl': data['imageUrl'],
-          'rating': data['rating'],
+          'rating': data['ratingAverage'] ?? data['rating_average'] ?? 0.0,
+          'has_ev': MapService.isEvLot(data),
+          'ev_slots': data['ev_slots'] ?? data['evSlots'] ?? 0,
+          'hasEvCharging': data['hasEvCharging'],
+          'evCharging': data['evCharging'],
+          'coveredParking': data['coveredParking'],
+          'isCovered': data['isCovered'],
+          'covered': data['covered'],
+          'features': data['features'],
         };
       }).toList();
 
@@ -103,7 +126,7 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
           _suggestions = List.from(data);
           _loading = false;
         });
-        if (_myLocation != null) _applyFilters();
+        _applyFilters();
       }
     } catch (e) {
       debugPrint('Error loading search data: $e');
@@ -130,16 +153,39 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
       }).toList();
     }
 
+    if (_selectedSortIndex == 2) {
+      temp = temp.where(MapService.isEvLot).toList();
+    } else {
+      temp = temp.where((p) => !MapService.isEvLot(p)).toList();
+    }
+
+    if (_selectedSortIndex == 3) {
+      temp = temp
+          .where(
+            (p) =>
+                _asBool(p['coveredParking'] ?? p['isCovered'] ?? p['covered']),
+          )
+          .toList();
+    }
+
     temp.sort((a, b) {
       switch (_selectedSortIndex) {
         case 4: // Cheapest
-          return (a['price_per_hour'] as num).compareTo(b['price_per_hour'] as num);
+          return (a['price_per_hour'] as num).compareTo(
+            b['price_per_hour'] as num,
+          );
         case 0:
         case 1:
         default:
           if (_myLocation == null) return 0;
-          final da = _distance(_myLocation!, LatLng(a['latitude'], a['longitude']));
-          final db = _distance(_myLocation!, LatLng(b['latitude'], b['longitude']));
+          final da = _distance(
+            _myLocation!,
+            LatLng(a['latitude'], a['longitude']),
+          );
+          final db = _distance(
+            _myLocation!,
+            LatLng(b['latitude'], b['longitude']),
+          );
           return da.compareTo(db);
       }
     });
@@ -148,7 +194,25 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
   }
 
   double _distance(LatLng a, LatLng b) {
-    return Geolocator.distanceBetween(a.latitude, a.longitude, b.latitude, b.longitude);
+    return Geolocator.distanceBetween(
+      a.latitude,
+      a.longitude,
+      b.latitude,
+      b.longitude,
+    );
+  }
+
+  bool _asBool(dynamic value) {
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    if (value is String) {
+      final normalized = value.trim().toLowerCase();
+      return normalized == 'true' ||
+          normalized == 'yes' ||
+          normalized == '1' ||
+          normalized == 'enabled';
+    }
+    return false;
   }
 
   @override
@@ -170,76 +234,53 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
   }
 
   Widget _buildMapBackground() {
+    final center =
+        _myLocation ??
+        _firstParkingPosition() ??
+        const LatLng(12.9716, 77.5946);
+    final markers = _suggestions
+        .map((parking) {
+          final id = parking['id']?.toString() ?? parking['name']?.toString();
+          if (id == null || id.isEmpty) return null;
+          return MapService.createSmartMarker(
+            id: id,
+            data: parking,
+            onTap: () => _openLotDetail(parking),
+          );
+        })
+        .whereType<Marker>()
+        .toSet();
+    debugPrint("Markers count: ${markers.length}");
+
     return Positioned.fill(
-      child: FlutterMap(
-        options: const MapOptions(
-          initialCenter: LatLng(12.9716, 77.5946), // Bangalore coordinates
-          initialZoom: 14.0,
-          interactionOptions: InteractionOptions(
-            flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
-          ),
-        ),
-        children: [
-          TileLayer(
-            urlTemplate: MapConfig.tileUrl,
-            userAgentPackageName: MapConfig.userAgent,
-            maxZoom: MapConfig.maxZoom.toInt(),
-          ),
-          MarkerLayer(
-            markers: [
-              Marker(
-                point: const LatLng(12.9716, 77.5946),
-                width: 48,
-                height: 48,
-                child: _buildUserLocationDot(),
-              ),
-            ],
-          ),
-        ],
+      child: GoogleMap(
+        initialCameraPosition: CameraPosition(target: center, zoom: 14),
+        myLocationEnabled: _myLocation != null,
+        myLocationButtonEnabled: true,
+        zoomControlsEnabled: false,
+        markers: markers,
+        onMapCreated: (controller) {
+          _mapController = controller;
+        },
       ),
     );
   }
 
-  Widget _buildUserLocationDot() {
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: _primary.withOpacity(0.2),
-            shape: BoxShape.circle,
-          ),
-        ),
-        Container(
-          width: 24,
-          height: 24,
-          decoration: BoxDecoration(
-            color: _white,
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.15),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              )
-            ],
-          ),
-          child: Center(
-            child: Container(
-              width: 16,
-              height: 16,
-              decoration: BoxDecoration(
-                color: _primary,
-                shape: BoxShape.circle,
-                border: Border.all(color: _white, width: 2),
-              ),
-            ),
-          ),
-        ),
-      ],
+  void _openLotDetail(Map<String, dynamic> parking) {
+    HapticFeedback.mediumImpact();
+    openLotDetail(
+      context,
+      parking['id']?.toString() ?? '',
+      Map<String, dynamic>.from(parking),
     );
+  }
+
+  LatLng? _firstParkingPosition() {
+    for (final parking in _suggestions) {
+      final position = MapService.getLatLng(parking);
+      if (position != null) return position;
+    }
+    return null;
   }
 
   Widget _buildTopHeader() {
@@ -271,15 +312,15 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
         child: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: _white.withOpacity(0.75),
+            color: _white.withValues(alpha: 0.75),
             borderRadius: BorderRadius.circular(99),
-            border: Border.all(color: _white.withOpacity(0.4)),
+            border: Border.all(color: _white.withValues(alpha: 0.4)),
             boxShadow: [
               BoxShadow(
-                color: _onSurface.withOpacity(0.05),
+                color: _onSurface.withValues(alpha: 0.05),
                 blurRadius: 20,
                 offset: const Offset(0, 10),
-              )
+              ),
             ],
           ),
           child: Row(
@@ -292,21 +333,25 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
               Expanded(
                 child: TextField(
                   controller: _controller,
-                  style: GoogleFonts.manrope(
+                  style: GoogleFonts.poppins(
                     fontWeight: FontWeight.w500,
                     color: _onSurface,
                     fontSize: 16,
                   ),
                   decoration: InputDecoration(
                     hintText: "Search parking or destination",
-                    hintStyle: GoogleFonts.manrope(color: _onSurfaceVariant),
+                    hintStyle: GoogleFonts.poppins(color: _onSurfaceVariant),
                     border: InputBorder.none,
                   ),
                 ),
               ),
               if (_controller.text.isNotEmpty)
                 IconButton(
-                  icon: const Icon(Icons.close, size: 20, color: _onSurfaceVariant),
+                  icon: const Icon(
+                    Icons.close,
+                    size: 20,
+                    color: _onSurfaceVariant,
+                  ),
                   onPressed: () {
                     _controller.clear();
                     _applyFilters();
@@ -345,26 +390,37 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
             child: ChoiceChip(
               label: Text(option.label),
               avatar: option.icon != null
-                  ? Icon(option.icon, size: 18, color: isSelected ? _white : _onSurface)
+                  ? Icon(
+                      option.icon,
+                      size: 18,
+                      color: isSelected ? _white : _onSurface,
+                    )
                   : null,
               selected: isSelected,
               onSelected: (selected) {
                 if (selected) {
                   HapticFeedback.selectionClick();
-                  setState(() => _selectedSortIndex = index);
-                  _applyFilters();
+                  setState(() {
+                    _selectedSortIndex = index;
+                    _loading = true;
+                  });
+                  _loadData();
                 }
               },
-              backgroundColor: _white.withOpacity(0.75),
+              backgroundColor: _white.withValues(alpha: 0.75),
               selectedColor: _primaryContainer,
-              labelStyle: GoogleFonts.manrope(
+              labelStyle: GoogleFonts.poppins(
                 color: isSelected ? _white : _onSurface,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
                 fontSize: 14,
               ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(99),
-                side: BorderSide(color: isSelected ? Colors.transparent : _white.withOpacity(0.5)),
+                side: BorderSide(
+                  color: isSelected
+                      ? Colors.transparent
+                      : _white.withValues(alpha: 0.5),
+                ),
               ),
               showCheckmark: false,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -391,16 +447,6 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
             mini: true,
             child: const Icon(Icons.layers, color: _onSurface, size: 20),
           ),
-          const SizedBox(height: 12),
-          FloatingActionButton(
-            heroTag: 'btn2',
-            onPressed: () {},
-            backgroundColor: _white,
-            elevation: 8.0,
-            shape: const CircleBorder(),
-            mini: true,
-            child: const Icon(Icons.my_location, color: _primary, size: 20),
-          ),
         ],
       ),
     );
@@ -418,10 +464,10 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
             borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1),
+                color: Colors.black.withValues(alpha: 0.1),
                 blurRadius: 20,
                 offset: const Offset(0, -10),
-              )
+              ),
             ],
           ),
           child: Column(
@@ -449,7 +495,7 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
                       children: [
                         Text(
                           "Nearby Spaces",
-                          style: GoogleFonts.plusJakartaSans(
+                          style: GoogleFonts.poppins(
                             fontSize: 24,
                             fontWeight: FontWeight.w800,
                             color: _onSurface,
@@ -460,7 +506,7 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
                           _loading
                               ? "Finding parking spots..."
                               : "${_suggestions.length} parking locations found",
-                          style: GoogleFonts.manrope(
+                          style: GoogleFonts.poppins(
                             color: _onSurfaceVariant,
                             fontWeight: FontWeight.w500,
                           ),
@@ -472,7 +518,7 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
                       icon: const Icon(Icons.expand_more, size: 20),
                       label: Text(
                         "Sort by",
-                        style: GoogleFonts.manrope(
+                        style: GoogleFonts.poppins(
                           color: _primary,
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
@@ -487,22 +533,22 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
                 child: _loading
                     ? _buildShimmer()
                     : _suggestions.isEmpty
-                        ? _buildEmptyState()
-                        : ListView.separated(
-                            controller: scrollController,
-                            padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
-                            physics: const BouncingScrollPhysics(),
-                            itemCount: _suggestions.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 16),
-                            itemBuilder: (context, index) {
-                              final p = _suggestions[index];
-                              if (index == 0) {
-                                return _buildParkingCardSelected(p);
-                              } else {
-                                return _buildParkingCardSecondary(p);
-                              }
-                            },
-                          ),
+                    ? _buildEmptyState()
+                    : ListView.separated(
+                        controller: scrollController,
+                        padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
+                        physics: const BouncingScrollPhysics(),
+                        itemCount: _suggestions.length,
+                        separatorBuilder: (_, _) => const SizedBox(height: 16),
+                        itemBuilder: (context, index) {
+                          final p = _suggestions[index];
+                          if (index == 0) {
+                            return _buildParkingCardSelected(p);
+                          } else {
+                            return _buildParkingCardSecondary(p);
+                          }
+                        },
+                      ),
               ),
             ],
           ),
@@ -516,21 +562,23 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
     final slots = p['available_slots'] as int;
     final String? imageUrl = p['imageUrl'] ?? p['image'];
     final rating = (p['rating'] as num?)?.toDouble() ?? 4.5;
-    
+
     double? dist;
     if (_myLocation != null) {
       dist = _distance(_myLocation!, LatLng(p['latitude'], p['longitude']));
     }
     String distStr = dist != null
-        ? (dist < 1000 ? '${dist.toStringAsFixed(0)} m' : '${(dist / 1000).toStringAsFixed(1)} km')
+        ? (dist < 1000
+              ? '${dist.toStringAsFixed(0)} m'
+              : '${(dist / 1000).toStringAsFixed(1)} km')
         : '';
 
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: _primary.withOpacity(0.05),
+        color: _primary.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: _primary.withOpacity(0.1)),
+        border: Border.all(color: _primary.withValues(alpha: 0.1)),
       ),
       child: Stack(
         children: [
@@ -542,11 +590,13 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               decoration: const BoxDecoration(
                 color: _primary,
-                borderRadius: BorderRadius.only(bottomLeft: Radius.circular(16)),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(16),
+                ),
               ),
               child: Text(
                 "SELECTED",
-                style: GoogleFonts.plusJakartaSans(
+                style: GoogleFonts.poppins(
                   fontSize: 10,
                   fontWeight: FontWeight.w800,
                   color: _white,
@@ -569,7 +619,14 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
                         height: 64,
                         color: _surfaceContainerLow,
                         child: imageUrl != null && imageUrl.isNotEmpty
-                            ? Image.network(imageUrl, fit: BoxFit.cover, errorBuilder: (_,__,___) => const Icon(Icons.local_parking, color: _primary))
+                            ? Image.network(
+                                imageUrl,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, _, _) => const Icon(
+                                  Icons.local_parking,
+                                  color: _primary,
+                                ),
+                              )
                             : const Icon(Icons.local_parking, color: _primary),
                       ),
                     ),
@@ -580,7 +637,7 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
                         children: [
                           Text(
                             p['name'],
-                            style: GoogleFonts.plusJakartaSans(
+                            style: GoogleFonts.poppins(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                               color: _onSurface,
@@ -595,7 +652,7 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
                               const SizedBox(width: 4),
                               Text(
                                 rating.toStringAsFixed(1),
-                                style: GoogleFonts.manrope(
+                                style: GoogleFonts.poppins(
                                   color: _primary,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -604,9 +661,11 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
                                 const SizedBox(width: 8),
                                 Text(
                                   "• $distStr",
-                                  style: GoogleFonts.manrope(color: _onSurfaceVariant),
+                                  style: GoogleFonts.poppins(
+                                    color: _onSurfaceVariant,
+                                  ),
                                 ),
-                              ]
+                              ],
                             ],
                           ),
                         ],
@@ -617,7 +676,7 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
                       children: [
                         Text(
                           "₹$price/hr",
-                          style: GoogleFonts.plusJakartaSans(
+                          style: GoogleFonts.poppins(
                             fontSize: 20,
                             fontWeight: FontWeight.w800,
                             color: _primary,
@@ -626,7 +685,7 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
                         const SizedBox(height: 4),
                         Text(
                           "$slots slots left",
-                          style: GoogleFonts.manrope(
+                          style: GoogleFonts.poppins(
                             color: slots > 5 ? _onSurfaceVariant : _error,
                             fontWeight: FontWeight.bold,
                             fontSize: 11,
@@ -642,13 +701,7 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () {
-                          HapticFeedback.mediumImpact();
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => BookingScreen(parkingId: p['id'], parking: p),
-                            ),
-                          );
+                          _openLotDetail(p);
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _primary,
@@ -658,11 +711,13 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
                             borderRadius: BorderRadius.circular(99),
                           ),
                           elevation: 4,
-                          shadowColor: _primary.withOpacity(0.3),
+                          shadowColor: _primary.withValues(alpha: 0.3),
                         ),
                         child: Text(
                           "View Details",
-                          style: GoogleFonts.manrope(fontWeight: FontWeight.bold),
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
@@ -691,24 +746,20 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
     final slots = p['available_slots'] as int;
     final String? imageUrl = p['imageUrl'] ?? p['image'];
     final rating = (p['rating'] as num?)?.toDouble() ?? 4.5;
-    
+
     double? dist;
     if (_myLocation != null) {
       dist = _distance(_myLocation!, LatLng(p['latitude'], p['longitude']));
     }
     String distStr = dist != null
-        ? (dist < 1000 ? '${dist.toStringAsFixed(0)} m' : '${(dist / 1000).toStringAsFixed(1)} km')
+        ? (dist < 1000
+              ? '${dist.toStringAsFixed(0)} m'
+              : '${(dist / 1000).toStringAsFixed(1)} km')
         : '';
 
     return InkWell(
       onTap: () {
-        HapticFeedback.mediumImpact();
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => BookingScreen(parkingId: p['id'], parking: p),
-          ),
-        );
+        _openLotDetail(p);
       },
       borderRadius: BorderRadius.circular(24),
       child: Padding(
@@ -722,7 +773,14 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
                 height: 56,
                 color: _surfaceContainerLow,
                 child: imageUrl != null && imageUrl.isNotEmpty
-                    ? Image.network(imageUrl, fit: BoxFit.cover, errorBuilder: (_,__,___) => const Icon(Icons.local_parking, color: _onSurfaceVariant))
+                    ? Image.network(
+                        imageUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => const Icon(
+                          Icons.local_parking,
+                          color: _onSurfaceVariant,
+                        ),
+                      )
                     : const Icon(Icons.local_parking, color: _onSurfaceVariant),
               ),
             ),
@@ -733,7 +791,7 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
                 children: [
                   Text(
                     p['name'],
-                    style: GoogleFonts.plusJakartaSans(
+                    style: GoogleFonts.poppins(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: _onSurface,
@@ -744,11 +802,15 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(Icons.star, color: _onSurfaceVariant, size: 14),
+                      const Icon(
+                        Icons.star,
+                        color: _onSurfaceVariant,
+                        size: 14,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         rating.toStringAsFixed(1),
-                        style: GoogleFonts.manrope(
+                        style: GoogleFonts.poppins(
                           color: _onSurfaceVariant,
                           fontWeight: FontWeight.w600,
                           fontSize: 12,
@@ -758,12 +820,12 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
                         const SizedBox(width: 8),
                         Text(
                           "• $distStr",
-                          style: GoogleFonts.manrope(
+                          style: GoogleFonts.poppins(
                             color: _onSurfaceVariant,
                             fontSize: 12,
                           ),
                         ),
-                      ]
+                      ],
                     ],
                   ),
                 ],
@@ -774,7 +836,7 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
               children: [
                 Text(
                   "₹$price/hr",
-                  style: GoogleFonts.plusJakartaSans(
+                  style: GoogleFonts.poppins(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
                     color: _onSurface,
@@ -783,7 +845,7 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
                 const SizedBox(height: 4),
                 Text(
                   "$slots slots left",
-                  style: GoogleFonts.manrope(
+                  style: GoogleFonts.poppins(
                     color: slots > 5 ? _primary : _error,
                     fontWeight: FontWeight.bold,
                     fontSize: 10,
@@ -801,7 +863,7 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
     return ListView.builder(
       itemCount: 4,
       padding: const EdgeInsets.symmetric(horizontal: 24),
-      itemBuilder: (_, __) => Shimmer.fromColors(
+      itemBuilder: (_, _) => Shimmer.fromColors(
         baseColor: Colors.grey.shade200,
         highlightColor: Colors.grey.shade100,
         child: Container(
@@ -824,19 +886,19 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
           Container(
             padding: const EdgeInsets.all(28),
             decoration: BoxDecoration(
-              color: _primary.withOpacity(0.05),
+              color: _primary.withValues(alpha: 0.05),
               shape: BoxShape.circle,
             ),
             child: Icon(
               Icons.search_off_rounded,
               size: 52,
-              color: _primary.withOpacity(0.4),
+              color: _primary.withValues(alpha: 0.4),
             ),
           ),
           const SizedBox(height: 20),
           Text(
             'No parking found',
-            style: GoogleFonts.plusJakartaSans(
+            style: GoogleFonts.poppins(
               fontSize: 20,
               fontWeight: FontWeight.w700,
               color: _onSurface,
@@ -845,10 +907,7 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
           const SizedBox(height: 8),
           Text(
             'Try a different search or adjust filters',
-            style: GoogleFonts.manrope(
-              fontSize: 14,
-              color: _onSurfaceVariant,
-            ),
+            style: GoogleFonts.poppins(fontSize: 14, color: _onSurfaceVariant),
           ),
         ],
       ),

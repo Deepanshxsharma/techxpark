@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // Add intl: ^0.18.0 to pubspec.yaml
+import 'package:techxpark/theme/app_colors.dart';
 
 class AdminHomeScreen extends StatelessWidget {
   const AdminHomeScreen({super.key});
@@ -8,7 +9,6 @@ class AdminHomeScreen extends StatelessWidget {
   // Theme Colors
   final Color _bgOffWhite = const Color(0xFFF8FAFC);
   final Color _darkGrey = const Color(0xFF1E293B);
-  final Color _techBlue = const Color(0xFF2563EB);
 
   DateTime get _todayStart {
     final now = DateTime.now();
@@ -20,18 +20,21 @@ class AdminHomeScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: _bgOffWhite,
       appBar: AppBar(
-        title: Text("Admin Console", style: TextStyle(color: _darkGrey, fontWeight: FontWeight.w900)),
+        title: Text(
+          "Admin Console",
+          style: TextStyle(color: _darkGrey, fontWeight: FontWeight.w900),
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: false,
         actions: [
           IconButton(
-            onPressed: () {}, 
+            onPressed: () {},
             icon: CircleAvatar(
-              backgroundColor: Colors.white, 
-              child: Icon(Icons.person, color: _darkGrey)
-            )
-          )
+              backgroundColor: Colors.white,
+              child: Icon(Icons.person, color: _darkGrey),
+            ),
+          ),
         ],
       ),
 
@@ -40,9 +43,16 @@ class AdminHomeScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text("Overview", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey)),
+            const Text(
+              "Overview",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey,
+              ),
+            ),
             const SizedBox(height: 15),
-            
+
             // ---------------- OVERVIEW GRID ----------------
             GridView.count(
               crossAxisCount: 2,
@@ -60,13 +70,20 @@ class AdminHomeScreen extends StatelessWidget {
             ),
 
             const SizedBox(height: 30),
-            
+
             // ---------------- RECENT ACTIVITY ----------------
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text("Recent Bookings", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _darkGrey)),
-                TextButton(onPressed: (){}, child: const Text("View All"))
+                Text(
+                  "Recent Bookings",
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: _darkGrey,
+                  ),
+                ),
+                TextButton(onPressed: () {}, child: const Text("View All")),
               ],
             ),
             const SizedBox(height: 10),
@@ -82,19 +99,24 @@ class AdminHomeScreen extends StatelessWidget {
   // ---------------------------------------------------------------------------
   Widget _totalParkingsCard() {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance.collection("parking_locations").snapshots(),
+      stream: FirebaseFirestore.instance
+          .collection("parking_locations")
+          .snapshots(),
       builder: (_, snap) => _statCard(
         title: "Total Locations",
         value: (snap.data?.docs.length ?? 0).toString(),
         icon: Icons.map_rounded,
-        color: Colors.blue,
+        color: AppColors.primary,
       ),
     );
   }
 
   Widget _activeParkingsCard() {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance.collection("parking_locations").where("status", isEqualTo: "active").snapshots(),
+      stream: FirebaseFirestore.instance
+          .collection("parking_locations")
+          .where("status", isEqualTo: "active")
+          .snapshots(),
       builder: (_, snap) => _statCard(
         title: "Active Spots",
         value: (snap.data?.docs.length ?? 0).toString(),
@@ -129,7 +151,10 @@ class AdminHomeScreen extends StatelessWidget {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection("bookings")
-          .where("created_at", isGreaterThanOrEqualTo: Timestamp.fromDate(_todayStart))
+          .where(
+            "created_at",
+            isGreaterThanOrEqualTo: Timestamp.fromDate(_todayStart),
+          )
           .snapshots(),
       builder: (_, snap) {
         double total = 0;
@@ -140,7 +165,7 @@ class AdminHomeScreen extends StatelessWidget {
           title: "Today's Revenue",
           value: "₹${total.toStringAsFixed(0)}",
           icon: Icons.currency_rupee_rounded,
-          color: Colors.purple,
+          color: AppColors.primary,
         );
       },
     );
@@ -157,8 +182,9 @@ class AdminHomeScreen extends StatelessWidget {
           .limit(5)
           .snapshots(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-        
+        if (!snapshot.hasData)
+          return const Center(child: CircularProgressIndicator());
+
         final docs = snapshot.data!.docs;
         if (docs.isEmpty) return const Text("No recent activity");
 
@@ -166,38 +192,72 @@ class AdminHomeScreen extends StatelessWidget {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: docs.length,
-          separatorBuilder: (_,__) => const SizedBox(height: 10),
+          separatorBuilder: (_, __) => const SizedBox(height: 10),
           itemBuilder: (context, index) {
             final data = docs[index].data() as Map<String, dynamic>;
-            final vehicle = data['vehicle'] as Map<String, dynamic>? ?? {'number': 'Unknown'};
-            final date = (data['created_at'] as Timestamp?)?.toDate() ?? DateTime.now();
+            final vehicle =
+                data['vehicle'] as Map<String, dynamic>? ??
+                {'number': 'Unknown'};
+            final date =
+                (data['created_at'] as Timestamp?)?.toDate() ?? DateTime.now();
 
             return Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10)],
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.03),
+                    blurRadius: 10,
+                  ),
+                ],
               ),
               child: Row(
                 children: [
                   Container(
                     padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(color: Colors.blue.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
-                    child: const Icon(Icons.receipt_long, color: Colors.blue),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.receipt_long,
+                      color: AppColors.primary,
+                    ),
                   ),
                   const SizedBox(width: 15),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(data['parkingName'] ?? data['parking_name'] ?? "Unknown Parking", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                        Text(
+                          data['parkingName'] ??
+                              data['parking_name'] ??
+                              "Unknown Parking",
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
+                        ),
                         const SizedBox(height: 4),
-                        Text("${vehicle['vehicleNumber'] ?? vehicle['number']} • ${DateFormat('hh:mm a').format(date)}", style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+                        Text(
+                          "${vehicle['vehicleNumber'] ?? vehicle['number']} • ${DateFormat('hh:mm a').format(date)}",
+                          style: TextStyle(
+                            color: Colors.grey.shade500,
+                            fontSize: 12,
+                          ),
+                        ),
                       ],
                     ),
                   ),
-                  Text("₹${data['total_price']}", style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                  Text(
+                    "₹${data['total_price']}",
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 16,
+                    ),
+                  ),
                 ],
               ),
             );
@@ -221,7 +281,13 @@ class AdminHomeScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: color.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -233,16 +299,40 @@ class AdminHomeScreen extends StatelessWidget {
               Icon(icon, color: color, size: 28),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
-                child: Text("+2.4%", style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold)), // Dummy trend
-              )
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  "+2.4%",
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ), // Dummy trend
+              ),
             ],
           ),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: _darkGrey)),
-              Text(title, style: TextStyle(color: Colors.grey.shade500, fontWeight: FontWeight.w600, fontSize: 12)),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                  color: _darkGrey,
+                ),
+              ),
+              Text(
+                title,
+                style: TextStyle(
+                  color: Colors.grey.shade500,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                ),
+              ),
             ],
           ),
         ],
@@ -253,8 +343,17 @@ class AdminHomeScreen extends StatelessWidget {
   Widget _errorCard() {
     return Container(
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(20)),
-      child: const Center(child: Text("Index Missing\nCheck Console", textAlign: TextAlign.center, style: TextStyle(color: Colors.red, fontSize: 10))),
+      decoration: BoxDecoration(
+        color: Colors.red.shade50,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: const Center(
+        child: Text(
+          "Index Missing\nCheck Console",
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.red, fontSize: 10),
+        ),
+      ),
     );
   }
 }

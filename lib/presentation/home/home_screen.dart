@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -9,16 +8,17 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 
-import 'package:latlong2/latlong.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../services/booking_status_helper.dart';
+import '../../services/parking_filter_service.dart';
 import '../../theme/app_colors.dart';
 
 import '../booking/my_bookings_screen.dart';
 import '../booking/parking_ticket_screen.dart';
 import '../booking/parking_timer_screen.dart';
 import '../notifications/notifications_screen.dart';
-import '../parking_details/parking_details_screen.dart';
+import '../parking_details/lot_detail_navigation.dart';
 import '../search/search_parking_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -41,7 +41,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   int _selectedFilterIndex = 0;
   String _currentLocationText = 'Fetching location...';
-  bool _isLocating = true;
   LatLng? _currentLocation;
 
   @override
@@ -53,7 +52,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _fetchCurrentLocation() async {
     if (!mounted) return;
     setState(() {
-      _isLocating = true;
       _currentLocationText = 'Locating...';
     });
 
@@ -64,7 +62,6 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() {
           _currentLocation = null;
           _currentLocationText = 'GPS Disabled';
-          _isLocating = false;
         });
         return;
       }
@@ -79,7 +76,6 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() {
           _currentLocation = null;
           _currentLocationText = 'Permission Denied';
-          _isLocating = false;
         });
         return;
       }
@@ -89,7 +85,6 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() {
           _currentLocation = null;
           _currentLocationText = 'Location Blocked';
-          _isLocating = false;
         });
         return;
       }
@@ -102,7 +97,6 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _currentLocation = LatLng(position.latitude, position.longitude);
         _currentLocationText = 'Locating...';
-        _isLocating = false;
       });
 
       // Reverse geocode to get a human-readable place name
@@ -139,7 +133,6 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _currentLocation = null;
         _currentLocationText = 'Location Unavailable';
-        _isLocating = false;
       });
     }
   }
@@ -198,13 +191,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _openParkingDetails(_HomeParkingLot parking, String collectionName) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => ParkingDetailsScreen(
-          data: parking.toRouteMap(_currentLocation),
-          collectionName: collectionName,
-        ),
-      ),
+    openLotDetail(
+      context,
+      parking.id,
+      parking.toRouteMap(_currentLocation),
+      collectionName: collectionName,
     );
   }
 
@@ -226,18 +217,21 @@ class _HomeScreenState extends State<HomeScreen> {
             SliverToBoxAdapter(
               child: Stack(
                 clipBehavior: Clip.none,
-                children: <Widget>[
-                  _buildCinematicHeader(user.uid),
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 100),
+                    child: _buildCinematicHeader(user.uid),
+                  ),
                   Positioned(
                     left: 24,
                     right: 24,
-                    bottom: -28,
+                    bottom: 0,
                     child: _buildFloatingSearchBar(),
                   ),
                 ],
               ),
             ),
-            const SliverToBoxAdapter(child: SizedBox(height: 48)),
+            const SliverToBoxAdapter(child: SizedBox(height: 16)),
             SliverToBoxAdapter(child: _buildFilters()),
             const SliverToBoxAdapter(child: SizedBox(height: 32)),
             SliverToBoxAdapter(
@@ -263,7 +257,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Text(
                   'Quick Actions',
-                  style: GoogleFonts.plusJakartaSans(
+                  style: GoogleFonts.poppins(
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
                     color: const Color(0xFF181C20), // on-background
@@ -281,7 +275,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: _QuickActionCard(
                         icon: Icons.electric_car_rounded,
                         iconColor: AppColors.primary,
-                        bgColor: const Color(0xFFF1F4F9), // surface-container-low
+                        bgColor: const Color(
+                          0xFFF1F4F9,
+                        ), // surface-container-low
                         title: 'Find EV',
                         subtitle: '12 nearby stations',
                         onTap: _openSearch,
@@ -291,8 +287,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     Expanded(
                       child: _QuickActionCard(
                         icon: Icons.history_rounded,
-                        iconColor: const Color(0xFF344DD2), // secondary
-                        bgColor: const Color(0xFFF1F4F9), // surface-container-low
+                        iconColor: AppColors.primary, // secondary
+                        bgColor: const Color(
+                          0xFFF1F4F9,
+                        ), // surface-container-low
                         title: 'Recents',
                         subtitle: '3 spots visited',
                         onTap: _openBookings,
@@ -314,15 +312,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(32, topPadding + 32, 32, 64),
+      padding: EdgeInsets.fromLTRB(32, topPadding + 32, 32, 80),
       decoration: const BoxDecoration(
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(48)),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color(0xFF0029B9), // primary
-            Color(0xFF2845D6), // primary-container
+            AppColors.primary, // primary
+            AppColors.primaryLight, // primary-container
           ],
         ),
         boxShadow: [
@@ -347,19 +345,28 @@ class _HomeScreenState extends State<HomeScreen> {
                   _fetchCurrentLocation();
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.1),
+                    ),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.location_on_rounded, color: Colors.white, size: 16),
+                      const Icon(
+                        Icons.location_on_rounded,
+                        color: Colors.white,
+                        size: 16,
+                      ),
                       const SizedBox(width: 8),
                       Text(
                         _currentLocationText,
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.poppins(
                           color: Colors.white,
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
@@ -367,7 +374,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      const Icon(Icons.refresh_rounded, color: Colors.white, size: 16),
+                      const Icon(
+                        Icons.refresh_rounded,
+                        color: Colors.white,
+                        size: 16,
+                      ),
                     ],
                   ),
                 ),
@@ -380,7 +391,7 @@ class _HomeScreenState extends State<HomeScreen> {
           // Hero Text
           Text(
             'TechXPark',
-            style: GoogleFonts.inter(
+            style: GoogleFonts.poppins(
               color: Colors.white.withValues(alpha: 0.8),
               fontSize: 18,
               fontWeight: FontWeight.w500,
@@ -390,7 +401,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 4),
           RichText(
             text: TextSpan(
-              style: GoogleFonts.plusJakartaSans(
+              style: GoogleFonts.poppins(
                 color: Colors.white,
                 fontSize: 36,
                 fontWeight: FontWeight.w800,
@@ -398,7 +409,10 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               children: const [
                 TextSpan(text: 'Find Parking,\n'),
-                TextSpan(text: 'Park Smarter.', style: TextStyle(color: Color(0xFFBAC3FF))),
+                TextSpan(
+                  text: 'Park Smarter.',
+                  style: TextStyle(color: Color(0xFFBAC3FF)),
+                ),
               ],
             ),
           ),
@@ -418,7 +432,7 @@ class _HomeScreenState extends State<HomeScreen> {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF0830C6).withValues(alpha: 0.08),
+              color: AppColors.primary.withValues(alpha: 0.08),
               blurRadius: 40,
               offset: const Offset(0, 20),
             ),
@@ -435,7 +449,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Expanded(
               child: Text(
                 'Search destinations or lots...',
-                style: GoogleFonts.inter(
+                style: GoogleFonts.poppins(
                   fontWeight: FontWeight.w500,
                   color: const Color(0xFF757686),
                   fontSize: 14,
@@ -472,7 +486,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   vertical: 10,
                 ),
                 decoration: BoxDecoration(
-                  color: selected ? AppColors.primary : const Color(0xFFE6E8ED), // surface-container-high
+                  color: selected
+                      ? AppColors.primary
+                      : const Color(0xFFE6E8ED), // surface-container-high
                   borderRadius: BorderRadius.circular(999),
                   boxShadow: selected
                       ? [
@@ -480,13 +496,13 @@ class _HomeScreenState extends State<HomeScreen> {
                             color: AppColors.primary.withValues(alpha: 0.2),
                             blurRadius: 15,
                             offset: const Offset(0, 5),
-                          )
+                          ),
                         ]
                       : [],
                 ),
                 child: Text(
                   _filters[index],
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.poppins(
                     color: selected
                         ? Colors.white
                         : const Color(0xFF444655), // on-surface-variant
@@ -535,7 +551,9 @@ class _ActiveBookingSection extends StatelessWidget {
                 title: 'Active Parking Ticket',
                 subtitle: booking == null
                     ? 'Your live session will appear here'
-                    : 'Synced with your current booking',
+                    : booking.start.isAfter(DateTime.now())
+                    ? 'Upcoming session starts soon'
+                    : 'Currently tracked session in progress',
                 actionLabel: booking == null ? 'Find Parking' : 'Details',
                 onActionTap: booking == null
                     ? onFindParking
@@ -654,10 +672,14 @@ class _NearbyParkingSectionState extends State<_NearbyParkingSection> {
                 const _NearbyParkingLoadingCard()
               else
                 StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                  stream: FirebaseFirestore.instance
-                      .collection(collectionName)
-                      .snapshots(),
+                  stream: ParkingFilterService.streamParking(
+                    widget.selectedFilter,
+                    collectionName: collectionName,
+                  ),
                   builder: (context, snapshot) {
+                    debugPrint(
+                      'TOTAL DOCS: ${snapshot.data?.docs.length ?? 0}',
+                    );
                     if (snapshot.hasError) {
                       return const _InfoStateCard(
                         icon: Icons.error_outline_rounded,
@@ -779,7 +801,7 @@ class _SectionHeading extends StatelessWidget {
             children: <Widget>[
               Text(
                 title,
-                style: GoogleFonts.plusJakartaSans(
+                style: GoogleFonts.poppins(
                   fontSize: 24,
                   fontWeight: FontWeight.w700,
                   color: const Color(0xFF181C20), // on-background
@@ -789,7 +811,7 @@ class _SectionHeading extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 subtitle,
-                style: GoogleFonts.inter(
+                style: GoogleFonts.poppins(
                   color: const Color(0xFF444655), // on-surface-variant
                   fontSize: 14,
                 ),
@@ -802,7 +824,7 @@ class _SectionHeading extends StatelessWidget {
           onTap: onActionTap,
           child: Text(
             actionLabel.toUpperCase(),
-            style: GoogleFonts.inter(
+            style: GoogleFonts.poppins(
               color: AppColors.primary,
               fontWeight: FontWeight.w700,
               fontSize: 14,
@@ -827,7 +849,7 @@ class _ActiveTicketCard extends StatelessWidget {
     required this.onPrimaryTap,
   });
 
-  static const String _fallbackImage = 'assets/images/parking_placeholder.jpg';
+  static const String _fallbackImage = 'assets/images/parking_placeholder.png';
 
   @override
   Widget build(BuildContext context) {
@@ -879,6 +901,7 @@ class _ActiveTicketCard extends StatelessWidget {
                       _SmartParkingImage(
                         imagePath: booking.imagePath,
                         fallbackAsset: _fallbackImage,
+                        parkingId: booking.parkingId,
                       ),
                       DecoratedBox(
                         decoration: BoxDecoration(
@@ -896,46 +919,8 @@ class _ActiveTicketCard extends StatelessWidget {
                       Positioned(
                         top: 16,
                         left: 16,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFBA1A1A), // error
-                            borderRadius: BorderRadius.circular(999),
-                            boxShadow: <BoxShadow>[
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.15),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: const Row(
-                            children: <Widget>[
-                              SizedBox(
-                                width: 6,
-                                height: 6,
-                                child: DecoratedBox(
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                              ),
-                              SizedBox(width: 6),
-                              Text(
-                                'LIVE BOOKING',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 1.0,
-                                ),
-                              ),
-                            ],
-                          ),
+                        child: _BookingBadge(
+                          isUpcoming: booking.start.isAfter(DateTime.now()),
                         ),
                       ),
                       Positioned(
@@ -949,7 +934,7 @@ class _ActiveTicketCard extends StatelessWidget {
                               booking.parkingName,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.inter(
+                              style: GoogleFonts.poppins(
                                 color: Colors.white,
                                 fontSize: 20,
                                 fontWeight: FontWeight.w700,
@@ -968,7 +953,7 @@ class _ActiveTicketCard extends StatelessWidget {
                                 Expanded(
                                   child: Text(
                                     'Floor ${booking.floorDisplay} • Slot ${booking.slotNumber}',
-                                    style: GoogleFonts.inter(
+                                    style: GoogleFonts.poppins(
                                       color: Colors.white,
                                       fontSize: 12,
                                       fontWeight: FontWeight.w500,
@@ -995,24 +980,37 @@ class _ActiveTicketCard extends StatelessWidget {
                         width: double.infinity,
                         child: ElevatedButton.icon(
                           onPressed: onPrimaryTap,
-                          icon: const Icon(Icons.add_circle_outline_rounded, size: 20),
-                          label: const Text('Extend Duration'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(vertical: 20),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            textStyle: GoogleFonts.inter(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 16,
-                            ),
-                          ).copyWith(
-                            shadowColor: WidgetStateProperty.all(AppColors.primary.withValues(alpha: 0.2)),
-                            elevation: WidgetStateProperty.resolveWith((states) => states.contains(WidgetState.pressed) ? 2 : 10),
+                          icon: const Icon(
+                            Icons.add_circle_outline_rounded,
+                            size: 20,
                           ),
+                          label: const Text('Extend Duration'),
+                          style:
+                              ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 20,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                textStyle: GoogleFonts.poppins(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 16,
+                                ),
+                              ).copyWith(
+                                shadowColor: WidgetStateProperty.all(
+                                  AppColors.primary.withValues(alpha: 0.2),
+                                ),
+                                elevation: WidgetStateProperty.resolveWith(
+                                  (states) =>
+                                      states.contains(WidgetState.pressed)
+                                      ? 2
+                                      : 10,
+                                ),
+                              ),
                         ),
                       ),
                     ],
@@ -1060,7 +1058,7 @@ class _EmptyTicketCard extends StatelessWidget {
             child: const Icon(
               Icons.local_parking_rounded,
               size: 40,
-              color: Color(0xFF3B82F6),
+              color: AppColors.primaryLight,
             ),
           ),
           const SizedBox(height: 20),
@@ -1084,7 +1082,7 @@ class _EmptyTicketCard extends StatelessWidget {
             child: ElevatedButton(
               onPressed: onPrimaryTap,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1E3A8A),
+                backgroundColor: AppColors.primaryDark,
                 foregroundColor: Colors.white,
                 elevation: 0,
                 padding: const EdgeInsets.symmetric(vertical: 18),
@@ -1127,7 +1125,58 @@ class _LoadingTicketCard extends StatelessWidget {
         ],
       ),
       child: const Center(
-        child: CircularProgressIndicator(color: Color(0xFF1E3A8A)),
+        child: CircularProgressIndicator(color: AppColors.primaryDark),
+      ),
+    );
+  }
+}
+
+class _BookingBadge extends StatelessWidget {
+  final bool isUpcoming;
+
+  const _BookingBadge({required this.isUpcoming});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: isUpcoming
+            ? const Color(0xFFF59E0B) // amber for upcoming
+            : const Color(0xFFBA1A1A), // red for live
+        borderRadius: BorderRadius.circular(999),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.15),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          const SizedBox(
+            width: 6,
+            height: 6,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            isUpcoming ? 'UPCOMING BOOKING' : 'LIVE BOOKING',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1.0,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1164,16 +1213,19 @@ class _CountdownPanelState extends State<_CountdownPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final remaining = widget.booking.remainingAt(_now);
-    final progress = widget.booking.progressAt(_now);
-    
-    final elapsed = widget.booking.totalDuration - remaining;
+    final isUpcoming = widget.booking.start.isAfter(_now);
+    final remaining = isUpcoming
+        ? widget.booking.start.difference(_now)
+        : widget.booking.remainingAt(_now);
+    final progress = isUpcoming ? 0.0 : widget.booking.progressAt(_now);
+    final elapsed =
+        widget.booking.totalDuration - widget.booking.remainingAt(_now);
 
     return Column(
       children: <Widget>[
         Text(
-          'TIME REMAINING',
-          style: GoogleFonts.inter(
+          isUpcoming ? 'STARTS IN' : 'TIME REMAINING',
+          style: GoogleFonts.poppins(
             color: const Color(0xFF444655), // on-surface-variant
             fontSize: 10,
             fontWeight: FontWeight.w700,
@@ -1183,7 +1235,7 @@ class _CountdownPanelState extends State<_CountdownPanel> {
         const SizedBox(height: 8),
         Text(
           _formatDurationClock(remaining),
-          style: GoogleFonts.plusJakartaSans(
+          style: GoogleFonts.poppins(
             fontSize: 36,
             fontWeight: FontWeight.w800,
             color: const Color(0xFF181C20), // on-background
@@ -1199,8 +1251,10 @@ class _CountdownPanelState extends State<_CountdownPanel> {
               child: LinearProgressIndicator(
                 value: progress,
                 minHeight: 8,
-                backgroundColor: const Color(0xFFF1F4F9), // surface-container-low
-                color: AppColors.primary,
+                backgroundColor: const Color(
+                  0xFFF1F4F9,
+                ), // surface-container-low
+                color: isUpcoming ? const Color(0xFFF59E0B) : AppColors.primary,
               ),
             ),
             const SizedBox(height: 12),
@@ -1209,7 +1263,7 @@ class _CountdownPanelState extends State<_CountdownPanel> {
               children: <Widget>[
                 Text(
                   'ELAPSED: ${_formatDurationCompact(elapsed)}',
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.poppins(
                     fontSize: 10,
                     color: const Color(0xFF444655),
                     fontWeight: FontWeight.w700,
@@ -1218,7 +1272,7 @@ class _CountdownPanelState extends State<_CountdownPanel> {
                 ),
                 Text(
                   'TOTAL: ${_formatDurationCompact(widget.booking.totalDuration)}',
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.poppins(
                     fontSize: 10,
                     color: const Color(0xFF444655),
                     fontWeight: FontWeight.w700,
@@ -1233,7 +1287,6 @@ class _CountdownPanelState extends State<_CountdownPanel> {
     );
   }
 }
-
 
 class _QuickActionCard extends StatelessWidget {
   final IconData icon;
@@ -1287,7 +1340,7 @@ class _QuickActionCard extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               title,
-              style: GoogleFonts.inter(
+              style: GoogleFonts.poppins(
                 fontWeight: FontWeight.w700,
                 fontSize: 14,
                 color: const Color(0xFF181C20), // on-background
@@ -1297,7 +1350,7 @@ class _QuickActionCard extends StatelessWidget {
             const SizedBox(height: 2),
             Text(
               subtitle,
-              style: GoogleFonts.inter(
+              style: GoogleFonts.poppins(
                 fontSize: 10,
                 fontWeight: FontWeight.w500,
                 color: const Color(0xFF444655), // on-surface-variant
@@ -1352,7 +1405,7 @@ class _NotificationButton extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: const Color(0xFF772300), // tertiary
                         shape: BoxShape.circle,
-                        border: Border.all(color: const Color(0xFF0029B9), width: 2),
+                        border: Border.all(color: AppColors.primary, width: 2),
                       ),
                     ),
                   ),
@@ -1378,7 +1431,7 @@ class _NearbyParkingCard extends StatelessWidget {
     required this.onTap,
   });
 
-  static const String _fallbackImage = 'assets/images/parking_placeholder.jpg';
+  static const String _fallbackImage = 'assets/images/parking_placeholder.png';
 
   @override
   Widget build(BuildContext context) {
@@ -1393,7 +1446,9 @@ class _NearbyParkingCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white, // surface-container-lowest
           borderRadius: BorderRadius.circular(24), // rounded-2xl
-          border: Border.all(color: const Color(0xFFF1F4F9)), // surface-container-low
+          border: Border.all(
+            color: const Color(0xFFF1F4F9),
+          ), // surface-container-low
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),
@@ -1413,8 +1468,8 @@ class _NearbyParkingCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(16), // rounded-xl
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05), 
-                    blurRadius: 4, 
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 4,
                     offset: const Offset(0, 2),
                   ),
                 ],
@@ -1427,28 +1482,43 @@ class _NearbyParkingCard extends StatelessWidget {
                     _SmartParkingImage(
                       imagePath: parking.imagePath,
                       fallbackAsset: _fallbackImage,
+                      parkingId: parking.id,
                     ),
                     // Distance Badge
                     Positioned(
                       top: 12,
                       left: 12,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.9), // glass-blur
+                          color: Colors.white.withValues(
+                            alpha: 0.9,
+                          ), // glass-blur
                           borderRadius: BorderRadius.circular(999),
                           boxShadow: [
-                            BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4),
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 4,
+                            ),
                           ],
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.near_me_rounded, color: AppColors.primary, size: 10),
+                            const Icon(
+                              Icons.near_me_rounded,
+                              color: AppColors.primary,
+                              size: 10,
+                            ),
                             const SizedBox(width: 4),
                             Text(
-                              distanceMeters == null ? '--' : _formatDistance(distanceMeters),
-                              style: GoogleFonts.inter(
+                              distanceMeters == null
+                                  ? '--'
+                                  : _formatDistance(distanceMeters),
+                              style: GoogleFonts.poppins(
                                 color: const Color(0xFF181C20), // on-background
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
@@ -1464,17 +1534,25 @@ class _NearbyParkingCard extends StatelessWidget {
                         top: 12,
                         right: 12,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF344DD2), // secondary
-                            borderRadius: BorderRadius.circular(4), // rounded-sm
+                            color: AppColors.primary, // secondary
+                            borderRadius: BorderRadius.circular(
+                              4,
+                            ), // rounded-sm
                             boxShadow: [
-                              BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4),
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.05),
+                                blurRadius: 4,
+                              ),
                             ],
                           ),
                           child: Text(
                             'RECOMMENDED',
-                            style: GoogleFonts.inter(
+                            style: GoogleFonts.poppins(
                               color: Colors.white,
                               fontSize: 8,
                               fontWeight: FontWeight.w700,
@@ -1488,7 +1566,10 @@ class _NearbyParkingCard extends StatelessWidget {
                       bottom: 12,
                       left: 12,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.black.withValues(alpha: 0.6),
                           borderRadius: BorderRadius.circular(4),
@@ -1496,11 +1577,15 @@ class _NearbyParkingCard extends StatelessWidget {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.local_parking_rounded, color: Colors.amber, size: 10),
+                            const Icon(
+                              Icons.local_parking_rounded,
+                              color: Colors.amber,
+                              size: 10,
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               '${parking.availableSlots} SLOTS',
-                              style: GoogleFonts.inter(
+                              style: GoogleFonts.poppins(
                                 color: Colors.white,
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
@@ -1528,7 +1613,7 @@ class _NearbyParkingCard extends StatelessWidget {
                         parking.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.poppins(
                           color: const Color(0xFF181C20),
                           fontWeight: FontWeight.w700,
                           fontSize: 16,
@@ -1540,7 +1625,7 @@ class _NearbyParkingCard extends StatelessWidget {
                         parking.address,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.poppins(
                           color: const Color(0xFF444655), // on-surface-variant
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
@@ -1560,7 +1645,7 @@ class _NearbyParkingCard extends StatelessWidget {
                           padding: const EdgeInsets.only(top: 4, right: 2),
                           child: Text(
                             'from',
-                            style: GoogleFonts.inter(
+                            style: GoogleFonts.poppins(
                               color: const Color(0xFF444655),
                               fontSize: 10,
                               fontWeight: FontWeight.w500,
@@ -1569,7 +1654,7 @@ class _NearbyParkingCard extends StatelessWidget {
                         ),
                         Text(
                           '₹${parking.pricePerHour.toStringAsFixed(parking.pricePerHour % 1 == 0 ? 0 : 1)}',
-                          style: GoogleFonts.inter(
+                          style: GoogleFonts.poppins(
                             color: AppColors.primary,
                             fontSize: 18,
                             fontWeight: FontWeight.w800,
@@ -1579,7 +1664,7 @@ class _NearbyParkingCard extends StatelessWidget {
                           padding: const EdgeInsets.only(top: 4),
                           child: Text(
                             '/hr',
-                            style: GoogleFonts.inter(
+                            style: GoogleFonts.poppins(
                               color: const Color(0xFF444655),
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
@@ -1618,7 +1703,7 @@ class _NearbyParkingCard extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: GoogleFonts.inter(
+        style: GoogleFonts.poppins(
           color: const Color(0xFF181C20), // on-surface
           fontSize: 10,
           fontWeight: FontWeight.w700,
@@ -1627,7 +1712,6 @@ class _NearbyParkingCard extends StatelessWidget {
     );
   }
 }
-
 
 class _NearbyParkingLoadingCard extends StatelessWidget {
   const _NearbyParkingLoadingCard();
@@ -1698,7 +1782,7 @@ class _InfoStateCard extends StatelessWidget {
               color: Color(0xFFF8FAFC),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, size: 34, color: const Color(0xFF3B82F6)),
+            child: Icon(icon, size: 34, color: AppColors.primaryLight),
           ),
           const SizedBox(height: 18),
           Text(
@@ -1725,7 +1809,7 @@ class _InfoStateCard extends StatelessWidget {
             ElevatedButton(
               onPressed: onPressed,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1E3A8A),
+                backgroundColor: AppColors.primaryDark,
                 foregroundColor: Colors.white,
                 elevation: 0,
                 padding: const EdgeInsets.symmetric(
@@ -1751,45 +1835,144 @@ class _InfoStateCard extends StatelessWidget {
 class _SmartParkingImage extends StatelessWidget {
   final String? imagePath;
   final String fallbackAsset;
+  final String? parkingId;
 
   const _SmartParkingImage({
     required this.imagePath,
     required this.fallbackAsset,
+    this.parkingId,
   });
 
   @override
   Widget build(BuildContext context) {
     final resolvedPath = _resolveAssetPath(imagePath);
 
-    if (resolvedPath == null) {
-      return Image.asset(fallbackAsset, fit: BoxFit.cover);
+    if (resolvedPath != null && resolvedPath.startsWith('http')) {
+      return _buildNetworkImage(resolvedPath);
     }
 
-    if (resolvedPath.startsWith('http')) {
-      return Image.network(
+    if (resolvedPath != null && resolvedPath.startsWith('assets/')) {
+      return Image.asset(
         resolvedPath,
         fit: BoxFit.cover,
-        gaplessPlayback: true,
-        frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-          if (wasSynchronouslyLoaded) return child;
-          return AnimatedOpacity(
-            opacity: frame == null ? 0 : 1,
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOut,
-            child: child,
-          );
-        },
-        errorBuilder: (context, error, stackTrace) =>
-            Image.asset(fallbackAsset, fit: BoxFit.cover),
+        errorBuilder: (_, _, _) => _buildFallback(),
       );
     }
 
-    return Image.asset(
-      resolvedPath,
+    if (parkingId != null && parkingId!.isNotEmpty) {
+      return _ParkingImageResolver(
+        parkingId: parkingId!,
+        fallbackBuilder: _buildFallback,
+        networkImageBuilder: _buildNetworkImage,
+      );
+    }
+
+    return _buildFallback();
+  }
+
+  Widget _buildNetworkImage(String url) {
+    return Image.network(
+      url,
       fit: BoxFit.cover,
-      errorBuilder: (context, error, stackTrace) =>
-          Image.asset(fallbackAsset, fit: BoxFit.cover),
+      gaplessPlayback: true,
+      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+        if (wasSynchronouslyLoaded) return child;
+        return AnimatedOpacity(
+          opacity: frame == null ? 0 : 1,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOut,
+          child: child,
+        );
+      },
+      errorBuilder: (context, error, stackTrace) => _buildFallback(),
     );
+  }
+
+  Widget _buildFallback() {
+    return Image.asset(fallbackAsset, fit: BoxFit.cover);
+  }
+}
+
+/// Tries multiple Firestore collection names to find the parking image.
+class _ParkingImageResolver extends StatefulWidget {
+  final String parkingId;
+  final Widget Function() fallbackBuilder;
+  final Widget Function(String url) networkImageBuilder;
+
+  const _ParkingImageResolver({
+    required this.parkingId,
+    required this.fallbackBuilder,
+    required this.networkImageBuilder,
+  });
+
+  @override
+  State<_ParkingImageResolver> createState() => _ParkingImageResolverState();
+}
+
+class _ParkingImageResolverState extends State<_ParkingImageResolver> {
+  static const _collections = ['parking_locations', 'parking', 'parkings'];
+  String? _resolvedUrl;
+  bool _resolved = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _tryResolve();
+  }
+
+  Future<void> _tryResolve() async {
+    for (final collection in _collections) {
+      try {
+        final doc = await FirebaseFirestore.instance
+            .collection(collection)
+            .doc(widget.parkingId)
+            .get();
+        if (doc.exists) {
+          final data = doc.data();
+          if (data != null) {
+            final url = _extractImagePath(data);
+            if (url != null && url.startsWith('http')) {
+              if (mounted) {
+                setState(() {
+                  _resolvedUrl = url;
+                  _resolved = true;
+                });
+              }
+              return;
+            }
+          }
+        }
+      } catch (_) {
+        // Try next collection
+      }
+    }
+    if (mounted) {
+      setState(() => _resolved = true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_resolved) {
+      // Show a subtle loading shimmer while resolving
+      return Container(
+        color: const Color(0xFFF1F4F9),
+        child: const Center(
+          child: SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AppColors.primary,
+            ),
+          ),
+        ),
+      );
+    }
+    if (_resolvedUrl != null) {
+      return widget.networkImageBuilder(_resolvedUrl!);
+    }
+    return widget.fallbackBuilder();
   }
 }
 
@@ -1974,6 +2157,12 @@ class _HomeParkingLot {
                 data['supportsEv'] ??
                 data['has_ev'],
           ) ||
+          _asInt(
+                data['ev_slots'] ??
+                    data['evSlots'] ??
+                    data['ev_charging_slots'],
+              ) >
+              0 ||
           features.contains('ev') ||
           features.contains('charging') ||
           features.contains('evcharging'),
@@ -2014,12 +2203,12 @@ class _HomeParkingLot {
       case 'EV Charging':
         return hasEvCharging;
       case 'Covered Parking':
-        return isCovered;
+        return !hasEvCharging && isCovered;
       case 'Valet':
-        return hasValet;
+        return !hasEvCharging && hasValet;
       case 'All Lots':
       default:
-        return true;
+        return !hasEvCharging;
     }
   }
 
@@ -2056,14 +2245,30 @@ _HomeBooking? _resolveActiveBooking(
   List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
 ) {
   final now = DateTime.now();
+  final allBookings = docs.map(_HomeBooking.fromFirestore).toList();
+
+  // First, try to find a currently active booking (now >= start && now < end)
   final activeBookings =
-      docs
-          .map(_HomeBooking.fromFirestore)
-          .where((booking) => booking.isActiveAt(now))
-          .toList()
+      allBookings.where((booking) => booking.isActiveAt(now)).toList()
         ..sort((a, b) => a.end.compareTo(b.end));
 
-  return activeBookings.isEmpty ? null : activeBookings.first;
+  if (activeBookings.isNotEmpty) return activeBookings.first;
+
+  // If no active booking, find the nearest upcoming booking
+  // (not cancelled/completed, end is in the future, start is in the future)
+  final upcomingBookings =
+      allBookings
+          .where(
+            (b) =>
+                !b.isCancelled &&
+                !b.isCompleted &&
+                b.end.isAfter(now) &&
+                b.start.isAfter(now),
+          )
+          .toList()
+        ..sort((a, b) => a.start.compareTo(b.start));
+
+  return upcomingBookings.isEmpty ? null : upcomingBookings.first;
 }
 
 List<_HomeParkingLot> _prepareParkingLots(
@@ -2190,11 +2395,14 @@ Set<String> _featureTokens(Map<String, dynamic> data) {
 
 String? _extractImagePath(Map<String, dynamic> data) {
   final candidates = <dynamic>[
+    data['parkingImage'],
     data['imageUrl'],
     data['image'],
     data['thumbnail'],
     data['coverImage'],
     data['cover_image'],
+    data['image_url'],
+    data['parking_image'],
   ];
 
   for (final galleryKey in <String>['imageGallery', 'gallery', 'images']) {
@@ -2227,7 +2435,9 @@ String? _resolveAssetPath(String? imagePath) {
     return 'assets/images/$cleaned';
   }
 
-  return cleaned;
+  // Return null for unrecognizable strings so the parkingId
+  // Firestore lookup can kick in instead of falling to fallback
+  return null;
 }
 
 String _formatDurationClock(Duration duration) {

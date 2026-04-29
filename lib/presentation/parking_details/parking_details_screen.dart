@@ -1,18 +1,19 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../models/review_model.dart';
 import '../../services/bookmark_service.dart';
-import '../../services/review_repository.dart';
+import '../../services/map_service.dart';
+import '../../services/navigation_service.dart';
 import '../../theme/app_colors.dart';
-import '../booking/booking_screen.dart';
+import '../booking/booking_time_screen.dart';
+import '../parking_map/parking_map_screen.dart';
 
-/// Parking Details Screen — Stitch design.
-/// Full-bleed hero image, glassmorphic info overlay, review cards,
-/// gradient CTA, bookmark toggle, and consistent dark mode.
 class ParkingDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> data;
   final String collectionName;
@@ -28,740 +29,952 @@ class ParkingDetailsScreen extends StatefulWidget {
 }
 
 class _ParkingDetailsScreenState extends State<ParkingDetailsScreen> {
-  bool isSaved = false;
-  bool loading = true;
-  late final String parkingId;
+  late final String _parkingId;
+  bool _isSaved = false;
+  bool _isSaveLoading = true;
+  double? _distanceMeters;
 
   @override
   void initState() {
     super.initState();
-    parkingId = widget.data['id']?.toString() ?? '';
-    if (parkingId.isEmpty) {
-      loading = false;
-      return;
-    }
-    _loadSaved();
+    _parkingId = widget.data['id']?.toString() ?? '';
+    _distanceMeters = _readDouble(widget.data['distance']);
+    debugPrint('Lot loaded: ${widget.data['name']}');
+    _loadSavedState();
+    _loadDistance();
   }
 
-  Future<void> _loadSaved() async {
-    if (parkingId.isEmpty) {
-      setState(() => loading = false);
+  Future<void> _loadSavedState() async {
+    if (_parkingId.isEmpty) {
+      if (!mounted) return;
+      setState(() => _isSaveLoading = false);
       return;
     }
-    final value = await BookmarkService.isSaved(parkingId);
+
+    final saved = await BookmarkService.isSaved(_parkingId);
     if (!mounted) return;
     setState(() {
-      isSaved = value;
-      loading = false;
+      _isSaved = saved;
+      _isSaveLoading = false;
     });
   }
 
   Future<void> _toggleSave() async {
-    if (parkingId.isEmpty) return;
+    if (_parkingId.isEmpty || _isSaveLoading) return;
     HapticFeedback.mediumImpact();
-    await BookmarkService.toggleSave(parkingId);
+    await BookmarkService.toggleSave(_parkingId);
     if (!mounted) return;
-    setState(() => isSaved = !isSaved);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(isSaved ? 'Added to saved' : 'Removed from saved'),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 1),
+    setState(() => _isSaved = !_isSaved);
+  }
+
+  Future<void> _loadDistance() async {
+    final lat = _readDouble(widget.data['latitude'] ?? widget.data['lat']);
+    final lng = _readDouble(widget.data['longitude'] ?? widget.data['lng']);
+    if (lat == null || lng == null) return;
+
+    final distance = await NavigationService.instance.distanceTo(lat, lng);
+    if (!mounted || distance == null) return;
+    setState(() => _distanceMeters = distance);
+  }
+
+  Future<void> _shareLot(Map<String, dynamic> data) async {
+    final lat = _readDouble(data['latitude'] ?? data['lat']);
+    final lng = _readDouble(data['longitude'] ?? data['lng']);
+    final name = _readString(data['name'], fallback: 'Parking Lot');
+    final address = _readString(data['address']);
+    final mapsLink = lat != null && lng != null
+        ? 'https://www.google.com/maps/search/?api=1&query=$lat,$lng'
+        : '';
+
+    HapticFeedback.selectionClick();
+    await SharePlus.instance.share(
+      ShareParams(
+        text: [
+          name,
+          if (address.isNotEmpty) address,
+          if (mapsLink.isNotEmpty) mapsLink,
+        ].join('\n'),
+        subject: 'TechXPark Lot Details',
+      ),
+    );
+  }
+
+  Future<void> _openInMaps(Map<String, dynamic> data) async {
+    final lat = _readDouble(data['latitude'] ?? data['lat']);
+    final lng = _readDouble(data['longitude'] ?? data['lng']);
+    if (lat == null || lng == null) return;
+
+    final uri = Uri.parse(
+      'https://www.google.com/maps/search/?api=1&query=$lat,$lng',
+    );
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  Future<void> _navigateToLot(Map<String, dynamic> data) async {
+    final lat = _readDouble(data['latitude'] ?? data['lat']);
+    final lng = _readDouble(data['longitude'] ?? data['lng']);
+    if (lat == null || lng == null) return;
+
+    await NavigationService.instance.launchOutdoorNavigation(
+      destLat: lat,
+      destLng: lng,
+      label: _readString(data['name'], fallback: 'Parking'),
+    );
+  }
+
+  void _openLiveAvailability(Map<String, dynamic> data) {
+    final lat = _readDouble(data['latitude'] ?? data['lat']);
+    final lng = _readDouble(data['longitude'] ?? data['lng']);
+    if (lat == null || lng == null) return;
+
+    HapticFeedback.selectionClick();
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ParkingMapScreen(
+          lat: lat,
+          lng: lng,
+          name: _readString(data['name'], fallback: 'Parking'),
+        ),
+      ),
+    );
+  }
+
+  void _openBooking(Map<String, dynamic> data, {required bool isAvailable}) {
+    if (!isAvailable || _parkingId.isEmpty) return;
+
+    HapticFeedback.mediumImpact();
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => BookingTimeScreen(
+          parkingId: _parkingId,
+          parking: Map<String, dynamic>.from(data),
+        ),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final data = widget.data;
-    final name = data['name']?.toString() ?? 'Parking Spot';
-    final price = _asDouble(
-        data['price'] ?? data['price_per_hour'] ?? data['pricePerHour']);
-    final distance = _asDouble(data['distance']);
-    final imagePath =
-        data['imageUrl']?.toString() ?? data['image']?.toString() ?? '';
-    final lat = _asDouble(data['lat'] ?? data['latitude']);
-    final lng = _asDouble(data['lng'] ?? data['longitude']);
-    final address = data['address']?.toString() ?? '';
-    final slots = (data['available_slots'] as num?)?.toInt() ??
-        (data['totalSlots'] as num?)?.toInt();
-    final description = data['description']?.toString() ??
-        'Safe, secure and covered parking area with 24/7 monitoring.';
+    final stream = _parkingId.isEmpty
+        ? null
+        : FirebaseFirestore.instance
+              .collection(widget.collectionName)
+              .doc(_parkingId)
+              .snapshots();
+
+    if (stream == null) {
+      return _buildScaffold(widget.data);
+    }
+
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: stream,
+      builder: (context, snapshot) {
+        final liveData = snapshot.data?.data();
+        final merged = <String, dynamic>{
+          ...widget.data,
+          if (liveData != null) ...liveData,
+          'id': _parkingId,
+        };
+        return _buildScaffold(merged);
+      },
+    );
+  }
+
+  Widget _buildScaffold(Map<String, dynamic> data) {
+    final topInset = MediaQuery.of(context).padding.top;
+    final appBarHeight = topInset + 72.0;
+
+    final name = _readString(data['name'], fallback: 'Parking Lot');
+    final address = _readString(
+      data['address'],
+      fallback: 'Address unavailable',
+    );
+    final imageUrl = _readString(
+      data['imageUrl'] ?? data['image'],
+      fallback: '',
+    );
+    final price =
+        _readDouble(
+          data['price_per_hour'] ?? data['pricePerHour'] ?? data['price'],
+        ) ??
+        0;
+    final availableSlots = _readInt(
+      data['available_slots'] ?? data['availableSlots'],
+    );
+    final totalSlots = _readInt(data['total_slots'] ?? data['totalSlots']);
+    final rating =
+        _readDouble(
+          data['ratingAverage'] ?? data['averageRating'] ?? data['rating'],
+        ) ??
+        0;
+    final reviewCount = _readInt(
+      data['ratingCount'] ?? data['totalReviews'] ?? data['reviews'],
+    );
+    final hasEv = _readBool(data['hasEV'] ?? data['hasEvCharging']);
+    final covered = _readBool(
+      data['covered'] ?? data['isCovered'] ?? data['coveredParking'],
+    );
+    final security = _readBool(data['security'], fallback: true);
+    final cctv = _readBool(data['cctv'], fallback: true);
+    final isAvailable = availableSlots > 0;
+    final statsPrice = price % 1 == 0
+        ? price.toStringAsFixed(0)
+        : price.toStringAsFixed(1);
+    final slotsLabel = isAvailable
+        ? '$availableSlots slots available'
+        : 'No slots available';
+    final latLng = MapService.getLatLng(data);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light,
+      value: SystemUiOverlayStyle.dark,
       child: Scaffold(
-        backgroundColor: isDark ? AppColors.bgDark : const Color(0xFFF9F9FB),
+        backgroundColor: const Color(0xFFF9F9FB),
         body: Stack(
           children: [
-            // ── Scrollable content ────────────────────────────
             CustomScrollView(
               physics: const BouncingScrollPhysics(),
               slivers: [
-                // Hero image with gradient overlay
-                SliverAppBar(
-                  expandedHeight: 280,
-                  pinned: true,
-                  backgroundColor: AppColors.primary,
-                  surfaceTintColor: Colors.transparent,
-                  leading: Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.3),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.arrow_back,
-                            color: Colors.white, size: 22),
-                      ),
-                    ),
+                SliverToBoxAdapter(child: SizedBox(height: appBarHeight)),
+                SliverToBoxAdapter(
+                  child: _HeroSection(
+                    imageUrl: imageUrl,
+                    slotsLabel: slotsLabel,
+                    isAvailable: isAvailable,
+                    isSaveLoading: _isSaveLoading,
+                    isSaved: _isSaved,
+                    onSaveTap: _toggleSave,
                   ),
-                  actions: [
-                    Padding(
-                      padding: const EdgeInsets.only(right: 12),
-                      child: GestureDetector(
-                        onTap: loading ? null : _toggleSave,
-                        child: Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.3),
-                            shape: BoxShape.circle,
-                          ),
-                          child: loading
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2, color: Colors.white),
-                                )
-                              : Icon(
-                                  isSaved
-                                      ? Icons.bookmark
-                                      : Icons.bookmark_border,
-                                  color: isSaved
-                                      ? const Color(0xFFFBBF24)
-                                      : Colors.white,
-                                  size: 22),
+                ),
+                SliverToBoxAdapter(
+                  child: Transform.translate(
+                    offset: const Offset(0, -24),
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF9F9FB),
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(32),
                         ),
                       ),
-                    ),
-                  ],
-                  flexibleSpace: FlexibleSpaceBar(
-                    background: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        _ParkingImage(imagePath: imagePath, isDark: isDark),
-                        // Gradient overlay
-                        Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.transparent,
-                                Colors.black.withValues(alpha: 0.7),
-                              ],
-                            ),
+                      padding: const EdgeInsets.fromLTRB(24, 28, 24, 0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildLotInfo(
+                            name: name,
+                            address: address,
+                            rating: rating,
+                            reviewCount: reviewCount,
                           ),
-                        ),
-                        // Name + address overlay
-                        Positioned(
-                          left: 20,
-                          right: 20,
-                          bottom: 16,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          const SizedBox(height: 24),
+                          _buildQuickStats(
+                            priceLabel: '₹$statsPrice/hr',
+                            totalSlots: totalSlots,
+                          ),
+                          const SizedBox(height: 24),
+                          _buildDistanceCard(),
+                          const SizedBox(height: 28),
+                          _buildSectionLabel('Top Facilities'),
+                          const SizedBox(height: 12),
+                          _buildFacilitiesGrid(
+                            hasEv: hasEv,
+                            covered: covered,
+                            security: security,
+                            cctv: cctv,
+                          ),
+                          const SizedBox(height: 28),
+                          _buildSectionLabel('Location Map'),
+                          const SizedBox(height: 12),
+                          _buildMapCard(data, latLng),
+                          const SizedBox(height: 24),
+                          Row(
                             children: [
-                              Text(
-                                name,
-                                style: const TextStyle(
-                                  fontFamily: 'Plus Jakarta Sans',
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.white,
-                                  letterSpacing: -0.5,
+                              Expanded(
+                                child: _ActionButton(
+                                  icon: Icons.directions_rounded,
+                                  label: 'Navigate',
+                                  onTap: latLng == null
+                                      ? null
+                                      : () => _navigateToLot(data),
                                 ),
                               ),
-                              if (address.isNotEmpty) ...[
-                                const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    const Icon(Icons.location_on,
-                                        color: Colors.white70, size: 14),
-                                    const SizedBox(width: 4),
-                                    Expanded(
-                                      child: Text(
-                                        address,
-                                        style: const TextStyle(
-                                          fontFamily: 'Manrope',
-                                          fontSize: 13,
-                                          color: Colors.white70,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: _ActionButton(
+                                  icon: Icons.analytics_outlined,
+                                  label: 'Live Availability',
+                                  onTap: latLng == null
+                                      ? null
+                                      : () => _openLiveAvailability(data),
                                 ),
-                              ],
+                              ),
                             ],
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                // ── Info badges row ──────────────────────────────
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                    child: Row(
-                      children: [
-                        _StatBadge(
-                          icon: Icons.currency_rupee,
-                          label: '₹${price.toStringAsFixed(price % 1 == 0 ? 0 : 1)}/hr',
-                          color: AppColors.success,
-                          isDark: isDark,
-                        ),
-                        const SizedBox(width: 10),
-                        if (slots != null)
-                          _StatBadge(
-                            icon: Icons.local_parking,
-                            label: '$slots Slots',
-                            color: slots > 5
-                                ? const Color(0xFFF59E0B)
-                                : AppColors.error,
-                            isDark: isDark,
-                          ),
-                        if (distance > 0) ...[
-                          const SizedBox(width: 10),
-                          _StatBadge(
-                            icon: Icons.near_me,
-                            label: _formatDistance(distance),
-                            color: AppColors.primary,
-                            isDark: isDark,
-                          ),
+                          const SizedBox(height: 148),
                         ],
-                      ],
+                      ),
                     ),
                   ),
                 ),
-
-                // ── Live rating ──────────────────────────────────
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                    child: _buildLiveRatingBadge(isDark),
-                  ),
-                ),
-
-                // ── Description ──────────────────────────────────
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'About',
-                          style: TextStyle(
-                            fontFamily: 'Plus Jakarta Sans',
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            color: isDark
-                                ? Colors.white
-                                : const Color(0xFF0F172A),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          description,
-                          style: TextStyle(
-                            fontFamily: 'Manrope',
-                            fontSize: 14,
-                            height: 1.6,
-                            color: isDark
-                                ? Colors.white70
-                                : const Color(0xFF64748B),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                // ── Action buttons ───────────────────────────────
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
-                    child: Row(
-                      children: [
-                        // View on Map
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: lat == 0 && lng == 0
-                                ? null
-                                : () {
-                                    final url = Uri.parse(
-                                        'https://www.google.com/maps/search/?api=1&query=$lat,$lng');
-                                    launchUrl(url,
-                                        mode: LaunchMode.externalApplication);
-                                  },
-                            child: Container(
-                              height: 52,
-                              decoration: BoxDecoration(
-                                color: isDark
-                                    ? AppColors.surfaceDark
-                                    : Colors.white,
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(
-                                  color: isDark
-                                      ? Colors.white12
-                                      : const Color(0xFFE2E8F0),
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.map_outlined,
-                                      color: AppColors.primary, size: 20),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'View on Map',
-                                    style: TextStyle(
-                                      fontFamily: 'Plus Jakarta Sans',
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w700,
-                                      color: isDark
-                                          ? Colors.white
-                                          : const Color(0xFF0F172A),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        // Book Now
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: parkingId.isEmpty
-                                ? null
-                                : () {
-                                    HapticFeedback.mediumImpact();
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => BookingScreen(
-                                          parkingId: parkingId,
-                                          parking:
-                                              Map<String, dynamic>.from(data),
-                                        ),
-                                      ),
-                                    );
-                                  },
-                            child: Container(
-                              height: 52,
-                              decoration: BoxDecoration(
-                                gradient: AppColors.primaryGradient,
-                                borderRadius: BorderRadius.circular(14),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppColors.primary
-                                        .withValues(alpha: 0.25),
-                                    blurRadius: 12,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.bolt,
-                                      color: Colors.white, size: 20),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    'Book Now',
-                                    style: TextStyle(
-                                      fontFamily: 'Plus Jakarta Sans',
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w700,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                // ── Reviews ──────────────────────────────────────
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 32, 20, 0),
-                    child: _buildReviewsSection(isDark),
-                  ),
-                ),
-
-                // Bottom spacer
-                const SliverToBoxAdapter(
-                    child: SizedBox(height: 48)),
               ],
             ),
+            _TopBar(
+              title: 'Lot Details',
+              onBack: () => Navigator.of(context).maybePop(),
+              onShare: () => _shareLot(data),
+            ),
           ],
+        ),
+        bottomNavigationBar: SafeArea(
+          top: false,
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.92),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(28),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 30,
+                  offset: const Offset(0, -10),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Current Rate',
+                        style: GoogleFonts.poppins(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.8,
+                          color: const Color(0xFF757687),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      RichText(
+                        text: TextSpan(
+                          children: [
+                            TextSpan(
+                              text: '₹$statsPrice',
+                              style: GoogleFonts.poppins(
+                                fontSize: 28,
+                                fontWeight: FontWeight.w800,
+                                color: const Color(0xFF1A1C1D),
+                              ),
+                            ),
+                            TextSpan(
+                              text: '/hr',
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF757687),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: SizedBox(
+                    height: 58,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: isAvailable
+                            ? AppColors.primaryGradient
+                            : null,
+                        color: isAvailable ? null : const Color(0xFFE2E2E4),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: ElevatedButton(
+                        onPressed: isAvailable
+                            ? () => _openBooking(data, isAvailable: isAvailable)
+                            : null,
+                        style: ElevatedButton.styleFrom(
+                          elevation: 0,
+                          backgroundColor: Colors.transparent,
+                          disabledBackgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          foregroundColor: Colors.white,
+                          disabledForegroundColor: const Color(0xFF757687),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                        ),
+                        child: Text(
+                          isAvailable ? 'Book Slot' : 'Sold Out',
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: isAvailable
+                                ? Colors.white
+                                : const Color(0xFF757687),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
 
-  // ═══════════════════════════════════════════════════════════════
-  // LIVE RATING BADGE
-  // ═══════════════════════════════════════════════════════════════
-  Widget _buildLiveRatingBadge(bool isDark) {
-    if (parkingId.isEmpty) {
-      return Text(
-        'No reviews yet',
-        style: TextStyle(
-          fontFamily: 'Manrope',
-          color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
-          fontSize: 13,
-          fontWeight: FontWeight.w500,
-        ),
-      );
-    }
-
-    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance
-          .collection(widget.collectionName)
-          .doc(parkingId)
-          .snapshots(),
-      builder: (context, snapshot) {
-        double avgRating = 0;
-        int totalReviews = 0;
-
-        if (snapshot.hasData && snapshot.data!.exists) {
-          final d = snapshot.data!.data() ?? {};
-          avgRating = ((d['averageRating'] ??
-                      d['ratingAverage'] ??
-                      d['rating']) as num?)
-                  ?.toDouble() ??
-              0;
-          totalReviews = ((d['totalReviews'] ??
-                      d['ratingCount'] ??
-                      d['reviews']) as num?)
-                  ?.toInt() ??
-              0;
-        }
-
-        if (totalReviews == 0) {
-          return Text(
-            'No reviews yet',
-            style: TextStyle(
-              fontFamily: 'Manrope',
-              color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
-              fontSize: 13,
-            ),
-          );
-        }
-
-        return Row(
-          children: [
-            ...List.generate(5, (i) {
-              if (i < avgRating.floor()) {
-                return const Icon(Icons.star_rounded,
-                    color: Color(0xFFFBBF24), size: 20);
-              } else if (i < avgRating.ceil() && avgRating % 1 != 0) {
-                return const Icon(Icons.star_half_rounded,
-                    color: Color(0xFFFBBF24), size: 20);
-              }
-              return Icon(Icons.star_outline_rounded,
-                  color: isDark ? Colors.white24 : const Color(0xFFE2E8F0),
-                  size: 20);
-            }),
-            const SizedBox(width: 8),
-            Text(
-              avgRating.toStringAsFixed(1),
-              style: TextStyle(
-                fontFamily: 'Plus Jakarta Sans',
-                fontWeight: FontWeight.w800,
-                fontSize: 16,
-                color: isDark ? Colors.white : const Color(0xFF0F172A),
+  Widget _buildLotInfo({
+    required String name,
+    required String address,
+    required double rating,
+    required int reviewCount,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                name,
+                style: GoogleFonts.poppins(
+                  fontSize: 30,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF1A1C1D),
+                ),
               ),
+              const SizedBox(height: 8),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(top: 2),
+                    child: Icon(
+                      Icons.location_on_rounded,
+                      size: 16,
+                      color: Color(0xFF454655),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      address,
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF454655),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 16),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.star_rounded,
+                  color: Color(0xFFF59E0B),
+                  size: 20,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  rating.toStringAsFixed(1),
+                  style: GoogleFonts.poppins(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 4),
+            const SizedBox(height: 4),
             Text(
-              '($totalReviews)',
-              style: TextStyle(
-                fontFamily: 'Manrope',
-                color: isDark ? Colors.white54 : const Color(0xFF94A3B8),
-                fontSize: 13,
+              '${NumberFormat.compact().format(reviewCount)} reviews',
+              style: GoogleFonts.poppins(
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.8,
+                color: const Color(0xFF757687),
               ),
             ),
           ],
-        );
-      },
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════════════
-  // REVIEWS SECTION
-  // ═══════════════════════════════════════════════════════════════
-  Widget _buildReviewsSection(bool isDark) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Reviews',
-          style: TextStyle(
-            fontFamily: 'Plus Jakarta Sans',
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-            color: isDark ? Colors.white : const Color(0xFF0F172A),
-          ),
-        ),
-        const SizedBox(height: 16),
-        StreamBuilder<List<ReviewModel>>(
-          stream: ReviewRepository.instance.reviewsStream(parkingId),
-          builder: (context, snapshot) {
-            if (!snapshot.hasData) {
-              return const Padding(
-                padding: EdgeInsets.all(20),
-                child: Center(
-                    child: CircularProgressIndicator(
-                        color: AppColors.primary)),
-              );
-            }
-
-            final reviews = snapshot.data!;
-            if (reviews.isEmpty) {
-              return Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(32),
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? AppColors.surfaceDark
-                      : const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
-                  children: [
-                    Icon(Icons.rate_review_outlined,
-                        size: 40,
-                        color: isDark
-                            ? Colors.white24
-                            : const Color(0xFFE2E8F0)),
-                    const SizedBox(height: 10),
-                    Text(
-                      'No reviews yet',
-                      style: TextStyle(
-                        fontFamily: 'Manrope',
-                        color: isDark
-                            ? Colors.white54
-                            : const Color(0xFF94A3B8),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            return Column(
-              children:
-                  reviews.map((r) => _buildReviewCard(r, isDark)).toList(),
-            );
-          },
         ),
       ],
     );
   }
 
-  Widget _buildReviewCard(ReviewModel review, bool isDark) {
-    final date = review.createdAt != null
-        ? DateFormat.yMMMd().format(review.createdAt!)
-        : '';
+  Widget _buildQuickStats({
+    required String priceLabel,
+    required int totalSlots,
+  }) {
+    return Row(
+      children: [
+        Expanded(
+          child: _StatCard(value: priceLabel, label: 'Pricing'),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _StatCard(value: totalSlots.toString(), label: 'Total Spots'),
+        ),
+        const SizedBox(width: 12),
+        const Expanded(
+          child: _StatCard(value: '24/7', label: 'Available'),
+        ),
+      ],
+    );
+  }
 
+  Widget _buildDistanceCard() {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceDark : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppColors.primaryLight, AppColors.primary],
+        ),
+        borderRadius: BorderRadius.circular(18),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
         children: [
+          Positioned(
+            right: -16,
+            top: -20,
+            child: Container(
+              width: 112,
+              height: 112,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
           Row(
             children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  gradient: AppColors.primaryGradient,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Center(
-                  child: Text(
-                    (review.userName.isNotEmpty
-                            ? review.userName[0]
-                            : 'U')
-                        .toUpperCase(),
-                    style: const TextStyle(
-                      fontFamily: 'Plus Jakarta Sans',
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                      fontSize: 13,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      review.userName,
-                      style: TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14,
-                        color: isDark
-                            ? Colors.white
-                            : const Color(0xFF0F172A),
+                      'Proximity',
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.8,
+                        color: Colors.white.withValues(alpha: 0.84),
                       ),
                     ),
-                    if (date.isNotEmpty)
-                      Text(
-                        date,
-                        style: TextStyle(
-                          fontFamily: 'Manrope',
-                          color: isDark
-                              ? Colors.white38
-                              : const Color(0xFF94A3B8),
-                          fontSize: 11,
-                        ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _distanceLabel(_distanceMeters),
+                      style: GoogleFonts.poppins(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
                       ),
+                    ),
                   ],
                 ),
               ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: List.generate(
-                  5,
-                  (i) => Icon(
-                    i < review.rating
-                        ? Icons.star_rounded
-                        : Icons.star_outline_rounded,
-                    size: 14,
-                    color: i < review.rating
-                        ? const Color(0xFFFBBF24)
-                        : (isDark
-                            ? Colors.white24
-                            : const Color(0xFFE2E8F0)),
-                  ),
-                ),
+              const Icon(
+                Icons.near_me_rounded,
+                size: 38,
+                color: Colors.white54,
               ),
             ],
           ),
-          if (review.tags.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 6,
-              runSpacing: 4,
-              children: review.tags
-                  .map(
-                    (t) => Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        t,
-                        style: const TextStyle(
-                          fontFamily: 'Manrope',
-                          color: AppColors.primary,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  )
-                  .toList(),
-            ),
-          ],
-          if (review.reviewText.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Text(
-              review.reviewText,
-              style: TextStyle(
-                fontFamily: 'Manrope',
-                color: isDark ? Colors.white70 : const Color(0xFF64748B),
-                fontSize: 14,
-                height: 1.5,
-              ),
-            ),
-          ],
         ],
       ),
     );
   }
+
+  Widget _buildSectionLabel(String text) {
+    return Text(
+      text,
+      style: GoogleFonts.poppins(
+        fontSize: 12,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 0.8,
+        color: const Color(0xFF757687),
+      ),
+    );
+  }
+
+  Widget _buildFacilitiesGrid({
+    required bool hasEv,
+    required bool covered,
+    required bool security,
+    required bool cctv,
+  }) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _FacilityCard(
+                icon: Icons.ev_station_rounded,
+                label: 'EV Charging',
+                enabled: hasEv,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _FacilityCard(
+                icon: Icons.garage_rounded,
+                label: 'Covered Parking',
+                enabled: covered,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _FacilityCard(
+                icon: Icons.verified_user_rounded,
+                label: '24/7 Security',
+                enabled: security,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _FacilityCard(
+                icon: Icons.videocam_rounded,
+                label: 'CCTV',
+                enabled: cctv,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMapCard(Map<String, dynamic> data, LatLng? latLng) {
+    return Container(
+      height: 220,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: AppColors.cardShadow,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: latLng == null
+                  ? Container(
+                      color: const Color(0xFFEDEEF0),
+                      alignment: Alignment.center,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.map_rounded,
+                            size: 42,
+                            color: Color(0xFF757687),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            'Map preview unavailable',
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF454655),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : AbsorbPointer(
+                      child: GoogleMap(
+                        initialCameraPosition: CameraPosition(
+                          target: latLng,
+                          zoom: 15,
+                        ),
+                        markers: {
+                          Marker(
+                            markerId: const MarkerId('lot'),
+                            position: latLng,
+                          ),
+                        },
+                        zoomControlsEnabled: false,
+                        myLocationButtonEnabled: false,
+                        compassEnabled: false,
+                        mapToolbarEnabled: false,
+                        tiltGesturesEnabled: false,
+                        rotateGesturesEnabled: false,
+                        scrollGesturesEnabled: false,
+                        zoomGesturesEnabled: false,
+                      ),
+                    ),
+            ),
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      AppColors.primary.withValues(alpha: 0.08),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              right: 14,
+              bottom: 14,
+              child: FilledButton.icon(
+                onPressed: latLng == null ? null : () => _openInMaps(data),
+                icon: const Icon(Icons.map_rounded, size: 16),
+                label: Text(
+                  'Open in Maps',
+                  style: GoogleFonts.poppins(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: const Color(0xFF1A1C1D),
+                  disabledBackgroundColor: Colors.white70,
+                  disabledForegroundColor: const Color(0xFF757687),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static String _readString(dynamic value, {String fallback = ''}) {
+    final text = value?.toString().trim();
+    if (text == null || text.isEmpty) return fallback;
+    return text;
+  }
+
+  static double? _readDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
+  }
+
+  static int _readInt(dynamic value, {int fallback = 0}) {
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? fallback;
+    return fallback;
+  }
+
+  static bool _readBool(dynamic value, {bool fallback = false}) {
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    if (value is String) {
+      final normalized = value.trim().toLowerCase();
+      if (normalized == 'true' || normalized == 'yes' || normalized == '1') {
+        return true;
+      }
+      if (normalized == 'false' || normalized == 'no' || normalized == '0') {
+        return false;
+      }
+    }
+    return fallback;
+  }
+
+  static String _distanceLabel(double? meters) {
+    if (meters == null) return 'Nearby';
+    if (meters >= 1000) return '${(meters / 1000).toStringAsFixed(1)} km away';
+    return '${meters.round()} m away';
+  }
 }
 
-// ═══════════════════════════════════════════════════════════════
-// STAT BADGE — Price, slots, distance
-// ═══════════════════════════════════════════════════════════════
-class _StatBadge extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final bool isDark;
+class _TopBar extends StatelessWidget {
+  final String title;
+  final VoidCallback onBack;
+  final VoidCallback onShare;
 
-  const _StatBadge({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.isDark,
+  const _TopBar({
+    required this.title,
+    required this.onBack,
+    required this.onShare,
   });
 
   @override
   Widget build(BuildContext context) {
+    final topInset = MediaQuery.of(context).padding.top;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: EdgeInsets.fromLTRB(16, topInset + 8, 16, 10),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(10),
+        color: Colors.white.withValues(alpha: 0.72),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              fontFamily: 'Manrope',
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: color,
+          _GlassIconButton(icon: Icons.arrow_back_rounded, onTap: onBack),
+          Expanded(
+            child: Text(
+              title,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF0F172A),
+              ),
+            ),
+          ),
+          _GlassIconButton(icon: Icons.share_rounded, onTap: onShare),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroSection extends StatelessWidget {
+  final String imageUrl;
+  final String slotsLabel;
+  final bool isAvailable;
+  final bool isSaveLoading;
+  final bool isSaved;
+  final VoidCallback onSaveTap;
+
+  const _HeroSection({
+    required this.imageUrl,
+    required this.slotsLabel,
+    required this.isAvailable,
+    required this.isSaveLoading,
+    required this.isSaved,
+    required this.onSaveTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 397,
+      width: double.infinity,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          _HeroImage(imageUrl: imageUrl),
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.transparent, Color(0xCC1A1C1D)],
+                stops: [0.32, 1],
+              ),
+            ),
+          ),
+          Positioned(
+            left: 24,
+            right: 24,
+            bottom: 28,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0x330018AB),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.14),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: isAvailable
+                              ? const Color(0xFF22C55E)
+                              : AppColors.error,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        slotsLabel,
+                        style: GoogleFonts.poppins(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Spacer(),
+                GestureDetector(
+                  onTap: isSaveLoading ? null : onSaveTap,
+                  child: Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.74),
+                      shape: BoxShape.circle,
+                      boxShadow: AppColors.cardShadow,
+                    ),
+                    alignment: Alignment.center,
+                    child: isSaveLoading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Icon(
+                            isSaved
+                                ? Icons.favorite_rounded
+                                : Icons.favorite_border_rounded,
+                            color: isSaved
+                                ? const Color(0xFFB91C1C)
+                                : const Color(0xFF1A1C1D),
+                            size: 22,
+                          ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -770,75 +983,185 @@ class _StatBadge extends StatelessWidget {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════
-// PARKING IMAGE — Network/Asset with fallback
-// ═══════════════════════════════════════════════════════════════
-class _ParkingImage extends StatelessWidget {
-  final String imagePath;
-  final bool isDark;
+class _HeroImage extends StatelessWidget {
+  final String imageUrl;
 
-  const _ParkingImage({required this.imagePath, required this.isDark});
+  const _HeroImage({required this.imageUrl});
 
   @override
   Widget build(BuildContext context) {
-    final resolved = _resolveImagePath(imagePath);
-    if (resolved == null) return _fallback();
-
-    if (resolved.startsWith('http')) {
-      return Image.network(
-        resolved,
+    if (imageUrl.isEmpty) {
+      return Image.asset(
+        'assets/images/parking_placeholder.png',
         fit: BoxFit.cover,
-        gaplessPlayback: true,
-        errorBuilder: (_, e, st) => _fallback(),
       );
     }
 
-    return Image.asset(
-      resolved,
+    return Image.network(
+      imageUrl,
       fit: BoxFit.cover,
-      errorBuilder: (_, e, st) => _fallback(),
+      errorBuilder: (_, _, _) => Image.asset(
+        'assets/images/parking_placeholder.png',
+        fit: BoxFit.cover,
+      ),
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset(
+              'assets/images/parking_placeholder.png',
+              fit: BoxFit.cover,
+            ),
+            const Center(child: CircularProgressIndicator(color: Colors.white)),
+          ],
+        );
+      },
     );
   }
+}
 
-  Widget _fallback() {
-    return Container(
-      color: isDark
-          ? AppColors.surfaceDark
-          : AppColors.primary.withValues(alpha: 0.06),
-      child: Center(
-        child: Icon(
-          Icons.local_parking_rounded,
-          size: 56,
-          color: AppColors.primary.withValues(alpha: 0.3),
+class _GlassIconButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _GlassIconButton({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 42,
+      height: 42,
+      child: Material(
+        color: Colors.white.withValues(alpha: 0.7),
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onTap,
+          child: Icon(icon, size: 22, color: AppColors.primary),
         ),
       ),
     );
   }
 }
 
-// ── Helpers ──────────────────────────────────────────────────
-double _asDouble(dynamic value) {
-  if (value is num) return value.toDouble();
-  if (value is String) return double.tryParse(value) ?? 0;
-  return 0;
-}
+class _StatCard extends StatelessWidget {
+  final String value;
+  final String label;
 
-String _formatDistance(double meters) {
-  if (meters < 1000) return '${meters.toStringAsFixed(0)} m';
-  return '${(meters / 1000).toStringAsFixed(1)} km';
-}
+  const _StatCard({required this.value, required this.label});
 
-String? _resolveImagePath(String raw) {
-  final cleaned = raw.trim().replaceAll('"', '');
-  if (cleaned.isEmpty) return null;
-  if (cleaned.startsWith('http')) return cleaned;
-  if (cleaned.startsWith('assets/')) return cleaned;
-  final lower = cleaned.toLowerCase();
-  if (lower.endsWith('.png') ||
-      lower.endsWith('.jpg') ||
-      lower.endsWith('.jpeg') ||
-      lower.endsWith('.webp')) {
-    return 'assets/images/$cleaned';
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 18),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3F3F5),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        children: [
+          Text(
+            value,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.poppins(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: AppColors.primaryLight,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.poppins(
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.8,
+              color: const Color(0xFF757687),
+            ),
+          ),
+        ],
+      ),
+    );
   }
-  return cleaned;
+}
+
+class _FacilityCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool enabled;
+
+  const _FacilityCard({
+    required this.icon,
+    required this.label,
+    required this.enabled,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground = enabled ? AppColors.primary : const Color(0xFF757687);
+
+    return Opacity(
+      opacity: enabled ? 1 : 0.72,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xFFE7E8EC)),
+          boxShadow: AppColors.cardShadow,
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 22, color: foreground),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                label,
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF1A1C1D),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+
+  const _ActionButton({required this.icon, required this.label, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 56,
+      child: ElevatedButton.icon(
+        onPressed: onTap,
+        icon: Icon(icon, size: 18),
+        label: Text(
+          label,
+          style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w800),
+        ),
+        style: ElevatedButton.styleFrom(
+          elevation: 0,
+          backgroundColor: const Color(0xFFE8E8EA),
+          foregroundColor: const Color(0xFF1A1C1D),
+          disabledBackgroundColor: const Color(0xFFE8E8EA),
+          disabledForegroundColor: const Color(0xFF757687),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(999),
+          ),
+        ),
+      ),
+    );
+  }
 }

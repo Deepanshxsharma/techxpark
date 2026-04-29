@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../theme/app_colors.dart';
-import '../parking_details/parking_details_screen.dart';
+import '../parking_details/lot_detail_navigation.dart';
 
 /// Saved Parkings Screen — Stitch design.
 /// Premium cards with parking images, address, capacity info,
@@ -40,14 +40,16 @@ class SavedParkingsScreen extends StatelessWidget {
               surfaceTintColor: Colors.transparent,
               elevation: 0,
               leading: IconButton(
-                icon: Icon(Icons.arrow_back,
-                    color: isDark ? Colors.white : const Color(0xFF0029B9)),
+                icon: Icon(
+                  Icons.arrow_back,
+                  color: isDark ? Colors.white : AppColors.primary,
+                ),
                 onPressed: () => Navigator.pop(context),
               ),
               title: Text(
                 'Saved Locations',
                 style: TextStyle(
-                  fontFamily: 'Plus Jakarta Sans',
+                  fontFamily: 'Poppins',
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
                   color: isDark ? Colors.white : const Color(0xFF1A1C1D),
@@ -69,20 +71,18 @@ class SavedParkingsScreen extends StatelessWidget {
                     return const SliverFillRemaining(
                       child: Center(
                         child: CircularProgressIndicator(
-                            color: AppColors.primary),
+                          color: AppColors.primary,
+                        ),
                       ),
                     );
                   }
 
                   final userData =
                       userSnap.data!.data() as Map<String, dynamic>? ?? {};
-                  final List savedIds =
-                      userData['saved_parkings'] ?? [];
+                  final List savedIds = userData['saved_parkings'] ?? [];
 
                   if (savedIds.isEmpty) {
-                    return SliverFillRemaining(
-                      child: _buildEmptyState(isDark),
-                    );
+                    return SliverFillRemaining(child: _buildEmptyState(isDark));
                   }
 
                   return SliverList(
@@ -91,11 +91,14 @@ class SavedParkingsScreen extends StatelessWidget {
                         if (index == 0) {
                           return Padding(
                             padding: const EdgeInsets.only(
-                                top: 16, bottom: 12, left: 4),
+                              top: 16,
+                              bottom: 12,
+                              left: 4,
+                            ),
                             child: Text(
                               '${savedIds.length} saved location${savedIds.length > 1 ? 's' : ''}',
                               style: TextStyle(
-                                fontFamily: 'Manrope',
+                                fontFamily: 'Poppins',
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
                                 color: isDark
@@ -113,13 +116,12 @@ class SavedParkingsScreen extends StatelessWidget {
                               .doc(parkingId)
                               .snapshots(),
                           builder: (context, parkSnap) {
-                            if (!parkSnap.hasData ||
-                                !parkSnap.data!.exists) {
+                            if (!parkSnap.hasData || !parkSnap.data!.exists) {
                               return const SizedBox.shrink();
                             }
 
-                            final parking = parkSnap.data!.data()
-                                as Map<String, dynamic>;
+                            final parking =
+                                parkSnap.data!.data() as Map<String, dynamic>;
 
                             return _SavedParkingCard(
                               parkingId: parkingId,
@@ -167,7 +169,7 @@ class SavedParkingsScreen extends StatelessWidget {
           Text(
             'No saved locations',
             style: TextStyle(
-              fontFamily: 'Plus Jakarta Sans',
+              fontFamily: 'Poppins',
               fontSize: 20,
               fontWeight: FontWeight.w700,
               color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -178,7 +180,7 @@ class SavedParkingsScreen extends StatelessWidget {
             'Bookmark your favorite parking spots\nfor quick access later.',
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontFamily: 'Manrope',
+              fontFamily: 'Poppins',
               fontSize: 14,
               color: isDark ? Colors.white54 : const Color(0xFF64748B),
               height: 1.5,
@@ -225,8 +227,7 @@ class _SavedParkingCard extends StatelessWidget {
           color: AppColors.error,
           borderRadius: BorderRadius.circular(16),
         ),
-        child: const Icon(Icons.bookmark_remove,
-            color: Colors.white, size: 26),
+        child: const Icon(Icons.bookmark_remove, color: Colors.white, size: 26),
       ),
       onDismissed: (_) {
         HapticFeedback.mediumImpact();
@@ -240,10 +241,7 @@ class _SavedParkingCard extends StatelessWidget {
             action: SnackBarAction(
               label: 'Undo',
               onPressed: () {
-                FirebaseFirestore.instance
-                    .collection('users')
-                    .doc(uid)
-                    .update({
+                FirebaseFirestore.instance.collection('users').doc(uid).update({
                   'saved_parkings': FieldValue.arrayUnion([parkingId]),
                 });
               },
@@ -254,14 +252,7 @@ class _SavedParkingCard extends StatelessWidget {
       child: GestureDetector(
         onTap: () {
           HapticFeedback.selectionClick();
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => ParkingDetailsScreen(
-                data: {...parking, 'id': parkingId},
-              ),
-            ),
-          );
+          openLotDetail(context, parkingId, {...parking, 'id': parkingId});
         },
         child: Container(
           margin: const EdgeInsets.only(bottom: 12),
@@ -281,7 +272,8 @@ class _SavedParkingCard extends StatelessWidget {
               // Image
               ClipRRect(
                 borderRadius: const BorderRadius.horizontal(
-                    left: Radius.circular(16)),
+                  left: Radius.circular(16),
+                ),
                 child: SizedBox(
                   width: 100,
                   height: 90,
@@ -289,8 +281,7 @@ class _SavedParkingCard extends StatelessWidget {
                       ? Image.network(
                           imageUrl,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
-                              _buildPlaceholder(),
+                          errorBuilder: (_, __, ___) => _buildPlaceholder(),
                         )
                       : _buildPlaceholder(),
                 ),
@@ -300,14 +291,16 @@ class _SavedParkingCard extends StatelessWidget {
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 12),
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         name,
                         style: TextStyle(
-                          fontFamily: 'Plus Jakarta Sans',
+                          fontFamily: 'Poppins',
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
                           color: isDark
@@ -320,17 +313,19 @@ class _SavedParkingCard extends StatelessWidget {
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          Icon(Icons.location_on,
-                              size: 12,
-                              color: isDark
-                                  ? Colors.white38
-                                  : const Color(0xFF94A3B8)),
+                          Icon(
+                            Icons.location_on,
+                            size: 12,
+                            color: isDark
+                                ? Colors.white38
+                                : const Color(0xFF94A3B8),
+                          ),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
                               address,
                               style: TextStyle(
-                                fontFamily: 'Manrope',
+                                fontFamily: 'Poppins',
                                 fontSize: 12,
                                 color: isDark
                                     ? Colors.white54
@@ -345,10 +340,7 @@ class _SavedParkingCard extends StatelessWidget {
                       const SizedBox(height: 8),
                       Row(
                         children: [
-                          _infoBadge(
-                            '$totalSlots slots',
-                            isDark,
-                          ),
+                          _infoBadge('$totalSlots slots', isDark),
                           const SizedBox(width: 8),
                           _infoBadge(
                             '₹${pricePerHour.toStringAsFixed(0)}/hr',
@@ -364,8 +356,7 @@ class _SavedParkingCard extends StatelessWidget {
               // Bookmark icon
               Padding(
                 padding: const EdgeInsets.only(right: 14),
-                child: Icon(Icons.bookmark,
-                    color: AppColors.primary, size: 22),
+                child: Icon(Icons.bookmark, color: AppColors.primary, size: 22),
               ),
             ],
           ),
@@ -380,9 +371,11 @@ class _SavedParkingCard extends StatelessWidget {
           ? AppColors.inputBgDark
           : AppColors.primary.withValues(alpha: 0.06),
       child: Center(
-        child: Icon(Icons.local_parking,
-            color: AppColors.primary.withValues(alpha: 0.3),
-            size: 32),
+        child: Icon(
+          Icons.local_parking,
+          color: AppColors.primary.withValues(alpha: 0.3),
+          size: 32,
+        ),
       ),
     );
   }
@@ -399,7 +392,7 @@ class _SavedParkingCard extends StatelessWidget {
       child: Text(
         text,
         style: TextStyle(
-          fontFamily: 'Manrope',
+          fontFamily: 'Poppins',
           fontSize: 11,
           fontWeight: FontWeight.w600,
           color: isDark ? Colors.white70 : const Color(0xFF64748B),

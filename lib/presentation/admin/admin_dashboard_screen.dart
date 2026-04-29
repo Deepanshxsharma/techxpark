@@ -91,7 +91,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                         "Total Locations",
                         FirebaseFirestore.instance.collection("parking_locations").snapshots(),
                         Icons.map,
-                        [AppColors.primary, const Color(0xFF2563EB)], // Blue Gradient
+                        [AppColors.primary, AppColors.primary], // Blue Gradient
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -124,10 +124,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                 childAspectRatio: 1.0,
               ),
               delegate: SliverChildListDelegate([
-                _buildAnimatedMenuTile(0, "Parkings", Icons.local_parking_rounded, Colors.blue, () => _nav(const ManageParkingsScreen())),
+                _buildAnimatedMenuTile(0, "Parkings", Icons.local_parking_rounded, AppColors.primary, () => _nav(const ManageParkingsScreen())),
                 _buildAnimatedMenuTile(1, "Bookings", Icons.confirmation_number_rounded, Colors.orange, () => _nav(const AdminLiveBookingsScreen())),
                 _buildAnimatedMenuTile(2, "Revenue", Icons.bar_chart_rounded, Colors.green, () => _nav(const AdminRevenueScreen())),
-                _buildAnimatedMenuTile(3, "Users", Icons.group_rounded, Colors.purple, () => _nav(const AdminUsersScreen())),
+                _buildAnimatedMenuTile(3, "Users", Icons.group_rounded, AppColors.primary, () => _nav(const AdminUsersScreen())),
                 _buildAnimatedMenuTile(4, "Support", Icons.headset_mic_rounded, Colors.teal, () => _nav(const AdminSupportChatsScreen())),
               ]),
             ),

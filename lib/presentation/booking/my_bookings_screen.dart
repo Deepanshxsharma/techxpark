@@ -36,55 +36,52 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
     final user = FirebaseAuth.instance.currentUser;
 
     if (user == null) {
-      return const Scaffold(
-        body: Center(child: Text('Please login again')),
-      );
+      return const Scaffold(body: Center(child: Text('Please login again')));
     }
 
     return Scaffold(
-      backgroundColor: AppColors.bgLight,
+      backgroundColor: const Color(0xFFF8FAFC), // bg-slate-50
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
           // ── Sticky Header ──────────────────────────────────────────
           SliverAppBar(
             pinned: true,
-            backgroundColor: AppColors.bgLight,
+            backgroundColor: const Color(0xFFF8FAFC), // bg-slate-50
             surfaceTintColor: Colors.transparent,
             elevation: 0,
-            scrolledUnderElevation: 0.5,
-            shadowColor: const Color(0xFF1E3A8A).withValues(alpha: 0.08),
+            scrolledUnderElevation: 0,
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(1.0),
+              child: Container(
+                color: const Color(0xFFDBEAFE), // border-blue-100
+                height: 1.0,
+              ),
+            ),
             automaticallyImplyLeading: false,
-            title: const Padding(
-              padding: EdgeInsets.only(left: 4.0),
-              child: Text(
-                'My Bookings',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimaryLight,
-                ),
+            title: const Text(
+              'My Bookings',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF0F172A), // text-slate-900
               ),
             ),
             centerTitle: false,
             actions: [
               IconButton(
                 icon: Container(
-                  width: 36,
-                  height: 36,
+                  width: 40,
+                  height: 40,
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.04),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Icon(Icons.filter_list_rounded,
-                      size: 18, color: AppColors.primary),
+                  child: const Icon(
+                    Icons.filter_list_rounded,
+                    size: 24,
+                    color: AppColors.primary,
+                  ), // text-blue-600
                 ),
                 onPressed: () => HapticFeedback.selectionClick(),
               ),
@@ -125,8 +122,10 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: const Color(0xFFE2E8F0).withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(20),
+        color: const Color(
+          0xFFE2E8F0,
+        ).withValues(alpha: 0.5), // bg-slate-200/50
+        borderRadius: BorderRadius.circular(16), // rounded-2xl
       ),
       child: Row(
         children: List.generate(_tabLabels.length, (index) {
@@ -139,17 +138,17 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
               },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(vertical: 12),
+                padding: const EdgeInsets.symmetric(vertical: 10), // py-2.5
                 decoration: BoxDecoration(
                   color: isSelected ? Colors.white : Colors.transparent,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(12), // rounded-xl
                   boxShadow: isSelected
                       ? [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.06),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
+                            color: Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 2,
+                            offset: const Offset(0, 1),
+                          ), // shadow-sm
                         ]
                       : const [],
                 ),
@@ -157,12 +156,14 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                   child: Text(
                     _tabLabels[index],
                     style: TextStyle(
-                      fontSize: 14,
-                      fontWeight:
-                          isSelected ? FontWeight.w700 : FontWeight.w500,
+                      fontSize: 14, // text-sm
+                      fontWeight: isSelected
+                          ? FontWeight.w600
+                          : FontWeight.w500, // font-semibold / font-medium
                       color: isSelected
-                          ? AppColors.primary
-                          : const Color(0xFF64748B),
+                          ? AppColors
+                                .primary // text-blue-600
+                          : const Color(0xFF64748B), // text-slate-500
                     ),
                   ),
                 ),
@@ -176,9 +177,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
 
   void _openSearch() {
     Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => const SearchParkingScreen(),
-      ),
+      MaterialPageRoute<void>(builder: (_) => const SearchParkingScreen()),
     );
   }
 }
@@ -299,20 +298,23 @@ class _BookingsContent extends StatelessWidget {
                   const SizedBox(height: 12),
                   ...currentList
                       .skip(1)
-                      .map((b) => Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: _CompactBookingCard(booking: b),
-                          ))
-                      ,
+                      .map(
+                        (b) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _CompactBookingCard(booking: b),
+                        ),
+                      ),
                 ],
               ],
 
               // Upcoming tab
               if (activeTabIndex == 1)
-                ...currentList.map((b) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _CompactBookingCard(booking: b, isUpcoming: true),
-                    )),
+                ...currentList.map(
+                  (b) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _CompactBookingCard(booking: b, isUpcoming: true),
+                  ),
+                ),
 
               // Past tab
               if (activeTabIndex == 2) ...[
@@ -326,10 +328,12 @@ class _BookingsContent extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                ...currentList.map((b) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _PastBookingCard(booking: b),
-                    )),
+                ...currentList.map(
+                  (b) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _PastBookingCard(booking: b),
+                  ),
+                ),
               ],
             ],
           ),
@@ -404,10 +408,13 @@ class _BookingsContent extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 16,
+                ),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16)),
+                  borderRadius: BorderRadius.circular(16),
+                ),
                 elevation: 0,
               ),
               child: const Row(
@@ -415,9 +422,10 @@ class _BookingsContent extends StatelessWidget {
                 children: [
                   Icon(Icons.search_rounded, size: 20),
                   SizedBox(width: 8),
-                  Text('Find Parking',
-                      style:
-                          TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                  Text(
+                    'Find Parking',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                  ),
                 ],
               ),
             ),
@@ -571,9 +579,12 @@ class _ActiveBookingCardState extends State<_ActiveBookingCard> {
                   top: 16,
                   right: 16,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF2563EB), // blue-600
+                      color: AppColors.primary, // blue-600
                       borderRadius: BorderRadius.circular(999),
                       boxShadow: [
                         BoxShadow(
@@ -622,11 +633,17 @@ class _ActiveBookingCardState extends State<_ActiveBookingCard> {
                           const SizedBox(height: 4),
                           Row(
                             children: [
-                              const Icon(Icons.location_on, color: Color(0xFF64748B), size: 16),
+                              const Icon(
+                                Icons.location_on,
+                                color: Color(0xFF64748B),
+                                size: 16,
+                              ),
                               const SizedBox(width: 4),
                               Expanded(
                                 child: Text(
-                                  _location.isNotEmpty ? _location : 'Parking Location',
+                                  _location.isNotEmpty
+                                      ? _location
+                                      : 'Parking Location',
                                   style: const TextStyle(
                                     fontSize: 14,
                                     color: Color(0xFF64748B),
@@ -655,7 +672,10 @@ class _ActiveBookingCardState extends State<_ActiveBookingCard> {
                         ),
                         const SizedBox(height: 4),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: const Color(0xFFEFF6FF),
                             borderRadius: BorderRadius.circular(8),
@@ -665,7 +685,7 @@ class _ActiveBookingCardState extends State<_ActiveBookingCard> {
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w800,
-                              color: Color(0xFF2563EB),
+                              color: AppColors.primary,
                             ),
                           ),
                         ),
@@ -682,7 +702,10 @@ class _ActiveBookingCardState extends State<_ActiveBookingCard> {
                   decoration: BoxDecoration(
                     color: const Color(0xFFF8FAFC),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFF1F5F9), width: 1),
+                    border: Border.all(
+                      color: const Color(0xFFF1F5F9),
+                      width: 1,
+                    ),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -698,7 +721,7 @@ class _ActiveBookingCardState extends State<_ActiveBookingCard> {
                             ),
                             child: const Icon(
                               Icons.schedule,
-                              color: Color(0xFF2563EB),
+                              color: AppColors.primary,
                               size: 20,
                             ),
                           ),
@@ -750,20 +773,27 @@ class _ActiveBookingCardState extends State<_ActiveBookingCard> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           decoration: BoxDecoration(
-                            border: Border.all(color: const Color(0xFF2563EB), width: 2),
+                            border: Border.all(
+                              color: AppColors.primary,
+                              width: 2,
+                            ),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: const Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.directions, color: Color(0xFF2563EB), size: 16),
+                              Icon(
+                                Icons.directions,
+                                color: AppColors.primary,
+                                size: 16,
+                              ),
                               SizedBox(width: 8),
                               Text(
                                 'Navigate',
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,
-                                  color: Color(0xFF2563EB),
+                                  color: AppColors.primary,
                                 ),
                               ),
                             ],
@@ -778,11 +808,13 @@ class _ActiveBookingCardState extends State<_ActiveBookingCard> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF2563EB),
+                            color: AppColors.primary,
                             borderRadius: BorderRadius.circular(12),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFFBFDBFE).withValues(alpha: 0.5),
+                                color: const Color(
+                                  0xFFBFDBFE,
+                                ).withValues(alpha: 0.5),
                                 blurRadius: 16,
                                 offset: const Offset(0, 4),
                               ),
@@ -791,7 +823,11 @@ class _ActiveBookingCardState extends State<_ActiveBookingCard> {
                           child: const Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.more_time, color: Colors.white, size: 16),
+                              Icon(
+                                Icons.more_time,
+                                color: Colors.white,
+                                size: 16,
+                              ),
                               SizedBox(width: 8),
                               Text(
                                 'Extend Time',
@@ -864,10 +900,7 @@ class _CompactBookingCard extends StatelessWidget {
   final Map<String, dynamic> booking;
   final bool isUpcoming;
 
-  const _CompactBookingCard({
-    required this.booking,
-    this.isUpcoming = false,
-  });
+  const _CompactBookingCard({required this.booking, this.isUpcoming = false});
 
   @override
   Widget build(BuildContext context) {
@@ -875,17 +908,20 @@ class _CompactBookingCard extends StatelessWidget {
         booking['parkingName'] ?? booking['parking_name'] ?? 'Parking Location';
     final slot = booking['slotId'] ?? booking['slot_id'] ?? '--';
     final floorIndex = (booking['floor'] as num?)?.toInt() ?? 0;
-    final start = _BookingsContent._toDateTime(
-            booking['startTime'] ?? booking['start_ts']) ??
+    final start =
+        _BookingsContent._toDateTime(
+          booking['startTime'] ?? booking['start_ts'],
+        ) ??
         DateTime.now();
-    final end = _BookingsContent._toDateTime(
-            booking['endTime'] ?? booking['end_ts']) ??
+    final end =
+        _BookingsContent._toDateTime(booking['endTime'] ?? booking['end_ts']) ??
         DateTime.now();
     final image = booking['parkingImage'] ?? booking['image'] ?? '';
     final bookingId = booking['_docId'] ?? '';
     final parkingId = booking['parkingId'] ?? booking['parking_id'] ?? '';
-    final vehicle =
-        (booking['vehicle'] is Map) ? booking['vehicle'] as Map<String, dynamic> : <String, dynamic>{};
+    final vehicle = (booking['vehicle'] is Map)
+        ? booking['vehicle'] as Map<String, dynamic>
+        : <String, dynamic>{};
 
     return GestureDetector(
       onTap: () {
@@ -958,7 +994,9 @@ class _CompactBookingCard extends StatelessWidget {
                       ),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
                         decoration: BoxDecoration(
                           color: isUpcoming
                               ? const Color(0xFFFFF7ED)
@@ -1019,15 +1057,17 @@ class _PastBookingCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final parkingName =
         booking['parkingName'] ?? booking['parking_name'] ?? 'Parking';
-    final start = _BookingsContent._toDateTime(
-            booking['startTime'] ?? booking['start_ts']) ??
+    final start =
+        _BookingsContent._toDateTime(
+          booking['startTime'] ?? booking['start_ts'],
+        ) ??
         DateTime.now();
     final price = booking['price'] ?? booking['totalAmount'] ?? 0;
     final image = booking['parkingImage'] ?? booking['image'] ?? '';
     final status = (booking['status'] ?? '').toString().toLowerCase();
     final isCancelled = status == 'cancelled';
     final parkingId = booking['parkingId'] ?? booking['parking_id'] ?? '';
-    
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1076,7 +1116,10 @@ class _PastBookingCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: isCancelled
                             ? const Color(0xFFFEE2E2)
@@ -1119,15 +1162,18 @@ class _PastBookingCard extends StatelessWidget {
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.subdirectory_arrow_right_rounded,
-                            size: 14, color: Color(0xFF2563EB)),
+                        Icon(
+                          Icons.subdirectory_arrow_right_rounded,
+                          size: 14,
+                          color: AppColors.primary,
+                        ),
                         SizedBox(width: 4),
                         Text(
                           'Book Again',
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
-                            color: Color(0xFF2563EB),
+                            color: AppColors.primary,
                           ),
                         ),
                       ],
@@ -1161,10 +1207,11 @@ class _SmartImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (url.isNotEmpty && (url.startsWith('http://') || url.startsWith('https://'))) {
+    if (url.isNotEmpty &&
+        (url.startsWith('http://') || url.startsWith('https://'))) {
       return _buildImage(url);
     }
-    
+
     // Fetch from Firebase if we have a parking ID but no direct URL
     if (parkingId != null && parkingId!.isNotEmpty) {
       return StreamBuilder<DocumentSnapshot>(
@@ -1176,8 +1223,10 @@ class _SmartImage extends StatelessWidget {
           if (snapshot.hasData && snapshot.data!.exists) {
             final data = snapshot.data!.data() as Map<String, dynamic>;
             final realUrl = data['imageUrl'] ?? data['image'] as String?;
-            if (realUrl != null && realUrl.isNotEmpty && 
-                (realUrl.startsWith('http://') || realUrl.startsWith('https://'))) {
+            if (realUrl != null &&
+                realUrl.isNotEmpty &&
+                (realUrl.startsWith('http://') ||
+                    realUrl.startsWith('https://'))) {
               return _buildImage(realUrl);
             }
           }

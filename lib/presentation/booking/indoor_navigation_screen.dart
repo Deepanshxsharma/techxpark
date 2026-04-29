@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:async';
 import 'dart:ui' as ui;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -72,24 +73,32 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
     _selectedFloor = widget.bookedFloor;
 
     _pulseController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1400))
-      ..repeat(reverse: true);
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat(reverse: true);
     _pulseAnim = Tween(begin: 0.5, end: 1.0).animate(
-        CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut));
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
 
     _pathController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 3000))
-      ..forward();
-    _pathAnim = CurvedAnimation(parent: _pathController, curve: Curves.easeInOut);
+      vsync: this,
+      duration: const Duration(milliseconds: 3000),
+    )..forward();
+    _pathAnim = CurvedAnimation(
+      parent: _pathController,
+      curve: Curves.easeInOut,
+    );
 
     _fadeController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 700))
-      ..forward();
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    )..forward();
     _fadeAnim = CurvedAnimation(parent: _fadeController, curve: Curves.easeOut);
 
     _vehicleController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 3000))
-      ..repeat();
+      vsync: this,
+      duration: const Duration(milliseconds: 3000),
+    )..repeat();
 
     _loadSlots();
   }
@@ -101,82 +110,89 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
     _fadeController.dispose();
     _vehicleController.dispose();
     _transformController.dispose();
+    _slotsSub?.cancel();
     super.dispose();
   }
 
   // Stream Subscription for real-time slot updates
-  late final Stream<QuerySnapshot<Map<String, dynamic>>> _slotsStream;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _slotsSub;
 
   Future<void> _loadSlots() async {
-    _slotsStream = FirebaseFirestore.instance
+    _slotsSub = FirebaseFirestore.instance
         .collection('parking_locations')
         .doc(widget.parkingId)
         .collection('slots')
-        .snapshots();
+        .snapshots()
+        .listen((snap) {
+          final slots = snap.docs.map((doc) {
+            final d = doc.data();
+            d['id'] = doc.id;
+            return d;
+          }).toList();
 
-    _slotsStream.listen((snap) {
-      final slots = snap.docs.map((doc) {
-        final d = doc.data();
-        d['id'] = doc.id;
-        return d;
-      }).toList();
+          int maxFloor = 0;
+          for (final s in slots) {
+            final f = (s['floor'] as num?)?.toInt() ?? 0;
+            if (f > maxFloor) maxFloor = f;
+          }
 
-      int maxFloor = 0;
-      for (final s in slots) {
-        final f = (s['floor'] as num?)?.toInt() ?? 0;
-        if (f > maxFloor) maxFloor = f;
-      }
+          // Check for state changes to show toasts
+          if (_previousStateMap.isNotEmpty && mounted) {
+            for (final s in slots) {
+              final id = s['id'] as String;
+              final prevStatus = _previousStateMap[id];
+              final currStatus = s['status'] as String? ?? 'available';
 
-      // Check for state changes to show toasts
-      if (_previousStateMap.isNotEmpty && mounted) {
-         for (final s in slots) {
-            final id = s['id'] as String;
-            final prevStatus = _previousStateMap[id];
-            final currStatus = s['status'] as String? ?? 'available';
-            
-            if (prevStatus != null && prevStatus != currStatus) {
-               // Status changed!
-               if (currStatus == 'available') {
+              if (prevStatus != null && prevStatus != currStatus) {
+                // Status changed!
+                if (currStatus == 'available') {
                   final slotNum = s['slotNumber'] ?? id;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Row(
                         children: [
-                          const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                          const Icon(
+                            Icons.check_circle_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
                           const SizedBox(width: 12),
                           Text('Slot $slotNum just became available!'),
                         ],
                       ),
                       backgroundColor: AppColors.success,
                       behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       duration: const Duration(seconds: 4),
                     ),
                   );
-               }
+                }
+              }
             }
-         }
-      }
+          }
 
-      // Update snapshot cache
-      final newMap = <String, String>{};
-      for (final s in slots) {
-         newMap[s['id'] as String] = s['status'] as String? ?? 'available';
-      }
-      _previousStateMap = newMap;
+          // Update snapshot cache
+          final newMap = <String, String>{};
+          for (final s in slots) {
+            newMap[s['id'] as String] = s['status'] as String? ?? 'available';
+          }
+          _previousStateMap = newMap;
 
-      if (mounted) {
-        setState(() {
-          _slots = slots;
-          _totalFloors = maxFloor + 1;
-          _loading = false;
+          if (mounted) {
+            setState(() {
+              _slots = slots;
+              _totalFloors = maxFloor + 1;
+              _loading = false;
+            });
+          }
         });
-      }
-    });
   }
 
-  List<Map<String, dynamic>> get _currentFloorSlots =>
-      _slots.where((s) => (s['floor'] as num?)?.toInt() == _selectedFloor).toList();
+  List<Map<String, dynamic>> get _currentFloorSlots => _slots
+      .where((s) => (s['floor'] as num?)?.toInt() == _selectedFloor)
+      .toList();
 
   // Direction instruction
   String get _directionHint {
@@ -196,7 +212,10 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
       body: _loading
           ? const Center(
               child: CircularProgressIndicator(
-                  color: AppColors.info, strokeWidth: 2))
+                color: AppColors.info,
+                strokeWidth: 2,
+              ),
+            )
           : FadeTransition(
               opacity: _fadeAnim,
               child: Column(
@@ -229,7 +248,11 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
       backgroundColor: AppColors.surfaceDark,
       elevation: 0,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios_rounded, color: AppColors.textPrimaryDark, size: 20),
+        icon: const Icon(
+          Icons.arrow_back_ios_rounded,
+          color: AppColors.textPrimaryDark,
+          size: 20,
+        ),
         onPressed: () => Navigator.pop(context),
       ),
       title: Column(
@@ -237,34 +260,66 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
         children: [
           Row(
             children: [
-              Text('Indoor Navigation',
-                  style: AppTextStyles.h2.copyWith(color: AppColors.textPrimaryDark, fontSize: 16)),
+              Text(
+                'Indoor Navigation',
+                style: AppTextStyles.h2.copyWith(
+                  color: AppColors.textPrimaryDark,
+                  fontSize: 16,
+                ),
+              ),
               const SizedBox(width: 8),
               AnimatedBuilder(
                 animation: _pulseAnim,
                 builder: (_, __) => Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
-                    color: AppColors.success.withValues(alpha: 0.2 + (_pulseAnim.value * 0.8)),
+                    color: AppColors.success.withValues(
+                      alpha: 0.2 + (_pulseAnim.value * 0.8),
+                    ),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Container(
-                        width: 4, height: 4,
-                        decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.white.withValues(alpha: 0.5), blurRadius: 4)]),
+                        width: 4,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.white.withValues(alpha: 0.5),
+                              blurRadius: 4,
+                            ),
+                          ],
+                        ),
                       ),
                       const SizedBox(width: 4),
-                      const Text('LIVE', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+                      const Text(
+                        'LIVE',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 8,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
                     ],
                   ),
                 ),
               ),
             ],
           ),
-          Text(widget.parkingName,
-              style: AppTextStyles.caption.copyWith(color: AppColors.textSecondaryDark)),
+          Text(
+            widget.parkingName,
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.textSecondaryDark,
+            ),
+          ),
         ],
       ),
       actions: [
@@ -282,33 +337,33 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
 
   void _searchSlot(String query) {
     if (query.isEmpty) return;
-    
+
     final lower = query.toLowerCase();
     final idx = _currentFloorSlots.indexWhere((s) {
-       final id = (s['id'] as String?)?.toLowerCase() ?? '';
-       final num = (s['slotNumber'] as String?)?.toLowerCase() ?? '';
-       return id == lower || num == lower;
+      final id = (s['id'] as String?)?.toLowerCase() ?? '';
+      final num = (s['slotNumber'] as String?)?.toLowerCase() ?? '';
+      return id == lower || num == lower;
     });
 
     if (idx >= 0) {
       setState(() => _highlightedSlotIdx = idx);
-      
+
       // Fly to animation
       // We use the matrix from the InteractiveViewer controller
       final pos = SlotLayoutHelper(_currentFloorSlots.length).slotCenter(idx);
       final targetScale = 2.5;
-      
+
       // Screen center approx
       final sw = MediaQuery.of(context).size.width;
       final sh = MediaQuery.of(context).size.height * 0.5;
 
       final dx = sw / 2 - pos.dx * targetScale;
       final dy = sh / 2 - pos.dy * targetScale;
-      
+
       final m = Matrix4.identity()
         ..translate(dx, dy)
         ..scale(targetScale);
-        
+
       _transformController.value = m;
       HapticFeedback.lightImpact();
 
@@ -324,14 +379,16 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
           content: Text('Slot $query not found on this level.'),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
-        )
+        ),
       );
     }
   }
 
   Widget _buildSearchBar() {
     return Positioned(
-      top: 16, left: 16, right: 16,
+      top: 16,
+      left: 16,
+      right: 16,
       child: Container(
         height: 52,
         decoration: BoxDecoration(
@@ -339,8 +396,12 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: Colors.white12),
           boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 16, offset: const Offset(0, 4)),
-          ]
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.2),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: TextField(
           controller: _searchController,
@@ -349,11 +410,20 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
           onSubmitted: _searchSlot,
           decoration: InputDecoration(
             hintText: 'Search for a slot...',
-            hintStyle: AppTextStyles.body1.copyWith(color: AppColors.textSecondaryDark),
+            hintStyle: AppTextStyles.body1.copyWith(
+              color: AppColors.textSecondaryDark,
+            ),
             border: InputBorder.none,
-            prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textSecondaryDark),
+            prefixIcon: const Icon(
+              Icons.search_rounded,
+              color: AppColors.textSecondaryDark,
+            ),
             suffixIcon: IconButton(
-              icon: const Icon(Icons.clear_rounded, color: AppColors.textSecondaryDark, size: 20),
+              icon: const Icon(
+                Icons.clear_rounded,
+                color: AppColors.textSecondaryDark,
+                size: 20,
+              ),
               onPressed: () {
                 _searchController.clear();
                 setState(() => _highlightedSlotIdx = null);
@@ -382,14 +452,18 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.white24, width: 2),
           boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4)),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
           ],
         ),
         clipBehavior: Clip.hardEdge,
         child: IgnorePointer(
           child: CustomPaint(
-             size: const Size(100, 75),
-             painter: _MiniMapPainter(_currentFloorSlots),
+            size: const Size(100, 75),
+            painter: _MiniMapPainter(_currentFloorSlots),
           ),
         ),
       ),
@@ -412,13 +486,15 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
         itemBuilder: (context, i) {
           final isSelected = _selectedFloor == i;
           final isBooked = widget.bookedFloor == i;
-          
+
           Color bgColor = isSelected ? AppColors.info : AppColors.bgDark;
-          Color textColor = isSelected ? Colors.white : AppColors.textSecondaryDark;
-          
+          Color textColor = isSelected
+              ? Colors.white
+              : AppColors.textSecondaryDark;
+
           if (isBooked && !isSelected) {
-             bgColor = AppColors.info.withValues(alpha: 0.15);
-             textColor = AppColors.info;
+            bgColor = AppColors.info.withValues(alpha: 0.15);
+            textColor = AppColors.info;
           }
 
           return GestureDetector(
@@ -444,14 +520,20 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                   if (isBooked) ...[
-                     Icon(Icons.star_rounded, size: 14, color: isSelected ? Colors.white : AppColors.warning),
-                     const SizedBox(width: 4),
-                   ],
-                   Text(
-                     'Level ${i + 1}',
-                     style: AppTextStyles.body2SemiBold.copyWith(color: textColor),
-                   ),
+                  if (isBooked) ...[
+                    Icon(
+                      Icons.star_rounded,
+                      size: 14,
+                      color: isSelected ? Colors.white : AppColors.warning,
+                    ),
+                    const SizedBox(width: 4),
+                  ],
+                  Text(
+                    'Level ${i + 1}',
+                    style: AppTextStyles.body2SemiBold.copyWith(
+                      color: textColor,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -483,15 +565,28 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
   }
 
   Widget _legendDot(Color c, String label) {
-    return Row(mainAxisSize: MainAxisSize.min, children: [
-      Container(
-        width: 10, height: 10,
-        decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(3)),
-      ),
-      const SizedBox(width: 4),
-      Text(label,
-          style: AppTextStyles.captionBold.copyWith(color: AppColors.textSecondaryDark, fontSize: 10, fontWeight: FontWeight.normal)),
-    ]);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(
+            color: c,
+            borderRadius: BorderRadius.circular(3),
+          ),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: AppTextStyles.captionBold.copyWith(
+            color: AppColors.textSecondaryDark,
+            fontSize: 10,
+            fontWeight: FontWeight.normal,
+          ),
+        ),
+      ],
+    );
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -519,7 +614,11 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
               ),
               // Dynamic Slots & Animated Layers
               AnimatedBuilder(
-                animation: Listenable.merge([_pulseAnim, _pathAnim, _vehicleController]),
+                animation: Listenable.merge([
+                  _pulseAnim,
+                  _pathAnim,
+                  _vehicleController,
+                ]),
                 builder: (_, __) => CustomPaint(
                   size: const Size(_mapW, _mapH),
                   painter: ParkingBasementPainter(
@@ -529,7 +628,8 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
                     pulseValue: _pulseAnim.value,
                     pathProgress: _pathAnim.value,
                     vehiclePhase: _vehicleController.value,
-                    skipStaticLayers: true, // Tell the main painter to skip floor and infra
+                    skipStaticLayers:
+                        true, // Tell the main painter to skip floor and infra
                   ),
                   child: _buildSlotOverlays(),
                 ),
@@ -552,19 +652,19 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
         for (int i = 0; i < slots.length; i++) ...[
           () {
             final pos = layout.slotRect(i);
-            
+
             // --- VIRTUALIZATION ---
             // Only draw slot overlays that are visible in the viewport
             final viewport = _transformController.value.clone()..invert();
             final screenRect = Rect.fromLTWH(
-               viewport.getTranslation().x,
-               viewport.getTranslation().y,
-               MediaQuery.of(context).size.width * viewport.getMaxScaleOnAxis(),
-               MediaQuery.of(context).size.height * viewport.getMaxScaleOnAxis(),
+              viewport.getTranslation().x,
+              viewport.getTranslation().y,
+              MediaQuery.of(context).size.width * viewport.getMaxScaleOnAxis(),
+              MediaQuery.of(context).size.height * viewport.getMaxScaleOnAxis(),
             ).inflate(100); // 100px overdraw margin
-            
+
             if (!screenRect.overlaps(pos)) {
-               return const SizedBox.shrink();
+              return const SizedBox.shrink();
             }
             // ----------------------
 
@@ -579,15 +679,13 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
               width: pos.width,
               height: pos.height,
               child: Semantics(
-                label: isBooked
-                    ? 'Your booked slot $slotNum'
-                    : 'Slot $slotNum',
+                label: isBooked ? 'Your booked slot $slotNum' : 'Slot $slotNum',
                 button: true,
                 onTapHint: 'View slot details',
                 child: GestureDetector(
                   onTap: () {
-                     HapticFeedback.lightImpact();
-                     _showSlotDetails(slot);
+                    HapticFeedback.lightImpact();
+                    _showSlotDetails(slot);
                   },
                   child: Stack(
                     clipBehavior: Clip.none,
@@ -598,26 +696,38 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 300),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFFBBF24).withValues(alpha: 0.3),
+                              color: const Color(
+                                0xFFFBBF24,
+                              ).withValues(alpha: 0.3),
                               borderRadius: BorderRadius.circular(4),
                               boxShadow: [
-                                BoxShadow(color: const Color(0xFFFBBF24).withValues(alpha: 0.6), blurRadius: 12),
+                                BoxShadow(
+                                  color: const Color(
+                                    0xFFFBBF24,
+                                  ).withValues(alpha: 0.6),
+                                  blurRadius: 12,
+                                ),
                               ],
                             ),
                           ),
                         ),
                       Center(
-                         // Increase tap target size globally for accessibility
+                        // Increase tap target size globally for accessibility
                         child: Container(
-                          width: double.infinity, height: double.infinity,
+                          width: double.infinity,
+                          height: double.infinity,
                           color: Colors.transparent, // expand hit area
                           alignment: Alignment.center,
                           child: Text(
                             '$slotNum',
                             style: AppTextStyles.captionBold.copyWith(
-                              color: isBooked ? Colors.white : Colors.white.withValues(alpha: 0.6),
+                              color: isBooked
+                                  ? Colors.white
+                                  : Colors.white.withValues(alpha: 0.6),
                               fontSize: isBooked ? 10 : 8,
-                              fontWeight: isBooked ? FontWeight.w800 : FontWeight.w500,
+                              fontWeight: isBooked
+                                  ? FontWeight.w800
+                                  : FontWeight.w500,
                               letterSpacing: 0.3,
                             ),
                           ),
@@ -634,7 +744,9 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
         // YOUR SLOT badge
         if (isBookedFloor) ...[
           () {
-            final bookedIdx = slots.indexWhere((s) => s['id'] == widget.bookedSlotId);
+            final bookedIdx = slots.indexWhere(
+              (s) => s['id'] == widget.bookedSlotId,
+            );
             if (bookedIdx < 0) return const SizedBox.shrink();
             final pos = SlotLayoutHelper(slots.length).slotRect(bookedIdx);
             return Positioned(
@@ -652,8 +764,15 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
                     ),
                   ],
                 ),
-                child: const Text('⭐ YOUR SLOT',
-                    style: TextStyle(color: Colors.white, fontSize: 7, fontWeight: FontWeight.w800, letterSpacing: 0.5)),
+                child: const Text(
+                  '⭐ YOUR SLOT',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 7,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5,
+                  ),
+                ),
               ),
             );
           }(),
@@ -669,11 +788,21 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
               color: AppColors.success,
               borderRadius: BorderRadius.circular(6),
             ),
-            child: const Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.login_rounded, color: Colors.white, size: 10),
-              SizedBox(width: 3),
-              Text('ENTRY', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w700)),
-            ]),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.login_rounded, color: Colors.white, size: 10),
+                SizedBox(width: 3),
+                Text(
+                  'ENTRY',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 8,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
 
@@ -687,11 +816,21 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
               color: AppColors.error,
               borderRadius: BorderRadius.circular(6),
             ),
-            child: const Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.logout_rounded, color: Colors.white, size: 10),
-              SizedBox(width: 3),
-              Text('EXIT', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w700)),
-            ]),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.logout_rounded, color: Colors.white, size: 10),
+                SizedBox(width: 3),
+                Text(
+                  'EXIT',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 8,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ],
@@ -722,10 +861,10 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
             borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.5), 
-                blurRadius: 24, 
-                offset: const Offset(0, -8)
-              )
+                color: Colors.black.withValues(alpha: 0.5),
+                blurRadius: 24,
+                offset: const Offset(0, -8),
+              ),
             ],
           ),
           child: SafeArea(
@@ -735,28 +874,34 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
               children: [
                 // Drag handle
                 Container(
-                  width: 40, height: 4,
+                  width: 40,
+                  height: 4,
                   margin: const EdgeInsets.only(bottom: 16),
                   decoration: BoxDecoration(
                     color: Colors.white24,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-                
+
                 if (isBookedFloor) ...[
                   // Primary Status Header
                   Row(
                     children: [
                       Container(
-                        width: 48, height: 48,
+                        width: 48,
+                        height: 48,
                         decoration: BoxDecoration(
-                          color: isArrived ? AppColors.success.withValues(alpha: 0.15) : AppColors.info.withValues(alpha: 0.15),
+                          color: isArrived
+                              ? AppColors.success.withValues(alpha: 0.15)
+                              : AppColors.info.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Icon(
-                          isArrived ? Icons.check_circle_rounded : Icons.navigation_rounded,
-                          color: isArrived ? AppColors.success : AppColors.info, 
-                          size: 24
+                          isArrived
+                              ? Icons.check_circle_rounded
+                              : Icons.navigation_rounded,
+                          color: isArrived ? AppColors.success : AppColors.info,
+                          size: 24,
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -765,14 +910,23 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              isArrived ? 'Destination Reached' : 'Heading to Slot ${widget.bookedSlotId}',
-                              style: AppTextStyles.h3.copyWith(color: AppColors.textPrimaryDark, fontSize: 18),
+                              isArrived
+                                  ? 'Destination Reached'
+                                  : 'Heading to Slot ${widget.bookedSlotId}',
+                              style: AppTextStyles.h3.copyWith(
+                                color: AppColors.textPrimaryDark,
+                                fontSize: 18,
+                              ),
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              isArrived ? 'You may park your vehicle.' : 'ETA ${(30 * (1 - progress)).round()} sec • ${(120 * (1 - progress)).round()}m',
+                              isArrived
+                                  ? 'You may park your vehicle.'
+                                  : 'ETA ${(30 * (1 - progress)).round()} sec • ${(120 * (1 - progress)).round()}m',
                               style: AppTextStyles.body2.copyWith(
-                                color: isArrived ? AppColors.success : AppColors.info,
+                                color: isArrived
+                                    ? AppColors.success
+                                    : AppColors.info,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -782,7 +936,8 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
                       // Circular Progress
                       if (!isArrived)
                         SizedBox(
-                          width: 48, height: 48,
+                          width: 48,
+                          height: 48,
                           child: Stack(
                             fit: StackFit.expand,
                             children: [
@@ -790,11 +945,18 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
                                 value: progress,
                                 strokeWidth: 4,
                                 backgroundColor: Colors.white12,
-                                valueColor: const AlwaysStoppedAnimation(AppColors.info),
+                                valueColor: const AlwaysStoppedAnimation(
+                                  AppColors.info,
+                                ),
                               ),
                               Center(
-                                child: Text('${(progress * 100).toInt()}%', 
-                                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)
+                                child: Text(
+                                  '${(progress * 100).toInt()}%',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
                             ],
@@ -816,14 +978,16 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
                     _buildRouteStep(
                       icon: Icons.turn_right_rounded,
                       title: 'Turn right into Lane B',
-                      distance: '${(40 * (1 - progress)).clamp(0, 40).round()}m',
+                      distance:
+                          '${(40 * (1 - progress)).clamp(0, 40).round()}m',
                       isActive: progress >= 0.4 && progress < 0.8,
                       isDone: progress >= 0.8,
                     ),
                     _buildRouteStep(
                       icon: Icons.turn_left_rounded,
                       title: 'Your slot is on the left',
-                      distance: '${(20 * (1 - progress)).clamp(0, 20).round()}m',
+                      distance:
+                          '${(20 * (1 - progress)).clamp(0, 20).round()}m',
                       isActive: progress >= 0.8,
                       isDone: false,
                       isLast: true,
@@ -837,9 +1001,9 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: () {
-                             _pathController.reset();
-                             _pathController.forward();
-                             HapticFeedback.mediumImpact();
+                            _pathController.reset();
+                            _pathController.forward();
+                            HapticFeedback.mediumImpact();
                           },
                           icon: const Icon(Icons.refresh_rounded, size: 18),
                           label: const Text('Recalculate'),
@@ -847,7 +1011,9 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
                             foregroundColor: AppColors.textPrimaryDark,
                             side: const BorderSide(color: Colors.white24),
                             padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                         ),
                       ),
@@ -855,20 +1021,24 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
                       Expanded(
                         child: ElevatedButton.icon(
                           onPressed: () {},
-                          icon: const Icon(Icons.share_location_rounded, size: 18),
+                          icon: const Icon(
+                            Icons.share_location_rounded,
+                            size: 18,
+                          ),
                           label: const Text('Share Route'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             elevation: 0,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                         ),
                       ),
                     ],
                   ),
-
                 ] else ...[
                   // Wrong Floor Warning State
                   Container(
@@ -876,20 +1046,36 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
                     decoration: BoxDecoration(
                       color: AppColors.warning.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+                      border: Border.all(
+                        color: AppColors.warning.withValues(alpha: 0.3),
+                      ),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.warning_amber_rounded, color: AppColors.warning, size: 28),
+                        const Icon(
+                          Icons.warning_amber_rounded,
+                          color: AppColors.warning,
+                          size: 28,
+                        ),
                         const SizedBox(width: 16),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Wrong Floor', style: AppTextStyles.body1.copyWith(fontWeight: FontWeight.bold, color: AppColors.warning)),
+                              Text(
+                                'Wrong Floor',
+                                style: AppTextStyles.body1.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.warning,
+                                ),
+                              ),
                               const SizedBox(height: 2),
-                              Text('Your booked slot is on Level ${widget.bookedFloor + 1}.',
-                                  style: AppTextStyles.body2.copyWith(color: AppColors.textSecondaryDark)),
+                              Text(
+                                'Your booked slot is on Level ${widget.bookedFloor + 1}.',
+                                style: AppTextStyles.body2.copyWith(
+                                  color: AppColors.textSecondaryDark,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -904,9 +1090,14 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
                             backgroundColor: AppColors.warning,
                             foregroundColor: Colors.black,
                             elevation: 0,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
                           ),
-                          child: const Text('Go to Floor', style: TextStyle(fontWeight: FontWeight.bold)),
+                          child: const Text(
+                            'Go to Floor',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
                         ),
                       ],
                     ),
@@ -928,8 +1119,12 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
     required bool isDone,
     bool isLast = false,
   }) {
-    final color = isDone ? AppColors.textSecondaryDark : (isActive ? AppColors.textPrimaryDark : Colors.white38);
-    final iconColor = isDone ? AppColors.success : (isActive ? AppColors.info : Colors.white38);
+    final color = isDone
+        ? AppColors.textSecondaryDark
+        : (isActive ? AppColors.textPrimaryDark : Colors.white38);
+    final iconColor = isDone
+        ? AppColors.success
+        : (isActive ? AppColors.info : Colors.white38);
 
     return IntrinsicHeight(
       child: Row(
@@ -940,7 +1135,11 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
             width: 24,
             child: Column(
               children: [
-                Icon(isDone ? Icons.check_circle_rounded : icon, color: iconColor, size: 20),
+                Icon(
+                  isDone ? Icons.check_circle_rounded : icon,
+                  color: iconColor,
+                  size: 20,
+                ),
                 if (!isLast)
                   Expanded(
                     child: Container(
@@ -960,9 +1159,17 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(title, style: AppTextStyles.body2SemiBold.copyWith(color: color)),
+                  Text(
+                    title,
+                    style: AppTextStyles.body2SemiBold.copyWith(color: color),
+                  ),
                   if (!isDone && isActive)
-                    Text(distance, style: AppTextStyles.captionBold.copyWith(color: AppColors.info)),
+                    Text(
+                      distance,
+                      style: AppTextStyles.captionBold.copyWith(
+                        color: AppColors.info,
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -983,11 +1190,23 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _buildMapAction(Icons.view_in_ar_rounded, 'AR View', AppColors.primary),
+          _buildMapAction(
+            Icons.view_in_ar_rounded,
+            'AR View',
+            AppColors.primary,
+          ),
           const SizedBox(height: 12),
-          _buildMapAction(Icons.report_problem_outlined, 'Report', AppColors.textPrimaryDark),
+          _buildMapAction(
+            Icons.report_problem_outlined,
+            'Report',
+            AppColors.textPrimaryDark,
+          ),
           const SizedBox(height: 12),
-          _buildMapAction(Icons.support_agent_rounded, 'Call', AppColors.textPrimaryDark),
+          _buildMapAction(
+            Icons.support_agent_rounded,
+            'Call',
+            AppColors.textPrimaryDark,
+          ),
         ],
       ),
     );
@@ -1002,14 +1221,18 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
           color: AppColors.surfaceDark,
           shape: BoxShape.circle,
           boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4)),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
           ],
         ),
         child: Icon(icon, color: color, size: 24),
       ),
     );
   }
-  
+
   // ═══════════════════════════════════════════════════════════════════════════
   //  SLOT DETAILS BOTTOM SHEET
   // ═══════════════════════════════════════════════════════════════════════════
@@ -1018,7 +1241,9 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
     final status = slot['status'] as String? ?? 'available';
     final slotNum = slot['slotNumber'] ?? slot['id'] ?? 'Unknown';
     final type = slot['type'] ?? 'car';
-    final isBooked = slot['id'] == widget.bookedSlotId && _selectedFloor == widget.bookedFloor;
+    final isBooked =
+        slot['id'] == widget.bookedSlotId &&
+        _selectedFloor == widget.bookedFloor;
 
     showModalBottomSheet(
       context: context,
@@ -1039,9 +1264,13 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
               children: [
                 Center(
                   child: Container(
-                    width: 40, height: 4,
+                    width: 40,
+                    height: 4,
                     margin: const EdgeInsets.only(bottom: 24),
-                    decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+                    decoration: BoxDecoration(
+                      color: Colors.white24,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
                 Row(
@@ -1052,30 +1281,61 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
                       children: [
                         Row(
                           children: [
-                            Text('Slot $slotNum', style: AppTextStyles.h2.copyWith(color: AppColors.textPrimaryDark)),
+                            Text(
+                              'Slot $slotNum',
+                              style: AppTextStyles.h2.copyWith(
+                                color: AppColors.textPrimaryDark,
+                              ),
+                            ),
                             const SizedBox(width: 12),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
                               decoration: BoxDecoration(
-                                color: isBooked ? AppColors.info.withValues(alpha: 0.15) : (status == 'available' ? AppColors.success.withValues(alpha: 0.15) : AppColors.error.withValues(alpha: 0.15)),
+                                color: isBooked
+                                    ? AppColors.info.withValues(alpha: 0.15)
+                                    : (status == 'available'
+                                          ? AppColors.success.withValues(
+                                              alpha: 0.15,
+                                            )
+                                          : AppColors.error.withValues(
+                                              alpha: 0.15,
+                                            )),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
                                 isBooked ? 'YOUR SLOT' : status.toUpperCase(),
                                 style: TextStyle(
-                                  color: isBooked ? AppColors.info : (status == 'available' ? AppColors.success : AppColors.error),
-                                  fontSize: 10, fontWeight: FontWeight.bold,
+                                  color: isBooked
+                                      ? AppColors.info
+                                      : (status == 'available'
+                                            ? AppColors.success
+                                            : AppColors.error),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ),
                           ],
                         ),
                         const SizedBox(height: 4),
-                        Text('Level ${_selectedFloor + 1} • ${type.toString().toUpperCase()} Parking', style: AppTextStyles.body2.copyWith(color: AppColors.textSecondaryDark)),
+                        Text(
+                          'Level ${_selectedFloor + 1} • ${type.toString().toUpperCase()} Parking',
+                          style: AppTextStyles.body2.copyWith(
+                            color: AppColors.textSecondaryDark,
+                          ),
+                        ),
                       ],
                     ),
                     if (status == 'available')
-                       Text('\$2/hr', style: AppTextStyles.h3.copyWith(color: AppColors.primary)),
+                      Text(
+                        '\$2/hr',
+                        style: AppTextStyles.h3.copyWith(
+                          color: AppColors.primary,
+                        ),
+                      ),
                   ],
                 ),
                 const SizedBox(height: 32),
@@ -1085,15 +1345,24 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Features', style: AppTextStyles.caption.copyWith(color: AppColors.textSecondaryDark)),
+                          Text(
+                            'Features',
+                            style: AppTextStyles.caption.copyWith(
+                              color: AppColors.textSecondaryDark,
+                            ),
+                          ),
                           const SizedBox(height: 12),
                           Row(
                             children: [
                               _featureBadge(Icons.videocam_rounded, 'CCTV'),
                               const SizedBox(width: 8),
-                              _featureBadge(Icons.local_police_rounded, 'Secured'),
+                              _featureBadge(
+                                Icons.local_police_rounded,
+                                'Secured',
+                              ),
                               const SizedBox(width: 8),
-                              if (type == 'ev') _featureBadge(Icons.bolt_rounded, 'Charging'),
+                              if (type == 'ev')
+                                _featureBadge(Icons.bolt_rounded, 'Charging'),
                             ],
                           ),
                         ],
@@ -1107,19 +1376,36 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
                     Navigator.pop(context);
                     if (status == 'available') {
                       // Trigger new booking flow (mocked)
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Starting booking flow...')));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Starting booking flow...'),
+                        ),
+                      );
                     }
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: isBooked ? AppColors.info : (status == 'available' ? AppColors.primary : AppColors.surfaceLight),
+                    backgroundColor: isBooked
+                        ? AppColors.info
+                        : (status == 'available'
+                              ? AppColors.primary
+                              : AppColors.surfaceLight),
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                   ),
                   child: Text(
-                    isBooked ? 'Manage Booking' : (status == 'available' ? 'Book Slot Now' : 'Notify When Available'),
+                    isBooked
+                        ? 'Manage Booking'
+                        : (status == 'available'
+                              ? 'Book Slot Now'
+                              : 'Notify When Available'),
                     style: TextStyle(
-                      color: isBooked || status == 'available' ? Colors.white : AppColors.textSecondaryDark,
-                      fontWeight: FontWeight.bold, fontSize: 16
+                      color: isBooked || status == 'available'
+                          ? Colors.white
+                          : AppColors.textSecondaryDark,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
                     ),
                   ),
                 ),
@@ -1145,7 +1431,14 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
         children: [
           Icon(icon, color: AppColors.textSecondaryDark, size: 14),
           const SizedBox(width: 4),
-          Text(label, style: const TextStyle(color: AppColors.textSecondaryDark, fontSize: 10, fontWeight: FontWeight.w600)),
+          Text(
+            label,
+            style: const TextStyle(
+              color: AppColors.textSecondaryDark,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );
@@ -1165,10 +1458,10 @@ class _MiniMapPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final scaleX = size.width / ParkingMapConfig.mapW;
     final scaleY = size.height / ParkingMapConfig.mapH;
-    
+
     final floorRect = Rect.fromLTWH(0, 0, size.width, size.height);
     canvas.drawRect(floorRect, Paint()..color = const Color(0xFF1E293B));
-    
+
     final wallPaint = Paint()
       ..color = const Color(0xFF0F172A)
       ..style = PaintingStyle.stroke
@@ -1177,19 +1470,19 @@ class _MiniMapPainter extends CustomPainter {
 
     final availPaint = Paint()..color = AppColors.success;
     final occPaint = Paint()..color = AppColors.error;
-    
+
     final layout = SlotLayoutHelper(slots.length);
     for (int i = 0; i < slots.length; i++) {
-       final realRect = layout.slotRect(i);
-       final miniRect = Rect.fromLTWH(
-          realRect.left * scaleX, 
-          realRect.top * scaleY, 
-          realRect.width * scaleX, 
-          realRect.height * scaleY
-       );
-       
-       final isAvail = slots[i]['status'] == 'available';
-       canvas.drawRect(miniRect, isAvail ? availPaint : occPaint);
+      final realRect = layout.slotRect(i);
+      final miniRect = Rect.fromLTWH(
+        realRect.left * scaleX,
+        realRect.top * scaleY,
+        realRect.width * scaleX,
+        realRect.height * scaleY,
+      );
+
+      final isAvail = slots[i]['status'] == 'available';
+      canvas.drawRect(miniRect, isAvail ? availPaint : occPaint);
     }
   }
 
@@ -1211,5 +1504,3 @@ class _StaticFloorBackgroundPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
-
-

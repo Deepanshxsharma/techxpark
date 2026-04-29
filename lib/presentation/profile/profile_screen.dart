@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../theme/app_colors.dart';
@@ -37,19 +38,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
         body: Center(
           child: Text(
             'Please log in to view your profile.',
-            style: AppTextStyles.body1.copyWith(color: AppColors.textSecondaryLight),
+            style: AppTextStyles.body1.copyWith(
+              color: AppColors.textSecondaryLight,
+            ),
           ),
         ),
       );
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFBF8FF),
+      backgroundColor: AppColors.bgLight,
       body: StreamBuilder<DocumentSnapshot>(
-        stream: FirebaseFirestore.instance.collection('users').doc(user.uid).snapshots(),
+        stream: FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .snapshots(),
         builder: (context, snapshot) {
           if (!snapshot.hasData || !snapshot.data!.exists) {
-            return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+            return const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            );
           }
 
           final data = snapshot.data!.data() as Map<String, dynamic>;
@@ -66,7 +74,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               SliverAppBar(
                 pinned: true,
                 floating: false,
-                backgroundColor: const Color(0xFFFBF8FF).withValues(alpha: 0.85),
+                backgroundColor: AppColors.bgLight.withValues(alpha: 0.92),
                 surfaceTintColor: Colors.transparent,
                 elevation: 0,
                 automaticallyImplyLeading: false,
@@ -84,16 +92,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       onTap: () => Navigator.maybePop(context),
                       child: const Icon(
                         Icons.arrow_back,
-                        color: Color(0xFF0029B9),
+                        color: AppColors.primary,
                         size: 24,
                       ),
                     ),
                     const SizedBox(width: 16),
                     Text(
                       'Profile',
-                      style: AppTextStyles.h3.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF1A1B23),
+                      style: GoogleFonts.poppins(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimaryLight,
                       ),
                     ),
                   ],
@@ -104,11 +113,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: GestureDetector(
                       onTap: () => Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                        MaterialPageRoute(
+                          builder: (_) => const SettingsScreen(),
+                        ),
                       ),
                       child: const Icon(
                         Icons.settings,
-                        color: Color(0xFF0029B9),
+                        color: AppColors.primary,
                         size: 24,
                       ),
                     ),
@@ -120,7 +131,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               // BODY
               // ═══════════════════════════════════════
               SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenPadding),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.screenPadding,
+                ),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
                     const SizedBox(height: 8),
@@ -140,28 +153,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       _ProfileMenuItem(
                         icon: Icons.directions_car,
                         label: 'My Vehicles',
-                        iconColor: const Color(0xFF0029B9),
+                        iconColor: AppColors.primary,
                         onTap: () => Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => const MyVehicleScreen()),
+                          MaterialPageRoute(
+                            builder: (_) => const MyVehicleScreen(),
+                          ),
                         ),
                       ),
                       _ProfileMenuItem(
                         icon: Icons.calendar_today,
                         label: 'My Bookings',
-                        iconColor: const Color(0xFF0029B9),
+                        iconColor: AppColors.primary,
                         onTap: () => Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => const MyBookingsScreen()),
+                          MaterialPageRoute(
+                            builder: (_) => const MyBookingsScreen(),
+                          ),
                         ),
                       ),
                       _ProfileMenuItem(
                         icon: Icons.bookmark,
                         label: 'Saved Locations',
-                        iconColor: const Color(0xFF0029B9),
+                        iconColor: AppColors.primary,
                         onTap: () => Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => const SavedParkingsScreen()),
+                          MaterialPageRoute(
+                            builder: (_) => const SavedParkingsScreen(),
+                          ),
                         ),
                       ),
                     ]),
@@ -194,7 +213,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         iconColor: const Color(0xFF505A96),
                         onTap: () => Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+                          MaterialPageRoute(
+                            builder: (_) => const NotificationsScreen(),
+                          ),
                         ),
                       ),
                       _ProfileMenuItem(
@@ -203,7 +224,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         iconColor: const Color(0xFF505A96),
                         onTap: () => Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => const PrivacySecurityScreen()),
+                          MaterialPageRoute(
+                            builder: (_) => const PrivacySecurityScreen(),
+                          ),
                         ),
                       ),
                     ]),
@@ -234,7 +257,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             context: context,
                             applicationName: 'TechXPark',
                             applicationVersion: '2.4.1 (Build 108)',
-                            applicationLegalese: '© 2026 TechXPark. All rights reserved.',
+                            applicationLegalese:
+                                '© 2026 TechXPark. All rights reserved.',
                           );
                         },
                       ),
@@ -276,117 +300,122 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // ═══════════════════════════════════════════════════════════════
   // PROFILE HEADER — Avatar, Name, Email, Edit
   // ═══════════════════════════════════════════════════════════════
-  Widget _buildProfileHeader(String name, String email, String? photoUrl, User user) {
-    return Row(
-      children: [
-        // Avatar with verified badge
-        GestureDetector(
-          onTap: () => _showPhotoBottomSheet(context, user),
-          child: Stack(
-            children: [
-              Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 2),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
-                ),
-                child: CircleAvatar(
-                  radius: 38,
-                  backgroundColor: AppColors.bgLight,
-                  backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
-                  child: _isUploadingPhoto
-                      ? const CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2.5)
-                      : (photoUrl == null
-                          ? Text(
-                              name.isNotEmpty ? name[0].toUpperCase() : 'U',
-                              style: const TextStyle(
-                                fontSize: 28,
-                                color: AppColors.primary,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            )
-                          : null),
-                ),
-              ),
-              // Verified badge
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: Container(
-                  padding: const EdgeInsets.all(3),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0029B9),
+  Widget _buildProfileHeader(
+    String name,
+    String email,
+    String? photoUrl,
+    User user,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.borderLight),
+        boxShadow: AppColors.cardShadow,
+      ),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => _showPhotoBottomSheet(context, user),
+            child: Stack(
+              children: [
+                Container(
+                  decoration: const BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
+                    gradient: AppColors.primaryGradient,
                   ),
-                  child: const Icon(Icons.verified, color: Colors.white, size: 12),
+                  padding: const EdgeInsets.all(2),
+                  child: CircleAvatar(
+                    radius: 30,
+                    backgroundColor: AppColors.bgLight,
+                    backgroundImage: photoUrl != null
+                        ? NetworkImage(photoUrl)
+                        : null,
+                    child: _isUploadingPhoto
+                        ? const CircularProgressIndicator(
+                            color: AppColors.primary,
+                            strokeWidth: 2.5,
+                          )
+                        : (photoUrl == null
+                              ? Text(
+                                  name.isNotEmpty ? name[0].toUpperCase() : 'U',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 24,
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                )
+                              : null),
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ),
-
-        const SizedBox(width: 16),
-
-        // Name & Email
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                name,
-                style: const TextStyle(
-                  fontFamily: 'Plus Jakarta Sans',
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF1A1B23),
-                  letterSpacing: -0.3,
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                    child: const Icon(
+                      Icons.verified,
+                      color: Colors.white,
+                      size: 12,
+                    ),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                email,
-                style: const TextStyle(
-                  fontFamily: 'Manrope',
-                  fontSize: 13,
-                  fontWeight: FontWeight.w400,
-                  color: Color(0xFF444655),
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        // Edit Profile button
-        GestureDetector(
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const EditProfileScreen()),
-          ),
-          child: Text(
-            'Edit Profile',
-            style: TextStyle(
-              fontFamily: 'Manrope',
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFF0029B9),
+              ],
             ),
           ),
-        ),
-      ],
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimaryLight,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  email,
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    color: AppColors.textSecondaryLight,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          OutlinedButton(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+            ),
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: AppColors.primary),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(999),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            ),
+            child: Text(
+              'Edit Profile',
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -414,7 +443,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
         // Fetch wallet balance from user doc
         return StreamBuilder<DocumentSnapshot>(
-          stream: FirebaseFirestore.instance.collection('users').doc(uid).snapshots(),
+          stream: FirebaseFirestore.instance
+              .collection('users')
+              .doc(uid)
+              .snapshots(),
           builder: (context, userSnap) {
             if (userSnap.hasData && userSnap.data!.exists) {
               final userData = userSnap.data!.data() as Map<String, dynamic>;
@@ -465,34 +497,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // ═══════════════════════════════════════════════════════════════
   Widget _buildMenuGroup(List<_ProfileMenuItem> items) {
     return Container(
-      padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
-        color: const Color(0xFFF4F2FF),
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.borderLight),
+        boxShadow: AppColors.cardShadow,
       ),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          children: items.asMap().entries.map((entry) {
-            final index = entry.key;
-            final item = entry.value;
-            return Column(
-              children: [
-                _buildMenuTile(item),
-                if (index < items.length - 1)
-                  Divider(
-                    height: 0.5,
-                    thickness: 0.5,
-                    color: const Color(0xFFC5C5D7).withValues(alpha: 0.3),
-                    indent: 64,
-                  ),
-              ],
-            );
-          }).toList(),
-        ),
+      child: Column(
+        children: items.asMap().entries.map((entry) {
+          final index = entry.key;
+          final item = entry.value;
+          return Column(
+            children: [
+              _buildMenuTile(item),
+              if (index < items.length - 1)
+                const Divider(
+                  height: 0.5,
+                  thickness: 0.5,
+                  color: AppColors.borderLight,
+                  indent: 64,
+                ),
+            ],
+          );
+        }).toList(),
       ),
     );
   }
@@ -524,17 +551,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Expanded(
                 child: Text(
                   item.label,
-                  style: const TextStyle(
-                    fontFamily: 'Manrope',
+                  style: GoogleFonts.poppins(
                     fontSize: 15,
                     fontWeight: FontWeight.w500,
-                    color: Color(0xFF1A1B23),
+                    color: AppColors.textPrimaryLight,
                   ),
                 ),
               ),
               Icon(
                 Icons.chevron_right,
-                color: const Color(0xFFC5C5D7),
+                color: AppColors.textTertiaryLight,
                 size: 22,
               ),
             ],
@@ -554,12 +580,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF0029B9), Color(0xFF2845D6)],
+          colors: [AppColors.primary, AppColors.primaryDark],
         ),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF2845D6).withValues(alpha: 0.2),
+            color: AppColors.primary.withValues(alpha: 0.2),
             blurRadius: 32,
             offset: const Offset(0, 12),
           ),
@@ -573,11 +599,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             top: -12,
             child: Opacity(
               opacity: 0.2,
-              child: Icon(
-                Icons.redeem,
-                size: 90,
-                color: Colors.white,
-              ),
+              child: Icon(Icons.redeem, size: 90, color: Colors.white),
             ),
           ),
 
@@ -585,10 +607,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Refer & Earn',
-                style: TextStyle(
-                  fontFamily: 'Plus Jakarta Sans',
+              Text(
+                'Refer & Earn 🎁',
+                style: GoogleFonts.poppins(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
                   color: Colors.white,
@@ -599,8 +620,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 width: 200,
                 child: Text(
                   'Invite friends and get ₹500 off your next parking session.',
-                  style: TextStyle(
-                    fontFamily: 'Manrope',
+                  style: GoogleFonts.poppins(
                     fontSize: 13,
                     fontWeight: FontWeight.w400,
                     color: Colors.white.withValues(alpha: 0.8),
@@ -620,7 +640,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   );
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(999),
@@ -633,12 +656,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ],
                   ),
                   child: const Text(
-                    'Invite Friends',
+                    'Invite Friends →',
                     style: TextStyle(
-                      fontFamily: 'Manrope',
+                      fontFamily: 'Poppins',
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF0029B9),
+                      color: AppColors.primary,
                     ),
                   ),
                 ),
@@ -660,24 +683,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
-          color: const Color(0xFFBA1A1A).withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: const Color(0xFFBA1A1A).withValues(alpha: 0.1),
-          ),
+          color: AppColors.error.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.error),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.logout, color: const Color(0xFFBA1A1A), size: 20),
+            const Icon(Icons.logout, color: AppColors.error, size: 20),
             const SizedBox(width: 10),
             Text(
               'Sign Out',
-              style: TextStyle(
-                fontFamily: 'Manrope',
+              style: GoogleFonts.poppins(
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
-                color: const Color(0xFFBA1A1A),
+                color: AppColors.error,
               ),
             ),
           ],
@@ -710,16 +730,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 24),
               ListTile(
-                leading: const Icon(Icons.camera_alt, color: Color(0xFF0029B9)),
-                title: const Text('Take Photo', style: TextStyle(fontWeight: FontWeight.w600)),
+                leading: const Icon(Icons.camera_alt, color: AppColors.primary),
+                title: const Text(
+                  'Take Photo',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
                 onTap: () {
                   Navigator.pop(ctx);
                   _pickAndUploadPhoto(context, user.uid, ImageSource.camera);
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.photo_library, color: Color(0xFF0029B9)),
-                title: const Text('Choose from Gallery', style: TextStyle(fontWeight: FontWeight.w600)),
+                leading: const Icon(
+                  Icons.photo_library,
+                  color: AppColors.primary,
+                ),
+                title: const Text(
+                  'Choose from Gallery',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
                 onTap: () {
                   Navigator.pop(ctx);
                   _pickAndUploadPhoto(context, user.uid, ImageSource.gallery);
@@ -729,14 +758,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const Divider(),
                 ListTile(
                   leading: const Icon(Icons.delete, color: Color(0xFFBA1A1A)),
-                  title: const Text('Remove Photo', style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFFBA1A1A))),
+                  title: const Text(
+                    'Remove Photo',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFFBA1A1A),
+                    ),
+                  ),
                   onTap: () async {
                     Navigator.pop(ctx);
                     setState(() => _isUploadingPhoto = true);
                     try {
-                      await FirebaseFirestore.instance.collection('users').doc(user.uid).update({'photoUrl': FieldValue.delete()});
+                      await FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(user.uid)
+                          .update({'photoUrl': FieldValue.delete()});
                       if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Photo removed')));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Photo removed')),
+                        );
                       }
                     } finally {
                       setState(() => _isUploadingPhoto = false);
@@ -752,9 +792,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Future<void> _pickAndUploadPhoto(BuildContext context, String uid, ImageSource source) async {
+  Future<void> _pickAndUploadPhoto(
+    BuildContext context,
+    String uid,
+    ImageSource source,
+  ) async {
     final picker = ImagePicker();
-    final picked = await picker.pickImage(source: source, maxWidth: 512, imageQuality: 85);
+    final picked = await picker.pickImage(
+      source: source,
+      maxWidth: 512,
+      imageQuality: 85,
+    );
     if (picked == null) return;
 
     setState(() => _isUploadingPhoto = true);
@@ -763,17 +811,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final ref = FirebaseStorage.instance.ref('profile_photos/$uid.jpg');
       await ref.putFile(File(picked.path));
       final url = await ref.getDownloadURL();
-      await FirebaseFirestore.instance.collection('users').doc(uid).update({'photoUrl': url});
+      await FirebaseFirestore.instance.collection('users').doc(uid).update({
+        'photoUrl': url,
+      });
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile photo updated'), backgroundColor: Color(0xFF10B981)),
+          const SnackBar(
+            content: Text('Profile photo updated'),
+            backgroundColor: Color(0xFF10B981),
+          ),
         );
       }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Upload failed: $e'), backgroundColor: const Color(0xFFBA1A1A)),
+          SnackBar(
+            content: Text('Upload failed: $e'),
+            backgroundColor: const Color(0xFFBA1A1A),
+          ),
         );
       }
     } finally {
@@ -805,17 +861,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 48),
+                  const Icon(
+                    Icons.warning_amber_rounded,
+                    color: Colors.orange,
+                    size: 48,
+                  ),
                   const SizedBox(height: 16),
                   const Text(
                     'Sign Out',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Color(0xFF1A1B23)),
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF1A1B23),
+                    ),
                   ),
                   const SizedBox(height: 12),
                   const Text(
                     'Your bookings and vehicles will still be saved when you return.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Color(0xFF444655), fontSize: 14, height: 1.5),
+                    style: TextStyle(
+                      color: Color(0xFF444655),
+                      fontSize: 14,
+                      height: 1.5,
+                    ),
                   ),
                   const SizedBox(height: 32),
                   Row(
@@ -825,10 +893,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           onPressed: () => Navigator.pop(ctx),
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
                             side: const BorderSide(color: Color(0xFFC5C5D7)),
                           ),
-                          child: const Text('Cancel', style: TextStyle(color: Color(0xFF1A1B23), fontWeight: FontWeight.w600)),
+                          child: const Text(
+                            'Cancel',
+                            style: TextStyle(
+                              color: Color(0xFF1A1B23),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -841,10 +917,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFFBA1A1A),
                             padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
                             elevation: 0,
                           ),
-                          child: const Text('Sign Out', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                          child: const Text(
+                            'Sign Out',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -857,7 +941,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       },
       transitionBuilder: (ctx, anim1, anim2, child) {
         return SlideTransition(
-          position: Tween(begin: const Offset(0, 1), end: Offset.zero).animate(anim1),
+          position: Tween(
+            begin: const Offset(0, 1),
+            end: Offset.zero,
+          ).animate(anim1),
           child: child,
         );
       },
@@ -884,7 +971,7 @@ class _StatCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isPrimary ? const Color(0xFF0029B9) : Colors.white,
+        color: isPrimary ? AppColors.primary : Colors.white,
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
@@ -897,9 +984,7 @@ class _StatCard extends StatelessWidget {
         ],
         border: isPrimary
             ? null
-            : Border.all(
-                color: const Color(0xFFC5C5D7).withValues(alpha: 0.1),
-              ),
+            : Border.all(color: const Color(0xFFC5C5D7).withValues(alpha: 0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -908,7 +993,7 @@ class _StatCard extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              fontFamily: 'Manrope',
+              fontFamily: 'Poppins',
               fontSize: 10,
               fontWeight: FontWeight.w700,
               letterSpacing: 1.5,
@@ -921,10 +1006,10 @@ class _StatCard extends StatelessWidget {
           Text(
             value,
             style: TextStyle(
-              fontFamily: 'Plus Jakarta Sans',
+              fontFamily: 'Poppins',
               fontSize: 20,
               fontWeight: FontWeight.w700,
-              color: isPrimary ? Colors.white : const Color(0xFF0029B9),
+              color: isPrimary ? Colors.white : AppColors.primary,
             ),
           ),
         ],

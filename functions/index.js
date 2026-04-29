@@ -128,6 +128,7 @@ exports.onBookingCreated = functions
   .document('bookings/{bookingId}')
   .onCreate(async (snap, context) => {
     const booking = snap.data();
+    const db = admin.firestore();
     
     await deliverNotification(
       booking.userId,
@@ -136,6 +137,19 @@ exports.onBookingCreated = functions
       'booking',
       { bookingId: context.params.bookingId }
     );
+
+    await appendAutoSupportMessage({
+      db,
+      userId: booking.userId,
+      text: `Slot confirmed successfully for ${booking.parkingName}. Your booking is ready to use.`,
+      action: {
+        type: 'open_bookings',
+        label: 'View Bookings',
+        payload: {
+          bookingId: context.params.bookingId,
+        },
+      },
+    });
   });
 
 exports.bookingExpiryReminder = functions
@@ -143,11 +157,12 @@ exports.bookingExpiryReminder = functions
   .pubsub
   .schedule('every 2 minutes')
   .onRun(async (context) => {
+    const db = admin.firestore();
     const now = new Date();
     const in10Min = new Date(now.getTime() + 10 * 60 * 1000);
     const in12Min = new Date(now.getTime() + 12 * 60 * 1000);
     
-    const snap = await admin.firestore()
+    const snap = await db
       .collection('bookings')
       .where('status', 'in', ['active', 'parked', 'requested'])
       .where('endTime', '>=', now)
@@ -167,6 +182,17 @@ exports.bookingExpiryReminder = functions
         'expiry',
         { bookingId: doc.id }
       );
+
+      await appendAutoSupportMessage({
+        db,
+        userId: booking.userId,
+        text: `Your parking ends in 10 mins at ${booking.parkingName}. Extend now if you need more time.`,
+        action: await buildExpirySupportAction({
+          db,
+          bookingId: doc.id,
+          booking,
+        }),
+      });
       
       batch.update(doc.ref, { expirySent: true });
     }
@@ -444,8 +470,6 @@ async function buildReleasePlan(tx, bookingData) {
     }
   }
 
-  let assignments = null;
-  let zoneOccupancy = null;
   let assignments = null;
   let zoneOccupancy = null;
   const zoneKey = String(bookingData.zoneKey || '');
@@ -862,7 +886,6 @@ exports.cancelParkingBooking = functions
       const currentStatus = normalizeStatus(bookingData.status);
       ensureAllowedTransition(currentStatus, 'cancelled');
       const releasePlan = await buildReleasePlan(tx, bookingData);
-      const releasePlan = await buildReleasePlan(tx, bookingData);
 
       const startTime = bookingData.startTime?.toDate?.();
       if (startTime && ['booked', 'upcoming'].includes(currentStatus)) {
@@ -947,7 +970,6 @@ exports.completeParkingBooking = functions
 
       const currentStatus = normalizeStatus(bookingData.status);
       ensureAllowedTransition(currentStatus, 'completed');
-      const releasePlan = await buildReleasePlan(tx, bookingData);
       const releasePlan = await buildReleasePlan(tx, bookingData);
 
       tx.update(bookingRef, {
@@ -1548,4 +1570,695 @@ exports.completeParkingBooking = functions
 
       return { message: 'Booking completed successfully.' };
     });
+  });
+
+// ═══════════════════════════════════════════════════════════════════
+// GODREJ BKC — Vehicle Retrieval ETA System
+// ═══════════════════════════════════════════════════════════════════
+
+// 1. Calculate ETA & Create Retrieval Request
+exports.createRetrievalRequest = functions
+  .region('asia-south1')
+  .https.onCall(async (data, context) => {
+    const { zoneId, employeePhone, employeeName, vehicleNumber, vehicleModel } = data;
+
+    if (!zoneId || !employeePhone || !employeeName || !vehicleNumber) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'Missing required fields: zoneId, employeePhone, employeeName, vehicleNumber'
+      );
+    }
+
+    const db = admin.firestore();
+
+    // Get zone config
+    const zoneDoc = await db.collection('godrej_zones').doc(zoneId).get();
+    if (!zoneDoc.exists) {
+      throw new functions.https.HttpsError('not-found', 'Zone not found');
+    }
+    const zone = zoneDoc.data();
+    const baseEta = zone.baseEtaMinutes || 15;
+    const activeLifters = zone.activeLifters || 1;
+
+    // Get queued requests in this zone
+    const queuedSnap = await db.collection('godrej_requests')
+      .where('zoneId', '==', zoneId)
+      .where('status', 'in', ['queued', 'in_process'])
+      .orderBy('requestedAt')
+      .get();
+
+    const queuedRequests = queuedSnap.docs;
+    const queuePosition = queuedRequests.length + 1;
+
+    // Calculate ETA: batchesAhead = ceil(requestsAhead / lifters)
+    const requestsAhead = queuePosition - 1;
+    const batchesAhead = activeLifters > 0
+      ? Math.ceil(requestsAhead / activeLifters)
+      : requestsAhead;
+    const etaMinutes = baseEta + (batchesAhead * baseEta);
+
+    // Assign to lifter with least load
+    const liftersSnap = await db.collection('godrej_lifters')
+      .where('zoneId', '==', zoneId)
+      .where('isActive', '==', true)
+      .get();
+
+    const lifterLoads = {};
+    liftersSnap.docs.forEach(d => {
+      if (d.data().status !== 'breakdown') {
+        lifterLoads[d.id] = 0;
+      }
+    });
+    queuedRequests.forEach(r => {
+      const lid = r.data().assignedLifterId;
+      if (lid && lifterLoads[lid] !== undefined) {
+        lifterLoads[lid] = (lifterLoads[lid] || 0) + 1;
+      }
+    });
+
+    const assignedLifterId = Object.entries(lifterLoads)
+      .sort((a, b) => a[1] - b[1])[0]?.[0] || null;
+
+    const estimatedReadyTime = new Date(Date.now() + etaMinutes * 60000);
+
+    const requestToken = Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+
+    // Create request document
+    const reqRef = await db.collection('godrej_requests').add({
+      requestToken,
+      employeeName,
+      employeePhone,
+      vehicleNumber,
+      vehicleModel: vehicleModel || '',
+      zoneId,
+      assignedLifterId,
+      queuePosition,
+      status: 'queued',
+      etaMinutes,
+      estimatedReadyTime: admin.firestore.Timestamp.fromDate(estimatedReadyTime),
+      requestedAt: admin.firestore.FieldValue.serverTimestamp(),
+      processingStartedAt: null,
+      readyNotifiedAt: null,
+      collectedAt: null,
+      reParkedAt: null,
+      notCollectedDeadline: null,
+      smsDelivered: false,
+      totalTurnaroundMinutes: null,
+      operatorId: null,
+      notes: ''
+    });
+
+    // Generate SMS message
+    const timeStr = estimatedReadyTime.toLocaleTimeString('en-IN', {
+      hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata'
+    });
+    const trackingUrl = `https://techxpark-67c25.web.app/track/${reqRef.id}`;
+    const smsMessage = `Dear ${employeeName}, your vehicle ${vehicleNumber} retrieval request has been queued. Estimated ready time: ${timeStr}. Track here: ${trackingUrl}`;
+
+    // Save SMS notification
+    await db.collection('godrej_notifications').add({
+      requestId: reqRef.id,
+      employeePhone,
+      type: 'request_created',
+      message: smsMessage,
+      sentAt: admin.firestore.FieldValue.serverTimestamp(),
+      delivered: false
+    });
+
+    return {
+      requestId: reqRef.id,
+      requestToken,
+      queuePosition,
+      etaMinutes,
+      estimatedReadyTime: estimatedReadyTime.toISOString(),
+      trackingUrl,
+      assignedLifterId
+    };
+  });
+
+// 2. Mark Vehicle Ready + Notify
+exports.markVehicleReady = functions
+  .region('asia-south1')
+  .https.onCall(async (data, context) => {
+    if (!context.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'Must be logged in');
+    }
+
+    const { requestId } = data;
+    if (!requestId) {
+      throw new functions.https.HttpsError('invalid-argument', 'requestId is required');
+    }
+
+    const db = admin.firestore();
+
+    const settingsDoc = await db.collection('godrej_settings').doc('global').get();
+    const timeout = settingsDoc.exists
+      ? (settingsDoc.data().nonCollectionTimeoutMinutes || 15)
+      : 15;
+
+    const deadline = new Date(Date.now() + timeout * 60000);
+
+    await db.collection('godrej_requests').doc(requestId).update({
+      status: 'ready',
+      readyNotifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+      notCollectedDeadline: admin.firestore.Timestamp.fromDate(deadline),
+      operatorId: context.auth.uid
+    });
+
+    // Get request data for SMS
+    const reqDoc = await db.collection('godrej_requests').doc(requestId).get();
+    const req = reqDoc.data();
+
+    // Save ready notification
+    await db.collection('godrej_notifications').add({
+      requestId,
+      employeePhone: req.employeePhone,
+      type: 'ready',
+      message: `✅ Your vehicle ${req.vehicleNumber} is ready for pickup! Please collect within ${timeout} minutes. If not collected, it will be returned to the parking zone.`,
+      sentAt: admin.firestore.FieldValue.serverTimestamp(),
+      delivered: false
+    });
+
+    return { success: true };
+  });
+
+// 3. Auto Non-Collection Handler (runs every 1 minute)
+exports.checkGodrejNonCollection = functions
+  .region('asia-south1')
+  .pubsub
+  .schedule('every 1 minutes')
+  .timeZone('Asia/Kolkata')
+  .onRun(async (context) => {
+    const db = admin.firestore();
+    const now = admin.firestore.Timestamp.now();
+
+    const snap = await db.collection('godrej_requests')
+      .where('status', '==', 'ready')
+      .where('notCollectedDeadline', '<=', now)
+      .get();
+
+    if (snap.empty) return null;
+
+    const batch = db.batch();
+
+    for (const doc of snap.docs) {
+      const data = doc.data();
+      const requestedAt = data.requestedAt?.toDate();
+      const reParkedAt = new Date();
+      const turnaround = requestedAt
+        ? Math.round((reParkedAt - requestedAt) / 60000)
+        : null;
+
+      batch.update(doc.ref, {
+        status: 're_parked',
+        reParkedAt: admin.firestore.FieldValue.serverTimestamp(),
+        totalTurnaroundMinutes: turnaround
+      });
+
+      // Save re-park notification
+      await db.collection('godrej_notifications').add({
+        requestId: doc.id,
+        employeePhone: data.employeePhone,
+        type: 're_parked',
+        message: `Your vehicle ${data.vehicleNumber} was not collected in time and has been returned to parking. Please raise a new request.`,
+        sentAt: admin.firestore.FieldValue.serverTimestamp(),
+        delivered: false
+      });
+    }
+
+    await batch.commit();
+    return null;
+  });
+
+const SUPPORT_CHAT_ID = 'ai_support';
+const SUPPORT_SYSTEM_PROMPT = `You are TechXPark AI Assistant.
+
+You help users with:
+- Parking bookings
+- Slot availability
+- Payment issues
+- Navigation
+- Extensions
+
+Rules:
+- Be short and helpful
+- Give direct answers
+- Suggest actions (e.g., "Tap Extend Booking")
+- Never say "contact support"
+- Assume real-time parking context
+
+Tone:
+- Friendly
+- Smart
+- Professional`;
+
+function supportChatRef(db, userId, chatId = SUPPORT_CHAT_ID) {
+  return db.collection('users').doc(userId).collection('support_chats').doc(chatId);
+}
+
+function supportMessagesRef(db, userId, chatId = SUPPORT_CHAT_ID) {
+  return supportChatRef(db, userId, chatId).collection('messages');
+}
+
+function serializeTimestamp(value) {
+  if (!value) return null;
+  if (typeof value.toDate === 'function') {
+    return value.toDate().toISOString();
+  }
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+  return null;
+}
+
+function readNumber(value, fallback = null) {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function chatPreview(text) {
+  const normalized = String(text || '').trim();
+  if (!normalized) return '';
+  return normalized.length > 160
+    ? `${normalized.slice(0, 157).trimEnd()}...`
+    : normalized;
+}
+
+async function saveSupportChatMessage({
+  db,
+  userId,
+  chatId = SUPPORT_CHAT_ID,
+  text,
+  sender,
+  action = null,
+  incrementUnread = false,
+  isSystem = false,
+}) {
+  const safeText = chatPreview(text);
+  if (!safeText) return null;
+
+  const chatRef = supportChatRef(db, userId, chatId);
+  const messageRef = supportMessagesRef(db, userId, chatId).doc();
+  const batch = db.batch();
+
+  const messagePayload = {
+    text: safeText,
+    sender,
+    timestamp: admin.firestore.FieldValue.serverTimestamp(),
+    isRead: sender === 'user',
+    isSystem,
+  };
+  if (action) {
+    messagePayload.action = action;
+  }
+
+  const chatPayload = {
+    title: 'AI Support',
+    assistantType: 'ai',
+    status: 'open',
+    lastMessage: safeText,
+    lastSender: sender,
+    lastMessageTime: admin.firestore.FieldValue.serverTimestamp(),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  };
+
+  if (incrementUnread) {
+    chatPayload.unreadCount = admin.firestore.FieldValue.increment(1);
+  } else if (sender === 'user') {
+    chatPayload.unreadCount = 0;
+  }
+
+  batch.set(chatRef, chatPayload, {merge: true});
+  batch.set(messageRef, messagePayload);
+  await batch.commit();
+  return messageRef.id;
+}
+
+async function appendAutoSupportMessage({
+  db,
+  userId,
+  text,
+  action = null,
+  chatId = SUPPORT_CHAT_ID,
+}) {
+  if (!userId || !text) return null;
+  return saveSupportChatMessage({
+    db,
+    userId,
+    chatId,
+    text,
+    sender: 'ai',
+    action,
+    incrementUnread: true,
+    isSystem: true,
+  });
+}
+
+function bookingStatusPriority(status) {
+  switch (normalizeStatus(status)) {
+    case 'requested':
+    case 'parked':
+    case 'active':
+    case 'booked':
+      return 0;
+    case 'upcoming':
+      return 1;
+    default:
+      return 2;
+  }
+}
+
+async function buildAiSupportContext(db, userId) {
+  const userRef = db.collection('users').doc(userId);
+  const userSnap = await userRef.get();
+  const userData = userSnap.data() || {};
+
+  const bookingsSnap = await db
+    .collection('bookings')
+    .where('userId', '==', userId)
+    .where('status', 'in', ['upcoming', 'active', 'booked', 'parked', 'requested'])
+    .get();
+
+  const bookingDocs = bookingsSnap.docs.slice().sort((a, b) => {
+    const dataA = a.data() || {};
+    const dataB = b.data() || {};
+    const statusScore = bookingStatusPriority(dataA.status) - bookingStatusPriority(dataB.status);
+    if (statusScore !== 0) return statusScore;
+    const timeA =
+      dataA.updatedAt?.toMillis?.() ||
+      dataA.startTime?.toMillis?.() ||
+      dataA.createdAt?.toMillis?.() ||
+      0;
+    const timeB =
+      dataB.updatedAt?.toMillis?.() ||
+      dataB.startTime?.toMillis?.() ||
+      dataB.createdAt?.toMillis?.() ||
+      0;
+    return timeB - timeA;
+  });
+
+  const bookingDoc = bookingDocs[0] || null;
+  const bookingData = bookingDoc ? bookingDoc.data() || {} : null;
+  let parkingData = null;
+
+  if (bookingData?.parkingId) {
+    const parkingSnap = await db.collection('parking_locations').doc(String(bookingData.parkingId)).get();
+    parkingData = parkingSnap.data() || null;
+  }
+
+  return {
+    user: {
+      userId,
+      name: userData.name || userData.displayName || 'User',
+      email: userData.email || '',
+    },
+    booking: bookingData
+      ? {
+          bookingId: bookingDoc.id,
+          status: bookingData.status || '',
+          parkingId: bookingData.parkingId || '',
+          parkingName: bookingData.parkingName || '',
+          slotId: bookingData.slotId || '',
+          slotNumber: bookingData.slotNumber || bookingData.slotId || '',
+          floorIndex: intValue(bookingData.floorIndex, 0),
+          startTime: serializeTimestamp(bookingData.startTime),
+          endTime: serializeTimestamp(bookingData.endTime),
+          paymentStatus: bookingData.paymentStatus || 'unknown',
+          paymentMethod: bookingData.paymentMethod || '',
+          amountPaid: readNumber(bookingData.amountPaid, 0),
+          extended: Boolean(bookingData.extended),
+        }
+      : null,
+    parking: parkingData
+      ? {
+          parkingId: bookingData?.parkingId || '',
+          name: parkingData.name || bookingData?.parkingName || 'Parking',
+          address: parkingData.address || '',
+          latitude: readNumber(parkingData.latitude ?? parkingData.lat),
+          longitude: readNumber(parkingData.longitude ?? parkingData.lng),
+          availableSlots: intValue(
+            parkingData.availableSlots ?? parkingData.available_slots,
+            0
+          ),
+          totalSlots: intValue(parkingData.totalSlots ?? parkingData.total_slots, 0),
+          pricePerHour: readNumber(
+            parkingData.price_per_hour ?? parkingData.pricePerHour ?? parkingData.price,
+            0
+          ),
+        }
+      : null,
+  };
+}
+
+async function getSupportHistory(db, userId, chatId = SUPPORT_CHAT_ID) {
+  const snapshot = await supportMessagesRef(db, userId, chatId)
+    .orderBy('timestamp', 'desc')
+    .limit(8)
+    .get();
+
+  return snapshot.docs
+    .map((doc) => doc.data() || {})
+    .reverse()
+    .map((data) => ({
+      sender: data.sender || 'ai',
+      text: String(data.text || '').trim(),
+    }))
+    .filter((entry) => entry.text);
+}
+
+function detectSupportAction(userMessage, context) {
+  const normalized = String(userMessage || '').trim().toLowerCase();
+  const booking = context.booking;
+  const parking = context.parking;
+
+  if (
+    /(navigate|direction|route|go to parking|take me|open maps)/.test(normalized) &&
+    parking &&
+    parking.latitude != null &&
+    parking.longitude != null
+  ) {
+    return {
+      type: 'navigate_parking',
+      label: 'Open Maps',
+      payload: {
+        parkingName: parking.name || booking?.parkingName || 'Parking',
+        latitude: parking.latitude,
+        longitude: parking.longitude,
+      },
+    };
+  }
+
+  if (/(extend|more time|increase time|extra hour|extend parking)/.test(normalized) && booking) {
+    return {
+      type: 'extend_booking',
+      label: 'Tap Extend Booking',
+      payload: {
+        bookingId: booking.bookingId,
+        slotId: booking.slotId || '',
+        floorIndex: booking.floorIndex || 0,
+        startTime: booking.startTime,
+        endTime: booking.endTime,
+        parking: {
+          id: booking.parkingId || '',
+          name: booking.parkingName || parking?.name || 'Parking',
+          latitude: parking?.latitude ?? null,
+          longitude: parking?.longitude ?? null,
+          address: parking?.address || '',
+        },
+      },
+    };
+  }
+
+  if (/(payment|upi|card|refund|charged|wallet|failed)/.test(normalized)) {
+    return {
+      type: 'open_wallet',
+      label: 'Open Wallet',
+      payload: {},
+    };
+  }
+
+  if (/(booking|slot|ticket|active booking|my booking)/.test(normalized)) {
+    return {
+      type: 'open_bookings',
+      label: 'View Bookings',
+      payload: {},
+    };
+  }
+
+  return null;
+}
+
+async function buildExpirySupportAction({db, bookingId, booking}) {
+  if (!booking) return null;
+
+  let parking = null;
+  if (booking.parkingId) {
+    const parkingSnap = await db
+      .collection('parking_locations')
+      .doc(String(booking.parkingId))
+      .get();
+    parking = parkingSnap.data() || null;
+  }
+
+  return {
+    type: 'extend_booking',
+    label: 'Tap Extend Booking',
+    payload: {
+      bookingId,
+      slotId: booking.slotId || '',
+      floorIndex: intValue(booking.floorIndex, 0),
+      startTime: serializeTimestamp(booking.startTime),
+      endTime: serializeTimestamp(booking.endTime),
+      parking: {
+        id: booking.parkingId || '',
+        name: booking.parkingName || parking?.name || 'Parking',
+        latitude: readNumber(parking?.latitude ?? parking?.lat),
+        longitude: readNumber(parking?.longitude ?? parking?.lng),
+        address: parking?.address || '',
+      },
+    },
+  };
+}
+
+function extractResponseText(payload) {
+  if (typeof payload?.output_text === 'string' && payload.output_text.trim()) {
+    return payload.output_text.trim();
+  }
+
+  const output = Array.isArray(payload?.output) ? payload.output : [];
+  for (const item of output) {
+    if (!item || item.type !== 'message' || !Array.isArray(item.content)) continue;
+    for (const part of item.content) {
+      if (part?.type === 'output_text' && typeof part.text === 'string' && part.text.trim()) {
+        return part.text.trim();
+      }
+    }
+  }
+
+  return '';
+}
+
+async function requestOpenAiSupportReply({userMessage, context, history}) {
+  const apiKey =
+    process.env.OPENAI_API_KEY ||
+    (functions.config().openai && functions.config().openai.key) ||
+    '';
+  if (!apiKey) {
+    throw new functions.https.HttpsError(
+      'failed-precondition',
+      'OPENAI_API_KEY is not configured.'
+    );
+  }
+
+  const model = process.env.OPENAI_SUPPORT_MODEL || 'gpt-5.4-mini';
+  const prompt = [
+    'Current TechXPark context:',
+    JSON.stringify(context, null, 2),
+    '',
+    'Recent support chat history:',
+    history.length
+      ? history.map((entry) => `${entry.sender}: ${entry.text}`).join('\n')
+      : 'No prior messages.',
+    '',
+    `Latest user message: ${userMessage}`,
+    '',
+    'Reply to the latest user message only. Keep the answer under 80 words.',
+  ].join('\n');
+
+  const response = await fetch('https://api.openai.com/v1/responses', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      instructions: SUPPORT_SYSTEM_PROMPT,
+      input: prompt,
+      max_output_tokens: 220,
+      temperature: 0.4,
+      store: false,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('OpenAI support request failed:', errorText);
+    throw new functions.https.HttpsError(
+      'internal',
+      'Failed to generate AI support response.'
+    );
+  }
+
+  const payload = await response.json();
+  const reply = extractResponseText(payload);
+  if (!reply) {
+    throw new functions.https.HttpsError(
+      'internal',
+      'AI support returned an empty response.'
+    );
+  }
+  return reply;
+}
+
+exports.sendAiSupportMessage = functions
+  .region('asia-south1')
+  .https.onCall(async (data, context) => {
+    if (!context.auth) {
+      throw new functions.https.HttpsError(
+        'unauthenticated',
+        'Please sign in to continue.'
+      );
+    }
+
+    const userId = context.auth.uid;
+    const chatId = String(data?.chatId || SUPPORT_CHAT_ID).trim() || SUPPORT_CHAT_ID;
+    const message = String(data?.message || '').trim();
+    if (!message) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'Message text is required.'
+      );
+    }
+
+    const db = admin.firestore();
+
+    await saveSupportChatMessage({
+      db,
+      userId,
+      chatId,
+      text: message,
+      sender: 'user',
+      incrementUnread: false,
+    });
+
+    const supportContext = await buildAiSupportContext(db, userId);
+    const history = await getSupportHistory(db, userId, chatId);
+    const action = detectSupportAction(message, supportContext);
+    const aiReply = await requestOpenAiSupportReply({
+      userMessage: message,
+      context: supportContext,
+      history,
+    });
+
+    console.log('Support AI user:', message);
+    console.log('Support AI reply:', aiReply);
+
+    await saveSupportChatMessage({
+      db,
+      userId,
+      chatId,
+      text: aiReply,
+      sender: 'ai',
+      action,
+      incrementUnread: true,
+    });
+
+    return {
+      reply: aiReply,
+      action,
+      chatId,
+    };
   });

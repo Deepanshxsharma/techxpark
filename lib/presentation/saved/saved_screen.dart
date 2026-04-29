@@ -1,6 +1,8 @@
 // lib/presentation/saved/saved_screen.dart
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '../../theme/app_colors.dart';
 import '../../services/bookmark_service.dart';
 
 class SavedScreen extends StatefulWidget {
@@ -35,9 +37,9 @@ class _SavedScreenState extends State<SavedScreen> {
       savedParkings.removeAt(index);
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Removed from saved")),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text("Removed from saved")));
   }
 
   @override
@@ -53,21 +55,21 @@ class _SavedScreenState extends State<SavedScreen> {
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : savedParkings.isEmpty
-              ? const Center(
-                  child: Text(
-                    "No saved parkings yet",
-                    style: TextStyle(fontSize: 16, color: Colors.black54),
-                  ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: savedParkings.length,
-                  itemBuilder: (context, index) {
-                    final park = savedParkings[index];
+          ? const Center(
+              child: Text(
+                "No saved parkings yet",
+                style: TextStyle(fontSize: 16, color: Colors.black54),
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: savedParkings.length,
+              itemBuilder: (context, index) {
+                final park = savedParkings[index];
 
-                    return _parkingCard(park, index);
-                  },
-                ),
+                return _parkingCard(park, index);
+              },
+            ),
     );
   }
 
@@ -94,9 +96,13 @@ class _SavedScreenState extends State<SavedScreen> {
             children: [
               Text(address, style: const TextStyle(color: Colors.black54)),
               const SizedBox(height: 4),
-              Text("₹$price / hour",
-                  style: const TextStyle(
-                      color: Colors.blue, fontWeight: FontWeight.w600)),
+              Text(
+                "₹$price / hour",
+                style: const TextStyle(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
         ),
@@ -110,9 +116,7 @@ class _SavedScreenState extends State<SavedScreen> {
           // Open location in Firestore
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (_) => ParkingDetailsFromSaved(id: id),
-            ),
+            MaterialPageRoute(builder: (_) => ParkingDetailsFromSaved(id: id)),
           );
         },
       ),
@@ -131,7 +135,9 @@ class ParkingDetailsFromSaved extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ref = FirebaseFirestore.instance.collection("parking_locations").doc(id);
+    final ref = FirebaseFirestore.instance
+        .collection("parking_locations")
+        .doc(id);
 
     return Scaffold(
       appBar: AppBar(
@@ -159,11 +165,16 @@ class ParkingDetailsFromSaved extends StatelessWidget {
               children: [
                 Text(
                   park["name"] ?? "Parking",
-                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 10),
-                Text("₹${park['price_per_hour']} / hour",
-                    style: const TextStyle(fontSize: 18)),
+                Text(
+                  "₹${park['price_per_hour']} / hour",
+                  style: const TextStyle(fontSize: 18),
+                ),
                 const SizedBox(height: 10),
                 Text("Floors: ${park['total_floors']}"),
                 Text("Spots per Floor: ${park['spots_per_floor']}"),
@@ -180,7 +191,7 @@ class ParkingDetailsFromSaved extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                   child: const Text("Book Parking"),
-                )
+                ),
               ],
             ),
           );
@@ -189,4 +200,3 @@ class ParkingDetailsFromSaved extends StatelessWidget {
     );
   }
 }
-

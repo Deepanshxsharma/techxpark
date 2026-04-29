@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../models/conversation_model.dart';
 import '../theme/app_colors.dart';
@@ -45,59 +46,72 @@ class ConversationTile extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        margin: const EdgeInsets.only(bottom: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        margin: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(
-          color: hasUnread
-              ? (isDark
-                  ? AppColors.primary.withValues(alpha: 0.06)
-                  : AppColors.primary.withValues(alpha: 0.03))
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
+          color: isDark ? AppColors.surfaceDark : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: hasUnread
+                ? AppColors.primary.withValues(alpha: 0.4)
+                : (isDark ? AppColors.borderDark : AppColors.borderLight),
+          ),
+          boxShadow: isDark
+              ? []
+              : [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 20,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
         ),
         child: Row(
           children: [
-            // ── Avatar ─────────────────────────────────────
             Container(
-              width: 50,
-              height: 50,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
-                gradient: AppColors.primaryGradient,
-                borderRadius: BorderRadius.circular(15),
+                color: AppColors.activeBlueLight,
+                borderRadius: BorderRadius.circular(16),
               ),
               child: Center(
-                child: Text(
-                  name.isNotEmpty ? name[0].toUpperCase() : 'S',
-                  style: const TextStyle(
-                    fontFamily: 'Plus Jakarta Sans',
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
+                child: hasUnread
+                    ? Text(
+                        name.isNotEmpty ? name[0].toUpperCase() : 'P',
+                        style: GoogleFonts.poppins(
+                          color: AppColors.primary,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      )
+                    : Icon(
+                        name.toLowerCase().contains('support')
+                            ? Icons.support_agent_rounded
+                            : Icons.notifications_active_outlined,
+                        color: AppColors.primary,
+                        size: 22,
+                      ),
               ),
             ),
             const SizedBox(width: 14),
-
-            // ── Info ───────────────────────────────────────
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Name + time row
                   Row(
                     children: [
                       Expanded(
                         child: Text(
                           name,
-                          style: TextStyle(
-                            fontFamily: 'Plus Jakarta Sans',
+                          style: GoogleFonts.poppins(
                             fontSize: 15,
-                            fontWeight:
-                                hasUnread ? FontWeight.w800 : FontWeight.w700,
+                            fontWeight: hasUnread
+                                ? FontWeight.w800
+                                : FontWeight.w700,
                             color: isDark
-                                ? Colors.white
-                                : const Color(0xFF0F172A),
+                                ? AppColors.textPrimaryDark
+                                : AppColors.textPrimaryLight,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -107,42 +121,40 @@ class ConversationTile extends StatelessWidget {
                       if (timeStr.isNotEmpty)
                         Text(
                           timeStr,
-                          style: TextStyle(
-                            fontFamily: 'Manrope',
-                            fontSize: 12,
-                            fontWeight:
-                                hasUnread ? FontWeight.w600 : FontWeight.w400,
+                          style: GoogleFonts.poppins(
+                            fontSize: 11,
+                            fontWeight: hasUnread
+                                ? FontWeight.w600
+                                : FontWeight.w400,
                             color: hasUnread
                                 ? AppColors.primary
                                 : (isDark
-                                    ? Colors.white38
-                                    : const Color(0xFF94A3B8)),
+                                      ? AppColors.textTertiaryDark
+                                      : AppColors.textTertiaryLight),
                           ),
                         ),
                     ],
                   ),
                   const SizedBox(height: 4),
-
-                  // Message + badge row
                   Row(
                     children: [
                       Expanded(
                         child: Text(
                           conversation.lastMessage,
-                          style: TextStyle(
-                            fontFamily: 'Manrope',
+                          style: GoogleFonts.poppins(
                             fontSize: 13,
-                            fontWeight:
-                                hasUnread ? FontWeight.w500 : FontWeight.w400,
+                            fontWeight: hasUnread
+                                ? FontWeight.w500
+                                : FontWeight.w400,
                             color: hasUnread
                                 ? (isDark
-                                    ? Colors.white70
-                                    : const Color(0xFF334155))
+                                      ? AppColors.textSecondaryDark
+                                      : AppColors.textSecondaryLight)
                                 : (isDark
-                                    ? Colors.white38
-                                    : const Color(0xFF94A3B8)),
+                                      ? AppColors.textTertiaryDark
+                                      : AppColors.textTertiaryLight),
                           ),
-                          maxLines: 1,
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -150,17 +162,16 @@ class ConversationTile extends StatelessWidget {
                         const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 7, vertical: 3),
+                            horizontal: 7,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
-                            gradient: AppColors.primaryGradient,
-                            borderRadius: BorderRadius.circular(12),
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text(
-                            unreadCount > 99
-                                ? '99+'
-                                : unreadCount.toString(),
-                            style: const TextStyle(
-                              fontFamily: 'Plus Jakarta Sans',
+                            unreadCount > 99 ? '99+' : unreadCount.toString(),
+                            style: GoogleFonts.poppins(
                               color: Colors.white,
                               fontSize: 10,
                               fontWeight: FontWeight.w700,

@@ -47,10 +47,14 @@ class BookingSummaryScreen extends StatelessWidget {
         actions: [
           IconButton(
             onPressed: () {
-               Navigator.of(context).popUntil((route) => route.isFirst);
+              Navigator.of(context).popUntil((route) => route.isFirst);
             },
-            icon: const Icon(Icons.close_rounded, color: AppColors.textSecondaryLight, size: 28),
-          )
+            icon: const Icon(
+              Icons.close_rounded,
+              color: AppColors.textSecondaryLight,
+              size: 28,
+            ),
+          ),
         ],
       ),
       body: SingleChildScrollView(
@@ -104,7 +108,10 @@ class BookingSummaryScreen extends StatelessWidget {
 
                         // 🌟 HERO STAT: THE SLOT
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 40,
+                            vertical: 24,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.bgLight,
                             borderRadius: BorderRadius.circular(20),
@@ -131,7 +138,9 @@ class BookingSummaryScreen extends StatelessWidget {
                               const SizedBox(height: 4),
                               Text(
                                 "Level ${floorIndex + 1}",
-                                style: AppTextStyles.body1.copyWith(fontWeight: FontWeight.w600),
+                                style: AppTextStyles.body1.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ],
                           ),
@@ -158,21 +167,25 @@ class BookingSummaryScreen extends StatelessWidget {
                               Row(
                                 children: [
                                   Icon(
-                                    vehicle["type"] == "bike" ? Icons.two_wheeler : Icons.directions_car_filled,
+                                    vehicle["type"] == "bike"
+                                        ? Icons.two_wheeler
+                                        : Icons.directions_car_filled,
                                     size: 20,
                                     color: AppColors.textPrimaryLight,
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
                                     vehicle["number"] ?? "Unknown",
-                                    style: AppTextStyles.body1.copyWith(fontWeight: FontWeight.bold),
+                                    style: AppTextStyles.body1.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ],
-                              )
+                              ),
                             ],
                           ),
                         ),
-                        
+
                         // Right: Time
                         Expanded(
                           child: Column(
@@ -182,12 +195,16 @@ class BookingSummaryScreen extends StatelessWidget {
                               const SizedBox(height: 6),
                               Text(
                                 "$hours Hours",
-                                style: AppTextStyles.body1.copyWith(fontWeight: FontWeight.bold),
+                                style: AppTextStyles.body1.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                               const SizedBox(height: 2),
                               Text(
                                 "${DateFormat('h:mm a').format(start)} - ${DateFormat('h:mm a').format(end)}",
-                                style: AppTextStyles.captionBold.copyWith(color: AppColors.textSecondaryLight),
+                                style: AppTextStyles.captionBold.copyWith(
+                                  color: AppColors.textSecondaryLight,
+                                ),
                               ),
                             ],
                           ),
@@ -204,13 +221,17 @@ class BookingSummaryScreen extends StatelessWidget {
             // -----------------------------------------------------------------
             // 3. ACTION BUTTONS
             // -----------------------------------------------------------------
-            
+
             // Primary: Navigate
             Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
-                  BoxShadow(color: AppColors.primary.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 8)),
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.3),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
                 ],
               ),
               child: ElevatedButton.icon(
@@ -280,13 +301,21 @@ class BookingSummaryScreen extends StatelessWidget {
                   ),
                 );
               },
-              icon: const Icon(Icons.qr_code_rounded, color: AppColors.textPrimaryLight),
-              label: Text("View Ticket Details", style: AppTextStyles.buttonText.copyWith(color: AppColors.textPrimaryLight)),
+              icon: const Icon(
+                Icons.qr_code_rounded,
+                color: AppColors.textPrimaryLight,
+              ),
+              label: Text(
+                "View Ticket Details",
+                style: AppTextStyles.buttonText.copyWith(
+                  color: AppColors.textPrimaryLight,
+                ),
+              ),
               style: TextButton.styleFrom(
                 minimumSize: const Size(double.infinity, 56),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
-                  side: const BorderSide(color: AppColors.borderLight)
+                  side: const BorderSide(color: AppColors.borderLight),
                 ),
               ),
             ),
@@ -310,16 +339,21 @@ class BookingSummaryScreen extends StatelessWidget {
             color: AppColors.success.withValues(alpha: 0.1),
             shape: BoxShape.circle,
             boxShadow: [
-              BoxShadow(color: AppColors.success.withValues(alpha: 0.2), blurRadius: 24, spreadRadius: 4)
-            ]
+              BoxShadow(
+                color: AppColors.success.withValues(alpha: 0.2),
+                blurRadius: 24,
+                spreadRadius: 4,
+              ),
+            ],
           ),
-          child: const Icon(Icons.check_rounded, color: AppColors.success, size: 48),
+          child: const Icon(
+            Icons.check_rounded,
+            color: AppColors.success,
+            size: 48,
+          ),
         ),
         const SizedBox(height: 20),
-        Text(
-          "Confirmed!",
-          style: AppTextStyles.h1,
-        ),
+        Text("Confirmed!", style: AppTextStyles.h1),
         const SizedBox(height: 8),
         Text(
           "Your parking space has been reserved.",

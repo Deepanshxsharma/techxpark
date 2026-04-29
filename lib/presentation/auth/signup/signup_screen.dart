@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:techxpark/theme/app_colors.dart';
 
+import '../../../services/google_auth_service.dart';
 import '../login/login_screen.dart';
+import 'package:techxpark/utils/navigation_utils.dart';
 
 /// Signup Screen — Stitch design: clean white bg, rounded inputs,
 /// primary blue CTA, consistent with login screen styling.
@@ -97,7 +98,7 @@ class _SignupScreenState extends State<SignupScreen>
                     const SizedBox(height: 16),
                     Text(
                       'Create Account',
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.poppins(
                         fontSize: 24,
                         fontWeight: FontWeight.w700,
                         color: Colors.white,
@@ -107,7 +108,7 @@ class _SignupScreenState extends State<SignupScreen>
                     const SizedBox(height: 6),
                     Text(
                       'Join TechXPark today',
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.poppins(
                         fontSize: 15,
                         color: Colors.white.withValues(alpha: 0.8),
                         fontWeight: FontWeight.w400,
@@ -163,9 +164,8 @@ class _SignupScreenState extends State<SignupScreen>
                         isDark: isDark,
                         isPassword: true,
                         obscure: obscurePassword,
-                        onToggle: () => setState(
-                          () => obscurePassword = !obscurePassword,
-                        ),
+                        onToggle: () =>
+                            setState(() => obscurePassword = !obscurePassword),
                       ),
                       const SizedBox(height: 16),
 
@@ -177,8 +177,8 @@ class _SignupScreenState extends State<SignupScreen>
                         isPassword: true,
                         obscure: obscureConfirmPassword,
                         onToggle: () => setState(
-                          () => obscureConfirmPassword =
-                              !obscureConfirmPassword,
+                          () =>
+                              obscureConfirmPassword = !obscureConfirmPassword,
                         ),
                       ),
                       const SizedBox(height: 28),
@@ -207,7 +207,7 @@ class _SignupScreenState extends State<SignupScreen>
                                 )
                               : Text(
                                   'Create Account',
-                                  style: GoogleFonts.inter(
+                                  style: GoogleFonts.poppins(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -227,7 +227,7 @@ class _SignupScreenState extends State<SignupScreen>
                   children: [
                     Text(
                       'Already have an account? ',
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.poppins(
                         color: isDark
                             ? AppColors.textSecondaryDark
                             : AppColors.textSecondaryLight,
@@ -238,16 +238,11 @@ class _SignupScreenState extends State<SignupScreen>
                     GestureDetector(
                       onTap: () {
                         HapticFeedback.selectionClick();
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const LoginScreen(),
-                          ),
-                        );
+                        safePushReplacement(context, const LoginScreen());
                       },
                       child: Text(
                         'Login',
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.poppins(
                           color: AppColors.primary,
                           fontWeight: FontWeight.w700,
                           fontSize: 14,
@@ -285,13 +280,13 @@ class _SignupScreenState extends State<SignupScreen>
         obscureText: isPassword && obscure,
         keyboardType: keyboardType,
         cursorColor: AppColors.primary,
-        style: GoogleFonts.inter(
+        style: GoogleFonts.poppins(
           color: isDark ? Colors.white : AppColors.textPrimaryLight,
           fontWeight: FontWeight.w500,
         ),
         decoration: InputDecoration(
           hintText: hintText,
-          hintStyle: GoogleFonts.inter(
+          hintStyle: GoogleFonts.poppins(
             color: isDark
                 ? AppColors.textSecondaryDark
                 : AppColors.textSecondaryLight,
@@ -312,8 +307,10 @@ class _SignupScreenState extends State<SignupScreen>
           border: InputBorder.none,
           enabledBorder: InputBorder.none,
           focusedBorder: InputBorder.none,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 16,
+          ),
         ),
       ),
     );
@@ -350,8 +347,7 @@ class _SignupScreenState extends State<SignupScreen>
     HapticFeedback.mediumImpact();
 
     try {
-      final cred =
-          await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      final cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: email,
         password: pass,
       );
@@ -359,24 +355,15 @@ class _SignupScreenState extends State<SignupScreen>
       final user = cred.user;
 
       if (user != null) {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .set({
-          'uid': user.uid,
-          'name': name,
-          'email': email,
-          'phone': '',
-          'provider': 'email',
-          'role': 'customer',
-          'blocked': false,
-          'banned': false,
-          'isOnline': false,
-          'accessStatus': 'none',
-          'assignedLotId': null,
-          'fcmToken': null,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
+        await user.updateDisplayName(name);
+        if (!mounted) return;
+        final synced = await GoogleAuthService().syncUserAfterSignIn(
+          context,
+          user,
+          provider: 'email',
+          fallbackName: name,
+        );
+        if (!synced) return;
       }
 
       HapticFeedback.heavyImpact();

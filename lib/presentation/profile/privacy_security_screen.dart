@@ -31,8 +31,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
     try {
       final info = await PackageInfo.fromPlatform();
       setState(() {
-        _appVersion =
-            'TechXPark v${info.version} (Build ${info.buildNumber})';
+        _appVersion = 'TechXPark v${info.version} (Build ${info.buildNumber})';
       });
     } catch (e) {
       setState(() => _appVersion = 'TechXPark v2.4.1');
@@ -43,8 +42,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null && user.email != null) {
       try {
-        await FirebaseAuth.instance
-            .sendPasswordResetEmail(email: user.email!);
+        await FirebaseAuth.instance.sendPasswordResetEmail(email: user.email!);
         if (mounted) {
           HapticFeedback.mediumImpact();
           ScaffoldMessenger.of(context).showSnackBar(
@@ -74,21 +72,24 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
     if (user == null) return;
 
     final controller = TextEditingController();
-    bool confirmed = await showDialog(
+    bool confirmed =
+        await showDialog(
           context: context,
           builder: (ctx) => AlertDialog(
             shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20)),
-            title: const Text('Delete Account',
-                style: TextStyle(fontWeight: FontWeight.w800)),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: const Text(
+              'Delete Account',
+              style: TextStyle(fontWeight: FontWeight.w800),
+            ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
                   'This action is permanent and irreversible.\nAll your bookings, vehicles, and data will be deleted.\n\nType "DELETE" to confirm.',
-                  style: TextStyle(
-                      color: Color(0xFF64748B), height: 1.5),
+                  style: TextStyle(color: Color(0xFF64748B), height: 1.5),
                 ),
                 const SizedBox(height: 16),
                 TextField(
@@ -101,7 +102,9 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: const BorderSide(
-                          color: AppColors.error, width: 2),
+                        color: AppColors.error,
+                        width: 2,
+                      ),
                     ),
                   ),
                 ),
@@ -116,15 +119,18 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.error,
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 onPressed: () {
                   if (controller.text.trim() == 'DELETE') {
                     Navigator.pop(ctx, true);
                   }
                 },
-                child: const Text('Delete permanently',
-                    style: TextStyle(color: Colors.white)),
+                child: const Text(
+                  'Delete permanently',
+                  style: TextStyle(color: Colors.white),
+                ),
               ),
             ],
           ),
@@ -152,9 +158,9 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error: $e')));
         }
       }
     }
@@ -179,14 +185,16 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
               surfaceTintColor: Colors.transparent,
               elevation: 0,
               leading: IconButton(
-                icon: Icon(Icons.arrow_back,
-                    color: isDark ? Colors.white : const Color(0xFF0029B9)),
+                icon: Icon(
+                  Icons.arrow_back,
+                  color: isDark ? Colors.white : AppColors.primary,
+                ),
                 onPressed: () => Navigator.pop(context),
               ),
               title: Text(
                 'Privacy & Security',
                 style: TextStyle(
-                  fontFamily: 'Plus Jakarta Sans',
+                  fontFamily: 'Poppins',
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
                   color: isDark ? Colors.white : const Color(0xFF1A1C1D),
@@ -221,8 +229,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
                       subtitle: 'Face ID / Fingerprint',
                       value: _biometricEnabled,
                       isDark: isDark,
-                      onChanged: (v) =>
-                          setState(() => _biometricEnabled = v),
+                      onChanged: (v) => setState(() => _biometricEnabled = v),
                     ),
                     _switchTile(
                       icon: Icons.verified_user_outlined,
@@ -231,8 +238,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
                       subtitle: 'Extra login verification',
                       value: _twoFactorEnabled,
                       isDark: isDark,
-                      onChanged: (v) =>
-                          setState(() => _twoFactorEnabled = v),
+                      onChanged: (v) => setState(() => _twoFactorEnabled = v),
                     ),
                   ]),
 
@@ -246,7 +252,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
                   _buildGroup(isDark, [
                     _tile(
                       icon: Icons.visibility_off_outlined,
-                      iconBg: Colors.indigo,
+                      iconBg: AppColors.primary,
                       title: 'Data Privacy',
                       subtitle: 'Manage your data preferences',
                       isDark: isDark,
@@ -271,9 +277,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
                   const SizedBox(height: 10),
                   Container(
                     decoration: BoxDecoration(
-                      color: isDark
-                          ? AppColors.surfaceDark
-                          : Colors.white,
+                      color: isDark ? AppColors.surfaceDark : Colors.white,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
                         color: AppColors.error.withValues(alpha: 0.15),
@@ -287,32 +291,33 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
                         borderRadius: BorderRadius.circular(16),
                         child: Padding(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 16),
+                            horizontal: 16,
+                            vertical: 16,
+                          ),
                           child: Row(
                             children: [
                               Container(
                                 width: 40,
                                 height: 40,
                                 decoration: BoxDecoration(
-                                  color: AppColors.error
-                                      .withValues(alpha: 0.1),
+                                  color: AppColors.error.withValues(alpha: 0.1),
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(
-                                    Icons.delete_forever,
-                                    color: AppColors.error,
-                                    size: 20),
+                                  Icons.delete_forever,
+                                  color: AppColors.error,
+                                  size: 20,
+                                ),
                               ),
                               const SizedBox(width: 14),
                               Expanded(
                                 child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
                                       'Delete Account',
                                       style: TextStyle(
-                                        fontFamily: 'Manrope',
+                                        fontFamily: 'Poppins',
                                         fontSize: 15,
                                         fontWeight: FontWeight.w700,
                                         color: AppColors.error,
@@ -322,7 +327,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
                                     Text(
                                       'Permanently remove all your data',
                                       style: TextStyle(
-                                        fontFamily: 'Manrope',
+                                        fontFamily: 'Poppins',
                                         fontSize: 12,
                                         color: isDark
                                             ? Colors.white54
@@ -332,10 +337,11 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
                                   ],
                                 ),
                               ),
-                              Icon(Icons.chevron_right,
-                                  color: AppColors.error
-                                      .withValues(alpha: 0.5),
-                                  size: 22),
+                              Icon(
+                                Icons.chevron_right,
+                                color: AppColors.error.withValues(alpha: 0.5),
+                                size: 22,
+                              ),
                             ],
                           ),
                         ),
@@ -349,7 +355,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
                     child: Text(
                       _appVersion,
                       style: TextStyle(
-                        fontFamily: 'Manrope',
+                        fontFamily: 'Poppins',
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: isDark
@@ -370,18 +376,18 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
   }
 
   Widget _sectionLabel(String label) => Padding(
-        padding: const EdgeInsets.only(left: 4),
-        child: Text(
-          label,
-          style: const TextStyle(
-            fontFamily: 'Plus Jakarta Sans',
-            fontSize: 11,
-            fontWeight: FontWeight.w800,
-            color: Color(0xFF94A3B8),
-            letterSpacing: 1.5,
-          ),
-        ),
-      );
+    padding: const EdgeInsets.only(left: 4),
+    child: Text(
+      label,
+      style: const TextStyle(
+        fontFamily: 'Poppins',
+        fontSize: 11,
+        fontWeight: FontWeight.w800,
+        color: Color(0xFF94A3B8),
+        letterSpacing: 1.5,
+      ),
+    ),
+  );
 
   Widget _buildGroup(bool isDark, List<Widget> children) {
     return Container(
@@ -406,9 +412,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
                 Divider(
                   height: 0.5,
                   indent: 64,
-                  color: isDark
-                      ? Colors.white10
-                      : const Color(0xFFF1F5F9),
+                  color: isDark ? Colors.white10 : const Color(0xFFF1F5F9),
                 ),
             ],
           );
@@ -451,34 +455,36 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title,
-                        style: TextStyle(
-                          fontFamily: 'Manrope',
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: isDark
-                              ? Colors.white
-                              : const Color(0xFF1A1C1D),
-                        )),
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? Colors.white : const Color(0xFF1A1C1D),
+                      ),
+                    ),
                     if (subtitle != null) ...[
                       const SizedBox(height: 2),
-                      Text(subtitle,
-                          style: TextStyle(
-                            fontFamily: 'Manrope',
-                            fontSize: 12,
-                            color: isDark
-                                ? Colors.white54
-                                : const Color(0xFF64748B),
-                          )),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 12,
+                          color: isDark
+                              ? Colors.white54
+                              : const Color(0xFF64748B),
+                        ),
+                      ),
                     ],
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right,
-                  color: isDark
-                      ? Colors.white24
-                      : const Color(0xFFC5C5D8),
-                  size: 22),
+              Icon(
+                Icons.chevron_right,
+                color: isDark ? Colors.white24 : const Color(0xFFC5C5D8),
+                size: 22,
+              ),
             ],
           ),
         ),
@@ -513,25 +519,25 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title,
-                    style: TextStyle(
-                      fontFamily: 'Manrope',
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: isDark
-                          ? Colors.white
-                          : const Color(0xFF1A1C1D),
-                    )),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? Colors.white : const Color(0xFF1A1C1D),
+                  ),
+                ),
                 if (subtitle != null) ...[
                   const SizedBox(height: 2),
-                  Text(subtitle,
-                      style: TextStyle(
-                        fontFamily: 'Manrope',
-                        fontSize: 12,
-                        color: isDark
-                            ? Colors.white54
-                            : const Color(0xFF64748B),
-                      )),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 12,
+                      color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                    ),
+                  ),
                 ],
               ],
             ),

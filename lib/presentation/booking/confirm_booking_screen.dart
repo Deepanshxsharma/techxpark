@@ -1,19 +1,20 @@
 import 'dart:async';
 import 'dart:io';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
-import 'package:firebase_auth/firebase_auth.dart';
-import '../../services/booking_service.dart';
 import '../../services/booking_exceptions.dart';
+import '../../services/booking_service.dart';
 import '../../services/notification_service.dart';
 import '../../theme/app_colors.dart';
-import 'booking_summary_screen.dart';
+import 'booking_confirmed_screen.dart';
+import 'package:techxpark/utils/navigation_utils.dart';
 
-/// Confirm Booking Screen — Stitch design.
-/// Premium ticket-style card with gradient header, dashed dividers,
-/// detail grid, price summary, and gradient confirm CTA.
 class ConfirmBookingScreen extends StatefulWidget {
   final Map<String, dynamic> parking;
   final String parkingId;
@@ -39,29 +40,99 @@ class ConfirmBookingScreen extends StatefulWidget {
 }
 
 class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
+  static const String _upi = 'upi';
+  static const String _card = 'card';
+  static const String _wallet = 'wallet';
+  static const String _payAtParking = 'pay_at_parking';
+
+  String _selectedPaymentMethod = _upi;
   bool _isProcessing = false;
 
-  // ═══════════════════════════════════════════════════════════════
-  // NETWORK & BOOKING LOGIC
-  // ═══════════════════════════════════════════════════════════════
+  double get _pricePerHour => _readDouble(
+    widget.parking['price_per_hour'] ??
+        widget.parking['pricePerHour'] ??
+        widget.parking['price'],
+  );
+
+  int get _durationMinutes => widget.end.difference(widget.start).inMinutes;
+  double get _durationHours =>
+      _durationMinutes <= 0 ? 0 : _durationMinutes / 60;
+  double get _basePrice => _pricePerHour * _durationHours;
+  double get _gst => _basePrice * 0.18;
+  double get _total => _basePrice + _gst;
+  bool get _isOfflinePayment => _selectedPaymentMethod == _payAtParking;
+
+  String get _vehicleNumber {
+    final raw =
+        widget.vehicle['number'] ??
+        widget.vehicle['vehicleNumber'] ??
+        widget.vehicle['vehicleNo'];
+    final value = raw?.toString().trim() ?? '';
+    return value.isEmpty ? 'Vehicle not added' : value.toUpperCase();
+  }
+
+  String get _vehicleType {
+    final raw =
+        widget.vehicle['type'] ?? widget.vehicle['vehicleType'] ?? 'Car';
+    final value = raw.toString().trim();
+    return value.isEmpty ? 'Car' : value;
+  }
+
+  String get _paymentButtonLabel =>
+      _isOfflinePayment ? 'Reserve Slot' : 'Pay Now';
+
   Future<bool> _hasInternetConnection() async {
     try {
       final result = await InternetAddress.lookup('google.com');
-      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
+      return result.isNotEmpty && result.first.rawAddress.isNotEmpty;
     } catch (_) {
       return false;
     }
   }
 
-  Future<void> _createBooking() async {
+  Future<bool> _recheckSlotAvailability() async {
+    final slotDoc = await FirebaseFirestore.instance
+        .collection('parking_locations')
+        .doc(widget.parkingId)
+        .collection('slots')
+        .doc(widget.selectedSlot)
+        .get();
+
+    if (!slotDoc.exists) {
+      _showSnack('This slot is no longer available.');
+      return false;
+    }
+
+    final data = slotDoc.data() ?? <String, dynamic>{};
+    final status = data['status']?.toString().trim().toLowerCase() ?? '';
+    final unavailable =
+        data['taken'] == true ||
+        data['occupied'] == true ||
+        data['isOccupied'] == true ||
+        data['isReserved'] == true ||
+        status == 'reserved' ||
+        status == 'occupied' ||
+        status == 'taken' ||
+        status == 'disabled' ||
+        status == 'blocked';
+
+    if (unavailable) {
+      _showSnack('Slot already taken. Please choose another slot.');
+      return false;
+    }
+
+    return true;
+  }
+
+  Future<void> _handlePayment() async {
     if (_isProcessing) return;
 
     if (widget.start.isBefore(DateTime.now())) {
-      _showError('Start time is in the past. Please go back and adjust.');
+      _showSnack('Start time is in the past. Please go back and adjust.');
       return;
     }
     if (!widget.end.isAfter(widget.start)) {
-      _showError('End time must be after start time.');
+      _showSnack('End time must be after start time.');
       return;
     }
 
@@ -70,82 +141,74 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
 
     final userId = FirebaseAuth.instance.currentUser?.uid;
     if (userId == null) {
-      _showError('User not authenticated.');
+      _showSnack('User not authenticated.');
       setState(() => _isProcessing = false);
       return;
     }
 
     final hasInternet = await _hasInternetConnection();
     if (!hasInternet) {
-      _showError(
-          'No internet connection. Please check your network and try again.');
+      _showSnack(
+        'No internet connection. Please try again.',
+        retry: _handlePayment,
+      );
       setState(() => _isProcessing = false);
       return;
     }
 
+    final slotAvailable = await _recheckSlotAvailability();
+    if (!slotAvailable) {
+      setState(() => _isProcessing = false);
+      return;
+    }
+
+    debugPrint('Payment method: $_selectedPaymentMethod');
+    debugPrint('Total: $_total');
+
     try {
-      final ratePerHour =
-          (widget.parking['price_per_hour'] as num?)?.toDouble() ?? 0.0;
-      final hours = widget.end.difference(widget.start).inMinutes / 60;
-      final durationCharge = ratePerHour * hours;
-      final baseFee =
-          (widget.parking['base_fee'] as num?)?.toDouble() ?? 0.0;
-      final serviceFee =
-          (widget.parking['service_fee'] as num?)?.toDouble() ?? 0.0;
-      final subtotal = baseFee + durationCharge + serviceFee;
-      final taxAmount = subtotal * 0.0;
-      const discountAmount = 0.0;
-      final totalPrice = subtotal + taxAmount - discountAmount;
+      if (!_isOfflinePayment) {
+        await Future<void>.delayed(const Duration(seconds: 2));
+      }
 
-      final vehicleData = <String, dynamic>{
-        'number': widget.vehicle['number'],
-        'type': widget.vehicle['type'] ?? 'Car',
-        'vehicleNumber': widget.vehicle['number'],
-        'vehicleType': widget.vehicle['type'] ?? 'Car',
-        'color': widget.vehicle['color'] ?? '',
-      };
-
-      final parkingName =
-          widget.parking['name']?.toString() ?? 'Parking';
-      final parkingAddress =
-          widget.parking['address']?.toString() ?? '';
-
-      await BookingService.instance
+      final result = await BookingService.instance
           .createBooking(
             parkingId: widget.parkingId,
-            parkingName: parkingName,
-            parkingAddress: parkingAddress,
+            parkingName: widget.parking['name']?.toString() ?? 'Parking',
+            parkingAddress: widget.parking['address']?.toString() ?? '',
             slotId: widget.selectedSlot,
             slotNumber: widget.selectedSlot,
             floorIndex: widget.floorIndex,
             startTime: widget.start,
             endTime: widget.end,
-            ratePerHour: ratePerHour,
-            baseFee: baseFee,
-            durationCharge: durationCharge,
-            serviceFee: serviceFee,
-            taxAmount: taxAmount,
-            discountAmount: discountAmount,
-            totalAmount: totalPrice,
+            ratePerHour: _pricePerHour,
+            baseFee: 0,
+            durationCharge: _basePrice,
+            serviceFee: 0,
+            taxAmount: _gst,
+            discountAmount: 0,
+            totalAmount: _total,
             bookingType: 'Standard',
-            vehicle: vehicleData,
-            paymentMethod:
-                totalPrice == 0 ? 'No Payment Required' : 'Instant Pay',
-            paymentStatus:
-                totalPrice == 0 ? 'skipped' : 'simulated_success',
-            paymentMode: 'mock',
-            paymentGateway: 'test_bypass',
-            paymentReference: '',
+            vehicle: _bookingVehiclePayload(),
+            paymentMethod: _paymentMethodLabel(_selectedPaymentMethod),
+            paymentStatus: _isOfflinePayment ? 'pending' : 'paid',
+            paymentMode: _isOfflinePayment ? 'offline' : 'online',
+            paymentGateway: _isOfflinePayment
+                ? 'manual_collection'
+                : 'mock_gateway',
+            paymentReference: _isOfflinePayment
+                ? ''
+                : 'SIM-${DateTime.now().millisecondsSinceEpoch}',
           )
           .timeout(
             const Duration(seconds: 15),
             onTimeout: () => throw TimeoutException(
-                'Connection timed out. Please try again.'),
+              'Connection timed out. Please try again.',
+            ),
           );
 
       await notifyBookingConfirmed(
         slotName: widget.selectedSlot,
-        parkingName: parkingName,
+        parkingName: widget.parking['name']?.toString() ?? 'Parking',
         startTime: widget.start,
         endTime: widget.end,
       );
@@ -153,396 +216,994 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
       if (!mounted) return;
       HapticFeedback.heavyImpact();
 
-      Navigator.pushReplacement(
+      safePushReplacement(
         context,
-        PageRouteBuilder(
-          transitionDuration: const Duration(milliseconds: 600),
-          pageBuilder: (_, animation, __) => FadeTransition(
-            opacity: animation,
-            child: BookingSummaryScreen(
-              parking: widget.parking,
-              docId: widget.parkingId,
-              selectedSlot: widget.selectedSlot,
-              floorIndex: widget.floorIndex,
-              start: widget.start,
-              end: widget.end,
-              vehicle: widget.vehicle,
-            ),
-          ),
+        BookingConfirmedScreen(
+          bookingId: result.bookingId,
+          bookingData: {
+            'parkingId': widget.parkingId,
+            'parkingName': widget.parking['name'],
+            'parkingAddress': widget.parking['address'],
+            'parkingLatitude':
+                widget.parking['latitude'] ?? widget.parking['lat'],
+            'parkingLongitude':
+                widget.parking['longitude'] ?? widget.parking['lng'],
+            'slotId': widget.selectedSlot,
+            'slotNumber': widget.selectedSlot,
+            'floor': widget.floorIndex,
+            'startTime': widget.start,
+            'endTime': widget.end,
+            'paymentStatus': result.paymentStatus,
+            'paymentMethod': result.paymentMethod,
+            'status': result.bookingStatus,
+            'amount': _total,
+            'totalAmount': _total,
+            'vehicleNumber': _vehicleNumber,
+            'vehicleType': _vehicleType,
+            'vehicle': _bookingVehiclePayload(),
+            'entryCode': result.entryCode,
+            'qrData': result.qrData,
+          },
         ),
       );
-    } on BookingException catch (e) {
+    } on BookingException catch (error) {
       if (!mounted) return;
       setState(() => _isProcessing = false);
-      _showError(e.userMessage);
-    } on TimeoutException {
+      _showSnack(error.userMessage, retry: _handlePayment);
+    } on TimeoutException catch (_) {
       if (!mounted) return;
       setState(() => _isProcessing = false);
-      _showError('Request timed out. Please try again.');
-    } catch (e) {
+      _showSnack('Payment failed. Try again.', retry: _handlePayment);
+    } catch (_) {
       if (!mounted) return;
       setState(() => _isProcessing = false);
-      _showError(e.toString().replaceFirst('Exception: ', ''));
+      _showSnack('Payment failed. Try again.', retry: _handlePayment);
     }
   }
 
-  void _showError(String msg) {
+  Map<String, dynamic> _bookingVehiclePayload() {
+    return <String, dynamic>{
+      ...widget.vehicle,
+      'number': _vehicleNumber,
+      'vehicleNumber': _vehicleNumber,
+      'type': _vehicleType,
+      'vehicleType': _vehicleType,
+      'color': widget.vehicle['color'] ?? '',
+    };
+  }
+
+  void _showSnack(String message, {VoidCallback? retry}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(msg),
-        backgroundColor: AppColors.error,
+        content: Text(message),
         behavior: SnackBarBehavior.floating,
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        action: SnackBarAction(
-          label: 'Retry',
-          textColor: Colors.white,
-          onPressed: _createBooking,
-        ),
+        backgroundColor: AppColors.error,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        action: retry == null
+            ? null
+            : SnackBarAction(
+                label: 'Retry',
+                textColor: Colors.white,
+                onPressed: retry,
+              ),
       ),
     );
   }
 
-  // ═══════════════════════════════════════════════════════════════
-  // BUILD
-  // ═══════════════════════════════════════════════════════════════
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final parkingName = widget.parking['name'] ?? 'Parking';
+    final topInset = MediaQuery.of(context).padding.top;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+      value: SystemUiOverlayStyle.dark,
       child: Scaffold(
-        backgroundColor: isDark ? AppColors.bgDark : const Color(0xFFF9F9FB),
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          surfaceTintColor: Colors.transparent,
-          title: Text(
-            'Confirm Booking',
-            style: TextStyle(
-              fontFamily: 'Plus Jakarta Sans',
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              color: isDark ? Colors.white : const Color(0xFF0F172A),
-            ),
-          ),
-          centerTitle: true,
-          leading: GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: const Icon(Icons.arrow_back_ios_new, size: 20),
-          ),
-        ),
-        body: Column(
+        backgroundColor: const Color(0xFFF9F9FB),
+        body: Stack(
           children: [
-            Expanded(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-                child: Column(
-                  children: [_buildTicket(parkingName, isDark)],
+            CustomScrollView(
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                SliverToBoxAdapter(child: SizedBox(height: topInset + 84)),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 140),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildSummaryCard(),
+                        const SizedBox(height: 20),
+                        _buildBillingCard(),
+                        const SizedBox(height: 20),
+                        _buildOnlineSection(),
+                        const SizedBox(height: 20),
+                        _buildOfflineSection(),
+                        const SizedBox(height: 18),
+                        _buildTrustBadge(),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
-            _buildConfirmButton(isDark),
+            _TopBar(onBack: () => Navigator.of(context).maybePop()),
           ],
         ),
+        bottomNavigationBar: _BottomBar(
+          amountLabel: _currency(_total),
+          buttonLabel: _paymentButtonLabel,
+          isProcessing: _isProcessing,
+          onTap: _handlePayment,
+        ),
       ),
     );
   }
 
-  // ═══════════════════════════════════════════════════════════════
-  // TICKET CARD
-  // ═══════════════════════════════════════════════════════════════
-  Widget _buildTicket(String parkingName, bool isDark) {
-    final duration = widget.end.difference(widget.start);
-    final hours = duration.inMinutes ~/ 60;
-    final minutes = duration.inMinutes % 60;
-
+  Widget _buildSummaryCard() {
     return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceDark : Colors.white,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 24,
-              offset: const Offset(0, 8)),
+        boxShadow: AppColors.cardShadow,
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            top: -32,
+            right: -32,
+            child: Container(
+              width: 110,
+              height: 110,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.05),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.parking['name']?.toString() ?? 'Parking',
+                          style: GoogleFonts.poppins(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: const Color(0xFF1A1C1D),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${widget.selectedSlot} · ${_levelLabel(widget.floorIndex)}',
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF4955B3),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      _isOfflinePayment ? 'Reserve at Gate' : 'Ready to Pay',
+                      style: GoogleFonts.poppins(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.8,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.only(top: 18),
+                decoration: const BoxDecoration(
+                  border: Border(
+                    top: BorderSide(color: Color(0x30C5C5D8), width: 1),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _SummaryInfo(
+                        label: 'Duration',
+                        value:
+                            '${_durationLabel()} (${DateFormat('HH:mm').format(widget.start)} - ${DateFormat('HH:mm').format(widget.end)})',
+                        icon: Icons.schedule_rounded,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _SummaryInfo(
+                        label: 'Vehicle',
+                        value: _vehicleNumber,
+                        icon: _vehicleType.toLowerCase().contains('bike')
+                            ? Icons.two_wheeler_rounded
+                            : Icons.directions_car_rounded,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildBillingCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3F3F5),
+        borderRadius: BorderRadius.circular(24),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Header ──────────────────────────────────────
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(28),
-            decoration: BoxDecoration(
-              gradient: AppColors.primaryGradient,
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(24)),
-            ),
-            child: Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.local_parking_rounded,
-                      color: Colors.white, size: 32),
-                ),
-                const SizedBox(height: 14),
-                Text(
-                  parkingName,
-                  style: const TextStyle(
-                    fontFamily: 'Plus Jakarta Sans',
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    'Slot ${widget.selectedSlot} • Floor ${widget.floorIndex + 1}',
-                    style: TextStyle(
-                      fontFamily: 'Manrope',
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white.withValues(alpha: 0.9),
-                    ),
-                  ),
-                ),
-              ],
+          Text(
+            'Billing Details',
+            style: GoogleFonts.poppins(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.8,
+              color: const Color(0xFF757687),
             ),
           ),
-
-          // ── Dashed divider ──────────────────────────────
-          _DashedDivider(isDark: isDark),
-
-          // ── Details ─────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(28, 20, 28, 28),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                        child: _detailItem(
-                            'Date',
-                            DateFormat('EEE, d MMM yyyy')
-                                .format(widget.start),
-                            isDark)),
-                    Expanded(
-                        child: _detailItem(
-                            'Duration', '${hours}h ${minutes}m', isDark)),
-                  ],
+          const SizedBox(height: 16),
+          _BillRow(
+            label:
+                'Base price (${_currency(_pricePerHour)} x ${_durationLabel()})',
+            value: _currency(_basePrice),
+          ),
+          const SizedBox(height: 10),
+          _BillRow(label: 'Platform Taxes (GST)', value: _currency(_gst)),
+          const SizedBox(height: 14),
+          const Divider(height: 1, color: Color(0x30C5C5D8)),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Total Amount',
+                  style: GoogleFonts.poppins(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF1A1C1D),
+                  ),
                 ),
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    Expanded(
-                        child: _detailItem(
-                            'Check-in',
-                            DateFormat('hh:mm a').format(widget.start),
-                            isDark)),
-                    Expanded(
-                        child: _detailItem(
-                            'Check-out',
-                            DateFormat('hh:mm a').format(widget.end),
-                            isDark)),
-                  ],
+              ),
+              Text(
+                _currency(_total),
+                style: GoogleFonts.poppins(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.primary,
                 ),
-                const SizedBox(height: 20),
-                _DashedDivider(isDark: isDark),
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    Expanded(
-                        child: _detailItem(
-                            'Vehicle',
-                            (widget.vehicle['number'] ?? '')
-                                .toString()
-                                .toUpperCase(),
-                            isDark)),
-                    Expanded(
-                        child: _detailItem(
-                            'Type',
-                            widget.vehicle['type'] ?? 'Car',
-                            isDark)),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                _DashedDivider(isDark: isDark),
-                const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Total',
-                      style: TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: isDark
-                            ? Colors.white
-                            : const Color(0xFF0F172A),
-                      ),
-                    ),
-                    ShaderMask(
-                      shaderCallback: (bounds) =>
-                          AppColors.primaryGradient
-                              .createShader(bounds),
-                      child: const Text(
-                        'FREE',
-                        style: TextStyle(
-                          fontFamily: 'Plus Jakarta Sans',
-                          fontSize: 24,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _detailItem(String label, String value, bool isDark) {
+  Widget _buildOnlineSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontFamily: 'Manrope',
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Online Payment',
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF1A1C1D),
+                ),
+              ),
+            ),
+            _SectionPill(label: 'Instant'),
+          ],
         ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-            fontFamily: 'Plus Jakarta Sans',
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-            color: isDark ? Colors.white : const Color(0xFF0F172A),
+        const SizedBox(height: 14),
+        _PaymentMethodCard(
+          title: 'UPI Payments',
+          subtitle: 'Google Pay, PhonePe, Paytm',
+          icon: Icons.account_balance_wallet_rounded,
+          selected: _selectedPaymentMethod == _upi,
+          onTap: () => _selectPaymentMethod(_upi),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _CompactPaymentOption(
+                label: 'Card',
+                icon: Icons.credit_card_rounded,
+                selected: _selectedPaymentMethod == _card,
+                onTap: () => _selectPaymentMethod(_card),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _CompactPaymentOption(
+                label: 'Wallet',
+                icon: Icons.account_balance_wallet_outlined,
+                selected: _selectedPaymentMethod == _wallet,
+                onTap: () => _selectPaymentMethod(_wallet),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildOfflineSection() {
+    final selected = _selectedPaymentMethod == _payAtParking;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Pay at Parking',
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF1A1C1D),
+                ),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFDAD2),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                'No online payment required',
+                style: GoogleFonts.poppins(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.4,
+                  color: const Color(0xFF8A1B00),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        GestureDetector(
+          onTap: () => _selectPaymentMethod(_payAtParking),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            width: double.infinity,
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: selected
+                  ? const Color(0xFFF1F4FF)
+                  : const Color(0xFFF3F3F5),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: selected ? AppColors.primary : const Color(0x00FFFFFF),
+                width: 1.5,
+              ),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? AppColors.primary.withValues(alpha: 0.12)
+                            : const Color(0xFFE2E2E4),
+                        shape: BoxShape.circle,
+                      ),
+                      alignment: Alignment.center,
+                      child: Icon(
+                        Icons.payments_rounded,
+                        color: selected
+                            ? AppColors.primary
+                            : const Color(0xFF454655),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'FASTag, Cash or Card',
+                            style: GoogleFonts.poppins(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF1A1C1D),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Pay directly at the gate or automated stall',
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              color: const Color(0xFF757687),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    _RadioIndicator(selected: selected),
+                  ],
+                ),
+                AnimatedCrossFade(
+                  firstChild: const SizedBox.shrink(),
+                  secondChild: Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(top: 14),
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.72),
+                      borderRadius: BorderRadius.circular(14),
+                      border: const Border(
+                        left: BorderSide(color: AppColors.primary, width: 4),
+                      ),
+                    ),
+                    child: Text(
+                      'Your slot will be reserved. Payment will be collected at parking.',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF1A1C1D),
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+                  crossFadeState: selected
+                      ? CrossFadeState.showSecond
+                      : CrossFadeState.showFirst,
+                  duration: const Duration(milliseconds: 180),
+                ),
+              ],
+            ),
           ),
         ),
       ],
     );
   }
 
-  // ═══════════════════════════════════════════════════════════════
-  // CONFIRM BUTTON
-  // ═══════════════════════════════════════════════════════════════
-  Widget _buildConfirmButton(bool isDark) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 40),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceDark : Colors.white,
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 24,
-              offset: const Offset(0, -8)),
-        ],
-        borderRadius:
-            const BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      child: SafeArea(
-        child: GestureDetector(
-          onTap: _isProcessing
-              ? null
-              : () {
-                  HapticFeedback.mediumImpact();
-                  _createBooking();
-                },
-          child: Container(
-            height: 56,
-            decoration: BoxDecoration(
-              gradient: _isProcessing ? null : AppColors.primaryGradient,
-              color: _isProcessing
-                  ? AppColors.primary.withValues(alpha: 0.3)
-                  : null,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: _isProcessing
-                  ? []
-                  : [
-                      BoxShadow(
-                        color:
-                            AppColors.primary.withValues(alpha: 0.3),
-                        blurRadius: 16,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-            ),
-            child: Center(
-              child: _isProcessing
-                  ? const SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(
-                          color: Colors.white, strokeWidth: 2.5),
-                    )
-                  : const Text(
-                      'Confirm Booking',
-                      style: TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
+  Widget _buildTrustBadge() {
+    return Center(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.lock_rounded, size: 16, color: Color(0x66757687)),
+          const SizedBox(width: 8),
+          Text(
+            '100% secure payments',
+            style: GoogleFonts.poppins(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1,
+              color: const Color(0x66757687),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  void _selectPaymentMethod(String method) {
+    HapticFeedback.selectionClick();
+    setState(() => _selectedPaymentMethod = method);
+  }
+
+  String _paymentMethodLabel(String method) {
+    switch (method) {
+      case _card:
+        return 'Card';
+      case _wallet:
+        return 'Wallet';
+      case _payAtParking:
+        return 'Pay at Parking';
+      case _upi:
+      default:
+        return 'UPI';
+    }
+  }
+
+  String _durationLabel() {
+    final hours = _durationMinutes ~/ 60;
+    final minutes = _durationMinutes % 60;
+    if (hours > 0 && minutes > 0) return '${hours}h ${minutes}m';
+    if (hours > 0) return '${hours}h';
+    return '${minutes}m';
+  }
+
+  String _levelLabel(int floorIndex) =>
+      'Level ${(floorIndex + 1).toString().padLeft(2, '0')}';
+
+  static double _readDouble(dynamic value) {
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? 0;
+    return 0;
+  }
+
+  static String _currency(double value) => '₹${value.toStringAsFixed(2)}';
+}
+
+class _TopBar extends StatelessWidget {
+  final VoidCallback onBack;
+
+  const _TopBar({required this.onBack});
+
+  @override
+  Widget build(BuildContext context) {
+    final topInset = MediaQuery.of(context).padding.top;
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(16, topInset + 8, 16, 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.74),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: onBack,
+            icon: const Icon(
+              Icons.arrow_back_rounded,
+              color: AppColors.primary,
+            ),
+          ),
+          Expanded(
+            child: Text(
+              'Payment',
+              style: GoogleFonts.poppins(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF1A1C1D),
+              ),
+            ),
+          ),
+          Text(
+            'TechXPark',
+            style: GoogleFonts.poppins(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: AppColors.primary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SummaryInfo extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+
+  const _SummaryInfo({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.poppins(
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.8,
+            color: const Color(0xFF757687),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 16, color: const Color(0xFF4955B3)),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                value,
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF1A1C1D),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _BillRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _BillRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF757687),
+            ),
+          ),
+        ),
+        Text(
+          value,
+          style: GoogleFonts.poppins(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF1A1C1D),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SectionPill extends StatelessWidget {
+  final String label;
+
+  const _SectionPill({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: const Color(0xFFDDE3FF),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.poppins(
+          fontSize: 10,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.6,
+          color: const Color(0xFF303C9A),
         ),
       ),
     );
   }
 }
 
-// ═══════════════════════════════════════════════════════════════
-// DASHED DIVIDER
-// ═══════════════════════════════════════════════════════════════
-class _DashedDivider extends StatelessWidget {
-  final bool isDark;
-  const _DashedDivider({required this.isDark});
+class _PaymentMethodCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _PaymentMethodCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (_, constraints) {
-        final dashes = (constraints.maxWidth / 10).floor();
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: List.generate(
-            dashes,
-            (_) => Container(
-              width: 5,
-              height: 1,
-              color: isDark ? Colors.white12 : const Color(0xFFE2E8F0),
-            ),
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        width: double.infinity,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: selected ? AppColors.primary : const Color(0x00FFFFFF),
+            width: 2,
           ),
-        );
-      },
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.14),
+                    blurRadius: 18,
+                    offset: const Offset(0, 8),
+                  ),
+                ]
+              : AppColors.cardShadow,
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: Icon(icon, color: AppColors.primary),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.poppins(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF1A1C1D),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      color: const Color(0xFF757687),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            _RadioIndicator(selected: selected),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CompactPaymentOption extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _CompactPaymentOption({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected ? AppColors.primary : const Color(0x00FFFFFF),
+            width: 1.5,
+          ),
+          boxShadow: AppColors.cardShadow,
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              size: 20,
+              color: selected ? AppColors.primary : const Color(0xFF4955B3),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                label,
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF1A1C1D),
+                ),
+              ),
+            ),
+            if (selected)
+              const Icon(
+                Icons.done_rounded,
+                size: 18,
+                color: AppColors.primary,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RadioIndicator extends StatelessWidget {
+  final bool selected;
+
+  const _RadioIndicator({required this.selected});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 22,
+      height: 22,
+      decoration: BoxDecoration(
+        color: selected ? AppColors.primary : Colors.transparent,
+        shape: BoxShape.circle,
+        border: selected
+            ? null
+            : Border.all(color: const Color(0xFFC5C5D8), width: 2),
+      ),
+      alignment: Alignment.center,
+      child: selected
+          ? Container(
+              width: 9,
+              height: 9,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+              ),
+            )
+          : null,
+    );
+  }
+}
+
+class _BottomBar extends StatelessWidget {
+  final String amountLabel;
+  final String buttonLabel;
+  final bool isProcessing;
+  final VoidCallback onTap;
+
+  const _BottomBar({
+    required this.amountLabel,
+    required this.buttonLabel,
+    required this.isProcessing,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.84),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 24,
+              offset: const Offset(0, -8),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Payable Amount',
+                        style: GoogleFonts.poppins(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.8,
+                          color: const Color(0xFF757687),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        amountLabel,
+                        style: GoogleFonts.poppins(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFF1A1C1D),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: isProcessing ? null : AppColors.primaryGradient,
+                  color: isProcessing ? const Color(0xFFBCC2FF) : null,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: ElevatedButton.icon(
+                  onPressed: isProcessing ? null : onTap,
+                  style: ElevatedButton.styleFrom(
+                    elevation: 0,
+                    backgroundColor: Colors.transparent,
+                    disabledBackgroundColor: Colors.transparent,
+                    foregroundColor: Colors.white,
+                    disabledForegroundColor: Colors.white,
+                    shadowColor: Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                  icon: isProcessing
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.chevron_right_rounded),
+                  label: Text(
+                    isProcessing ? 'Processing...' : buttonLabel,
+                    style: GoogleFonts.poppins(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

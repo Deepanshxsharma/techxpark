@@ -40,7 +40,9 @@ class _EditProfileScreenState extends State<EditProfileScreen>
     _phoneCtrl = TextEditingController();
 
     _animCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 600));
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
     _fadeAnim = CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut);
 
     _loadUserData();
@@ -85,20 +87,22 @@ class _EditProfileScreenState extends State<EditProfileScreen>
           .collection('users')
           .doc(user!.uid)
           .update({
-        'name': _nameCtrl.text.trim(),
-        'phone': _phoneCtrl.text.trim(),
-      });
+            'name': _nameCtrl.text.trim(),
+            'phone': _phoneCtrl.text.trim(),
+          });
 
       if (mounted) {
         HapticFeedback.mediumImpact();
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Row(children: [
-              Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
-              SizedBox(width: 8),
-              Text('Profile updated successfully'),
-            ]),
+            content: Row(
+              children: [
+                Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+                SizedBox(width: 8),
+                Text('Profile updated successfully'),
+              ],
+            ),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
           ),
@@ -122,22 +126,24 @@ class _EditProfileScreenState extends State<EditProfileScreen>
   Future<void> _pickPhoto(ImageSource source) async {
     final picker = ImagePicker();
     final picked = await picker.pickImage(
-        source: source, maxWidth: 512, imageQuality: 75);
+      source: source,
+      maxWidth: 512,
+      imageQuality: 75,
+    );
     if (picked == null) return;
 
     setState(() => _isUploadingPhoto = true);
     final user = FirebaseAuth.instance.currentUser;
 
     try {
-      final ref = FirebaseStorage.instance
-          .ref()
-          .child('profile_photos/${user!.uid}.jpg');
+      final ref = FirebaseStorage.instance.ref().child(
+        'profile_photos/${user!.uid}.jpg',
+      );
       await ref.putFile(File(picked.path));
       final url = await ref.getDownloadURL();
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .update({'photoUrl': url});
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).update(
+        {'photoUrl': url},
+      );
       setState(() => _photoUrl = url);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -173,14 +179,16 @@ class _EditProfileScreenState extends State<EditProfileScreen>
         backgroundColor: isDark ? AppColors.bgDark : const Color(0xFFF9F9FB),
         appBar: AppBar(
           leading: IconButton(
-            icon: Icon(Icons.arrow_back,
-                color: isDark ? Colors.white : const Color(0xFF0029B9)),
+            icon: Icon(
+              Icons.arrow_back,
+              color: isDark ? Colors.white : AppColors.primary,
+            ),
             onPressed: () => Navigator.pop(context),
           ),
           title: Text(
             'Edit Profile',
             style: TextStyle(
-              fontFamily: 'Plus Jakarta Sans',
+              fontFamily: 'Poppins',
               fontSize: 20,
               fontWeight: FontWeight.w700,
               color: isDark ? Colors.white : const Color(0xFF1A1C1D),
@@ -194,7 +202,8 @@ class _EditProfileScreenState extends State<EditProfileScreen>
         ),
         body: _isLoading
             ? const Center(
-                child: CircularProgressIndicator(color: AppColors.primary))
+                child: CircularProgressIndicator(color: AppColors.primary),
+              )
             : FadeTransition(
                 opacity: _fadeAnim,
                 child: SingleChildScrollView(
@@ -255,8 +264,10 @@ class _EditProfileScreenState extends State<EditProfileScreen>
                           keyboardType: TextInputType.phone,
                           validator: (val) {
                             if (val != null && val.isNotEmpty) {
-                              final cleaned =
-                                  val.replaceAll(RegExp(r'[^0-9+]'), '');
+                              final cleaned = val.replaceAll(
+                                RegExp(r'[^0-9+]'),
+                                '',
+                              );
                               if (cleaned.length < 10) {
                                 return 'Enter a valid phone number';
                               }
@@ -328,14 +339,14 @@ class _EditProfileScreenState extends State<EditProfileScreen>
                         ),
                       )
                     : _photoUrl != null && _photoUrl!.isNotEmpty
-                        ? Image.network(
-                            _photoUrl!,
-                            fit: BoxFit.cover,
-                            width: 110,
-                            height: 110,
-                            errorBuilder: (_, __, ___) => _buildFallbackAvatar(),
-                          )
-                        : _buildFallbackAvatar(),
+                    ? Image.network(
+                        _photoUrl!,
+                        fit: BoxFit.cover,
+                        width: 110,
+                        height: 110,
+                        errorBuilder: (_, __, ___) => _buildFallbackAvatar(),
+                      )
+                    : _buildFallbackAvatar(),
               ),
             ),
           ),
@@ -360,8 +371,11 @@ class _EditProfileScreenState extends State<EditProfileScreen>
                   ),
                 ],
               ),
-              child: const Icon(Icons.camera_alt_rounded,
-                  color: Colors.white, size: 16),
+              child: const Icon(
+                Icons.camera_alt_rounded,
+                color: Colors.white,
+                size: 16,
+              ),
             ),
           ),
         ],
@@ -406,20 +420,25 @@ class _EditProfileScreenState extends State<EditProfileScreen>
             ),
             const SizedBox(height: 16),
             ListTile(
-              leading:
-                  const Icon(Icons.camera_alt, color: AppColors.primary),
-              title: const Text('Take Photo',
-                  style: TextStyle(fontWeight: FontWeight.w600)),
+              leading: const Icon(Icons.camera_alt, color: AppColors.primary),
+              title: const Text(
+                'Take Photo',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
               onTap: () {
                 Navigator.pop(ctx);
                 _pickPhoto(ImageSource.camera);
               },
             ),
             ListTile(
-              leading:
-                  const Icon(Icons.photo_library, color: AppColors.primary),
-              title: const Text('Choose from Gallery',
-                  style: TextStyle(fontWeight: FontWeight.w600)),
+              leading: const Icon(
+                Icons.photo_library,
+                color: AppColors.primary,
+              ),
+              title: const Text(
+                'Choose from Gallery',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
               onTap: () {
                 Navigator.pop(ctx);
                 _pickPhoto(ImageSource.gallery);
@@ -443,7 +462,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
         child: Text(
           label,
           style: const TextStyle(
-            fontFamily: 'Plus Jakarta Sans',
+            fontFamily: 'Poppins',
             fontSize: 11,
             fontWeight: FontWeight.w800,
             color: Color(0xFF94A3B8),
@@ -476,15 +495,17 @@ class _EditProfileScreenState extends State<EditProfileScreen>
             initialValue: value,
             readOnly: true,
             style: TextStyle(
-              fontFamily: 'Manrope',
+              fontFamily: 'Poppins',
               fontWeight: FontWeight.w600,
               fontSize: 15,
               color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
             ),
             decoration: InputDecoration(
-              prefixIcon: Icon(icon,
-                  color: isDark ? Colors.white24 : const Color(0xFF94A3B8),
-                  size: 20),
+              prefixIcon: Icon(
+                icon,
+                color: isDark ? Colors.white24 : const Color(0xFF94A3B8),
+                size: 20,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
                 borderSide: BorderSide.none,
@@ -492,9 +513,11 @@ class _EditProfileScreenState extends State<EditProfileScreen>
               filled: true,
               fillColor: Colors.transparent,
               contentPadding: const EdgeInsets.symmetric(vertical: 16),
-              suffixIcon: Icon(Icons.lock_outline_rounded,
-                  size: 16,
-                  color: isDark ? Colors.white24 : const Color(0xFFCBD5E1)),
+              suffixIcon: Icon(
+                Icons.lock_outline_rounded,
+                size: 16,
+                color: isDark ? Colors.white24 : const Color(0xFFCBD5E1),
+              ),
             ),
           ),
         ),
@@ -534,14 +557,17 @@ class _EditProfileScreenState extends State<EditProfileScreen>
             keyboardType: keyboardType,
             validator: validator,
             style: TextStyle(
-              fontFamily: 'Manrope',
+              fontFamily: 'Poppins',
               fontWeight: FontWeight.w600,
               fontSize: 15,
               color: isDark ? Colors.white : const Color(0xFF0F172A),
             ),
             decoration: InputDecoration(
-              prefixIcon: Icon(icon,
-                  color: AppColors.primary.withValues(alpha: 0.7), size: 20),
+              prefixIcon: Icon(
+                icon,
+                color: AppColors.primary.withValues(alpha: 0.7),
+                size: 20,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
                 borderSide: BorderSide.none,
@@ -561,17 +587,17 @@ class _EditProfileScreenState extends State<EditProfileScreen>
   }
 
   Widget _fieldLabel(String text, bool isDark) => Padding(
-        padding: const EdgeInsets.only(left: 4, bottom: 8),
-        child: Text(
-          text,
-          style: TextStyle(
-            fontFamily: 'Manrope',
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            color: isDark ? Colors.white54 : const Color(0xFF64748B),
-          ),
-        ),
-      );
+    padding: const EdgeInsets.only(left: 4, bottom: 8),
+    child: Text(
+      text,
+      style: TextStyle(
+        fontFamily: 'Poppins',
+        fontSize: 13,
+        fontWeight: FontWeight.w700,
+        color: isDark ? Colors.white54 : const Color(0xFF64748B),
+      ),
+    ),
+  );
 
   // ═══════════════════════════════════════════════════════════════
   // SAVE BUTTON — Gradient
@@ -584,9 +610,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
         height: 58,
         decoration: BoxDecoration(
           gradient: _isSaving ? null : AppColors.primaryGradient,
-          color: _isSaving
-              ? AppColors.primary.withValues(alpha: 0.4)
-              : null,
+          color: _isSaving ? AppColors.primary.withValues(alpha: 0.4) : null,
           borderRadius: BorderRadius.circular(16),
           boxShadow: _isSaving
               ? []
@@ -604,12 +628,14 @@ class _EditProfileScreenState extends State<EditProfileScreen>
                   height: 22,
                   width: 22,
                   child: CircularProgressIndicator(
-                      color: Colors.white, strokeWidth: 2),
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
                 )
               : const Text(
                   'Save Changes',
                   style: TextStyle(
-                    fontFamily: 'Plus Jakarta Sans',
+                    fontFamily: 'Poppins',
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
                     color: Colors.white,

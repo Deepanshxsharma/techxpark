@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../services/google_auth_service.dart';
 import '../../../theme/app_colors.dart';
@@ -51,41 +49,11 @@ class _LoginScreenState extends State<LoginScreen>
     HapticFeedback.lightImpact();
 
     try {
-      final user = await GoogleAuthService().signInWithGoogle();
-
-      if (user != null) {
-        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-          'uid': user.uid,
-          'name': user.displayName ?? '',
-          'email': user.email ?? '',
-          'phone': user.phoneNumber ?? '',
-          'provider': 'google',
-          'role': 'customer',
-          'banned': false,
-          'isOnline': false,
-          'accessStatus': 'none',
-          'createdAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
+      final userCredential = await GoogleAuthService().signInWithGoogle(
+        context,
+      );
+      if (userCredential != null) {
         HapticFeedback.heavyImpact();
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Google Sign-In cancelled'),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Google Sign-In failed: $e'),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
       }
     } finally {
       if (mounted) setState(() => _isGoogleLoading = false);
@@ -98,72 +66,9 @@ class _LoginScreenState extends State<LoginScreen>
     HapticFeedback.lightImpact();
 
     try {
-      final appleCredential = await SignInWithApple.getAppleIDCredential(
-        scopes: [
-          AppleIDAuthorizationScopes.email,
-          AppleIDAuthorizationScopes.fullName,
-        ],
-      );
-
-      final oauthCredential = OAuthProvider('apple.com').credential(
-        idToken: appleCredential.identityToken,
-        accessToken: appleCredential.authorizationCode,
-      );
-
-      final userCredential =
-          await FirebaseAuth.instance.signInWithCredential(oauthCredential);
-      final user = userCredential.user;
-
-      if (user != null) {
-        // Apple only returns name on first sign-in
-        String displayName = user.displayName ?? '';
-        if (displayName.isEmpty) {
-          final givenName = appleCredential.givenName ?? '';
-          final familyName = appleCredential.familyName ?? '';
-          displayName = '$givenName $familyName'.trim();
-        }
-
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .set({
-          'uid': user.uid,
-          'name': displayName,
-          'email': user.email ?? appleCredential.email ?? '',
-          'phone': '',
-          'provider': 'apple',
-          'role': 'customer',
-          'banned': false,
-          'isOnline': false,
-          'accessStatus': 'none',
-          'createdAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
-
+      final userCredential = await GoogleAuthService().signInWithApple(context);
+      if (userCredential != null) {
         HapticFeedback.heavyImpact();
-      }
-    } on SignInWithAppleAuthorizationException catch (e) {
-      if (e.code == AuthorizationErrorCode.canceled) {
-        // User cancelled — do nothing
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Apple Sign-In failed: ${e.message}'),
-              backgroundColor: AppColors.error,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Apple Sign-In failed: $e'),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
       }
     } finally {
       if (mounted) setState(() => _isAppleLoading = false);
@@ -173,225 +78,222 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
-
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
       child: Scaffold(
-        backgroundColor:
-            isDark ? const Color(0xFF111321) : const Color(0xFFF6F6F8),
+        backgroundColor: isDark
+            ? const Color(0xFF0B1120)
+            : const Color(0xFFF8FAFC),
         body: FadeTransition(
           opacity: _fadeAnim,
           child: SafeArea(
             child: Column(
               children: [
-                // ═══════════════════════════════════════
-                // TOP APP BAR
-                // ═══════════════════════════════════════
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                  child: Row(
-                    children: [
-                      // App logo
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        clipBehavior: Clip.antiAlias,
-                        child: Image.asset(
-                          'assets/icons/app_icon.png',
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        'TechXPark',
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          color: isDark ? Colors.white : const Color(0xFF0F172A),
-                          letterSpacing: -0.3,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // ═══════════════════════════════════════
-                // ILLUSTRATION + TEXT + BUTTONS
-                // ═══════════════════════════════════════
                 Expanded(
                   child: SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Column(
                       children: [
-                        const SizedBox(height: 16),
-
-                        // ── Hero Illustration ────────────
-                        _buildHeroIllustration(isDark),
-
-                        const SizedBox(height: 32),
-
-                        // ── Headline ─────────────────────
-                        Text(
-                          'Smart Parking for\nYour Modern Life',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 28,
-                            fontWeight: FontWeight.w800,
-                            color: isDark
-                                ? Colors.white
-                                : const Color(0xFF0F172A),
-                            height: 1.2,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'Join TechXPark and discover the easiest\nway to find and book parking spots.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 15,
-                            fontWeight: FontWeight.w400,
-                            color: isDark
-                                ? const Color(0xFF94A3B8)
-                                : const Color(0xFF64748B),
-                            height: 1.5,
-                          ),
-                        ),
-
-                        const SizedBox(height: 36),
-
-                        // ═══════════════════════════════════
-                        // AUTH BUTTONS
-                        // ═══════════════════════════════════
-
-                        // 1) Continue with Phone
-                        _AuthButton(
-                          label: 'Continue with Phone',
-                          icon: Icons.smartphone,
-                          backgroundColor: AppColors.primary,
-                          textColor: Colors.white,
-                          shadowColor: AppColors.primary.withValues(alpha: 0.2),
-                          onTap: () {
-                            HapticFeedback.selectionClick();
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const PhoneLoginScreen(),
-                              ),
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 12),
-
-                        // 2) Continue with Apple
-                        _AuthButton(
-                          label: 'Continue with Apple',
-                          svgIcon: _appleIcon(),
-                          backgroundColor: isDark
-                              ? Colors.white
-                              : const Color(0xFF0F172A),
-                          textColor: isDark
-                              ? const Color(0xFF0F172A)
-                              : Colors.white,
-                          shadowColor: const Color(0xFF0F172A)
-                              .withValues(alpha: 0.1),
-                          isLoading: _isAppleLoading,
-                          onTap: _isAppleLoading ? null : _handleAppleLogin,
-                        ),
-                        const SizedBox(height: 12),
-
-                        // 3) Continue with Google
-                        _AuthButton(
-                          label: 'Continue with Google',
-                          customIcon: Image.asset(
-                            'assets/images/google.png',
-                            width: 20,
-                            height: 20,
-                          ),
-                          backgroundColor: isDark
-                              ? const Color(0xFF1E293B)
-                              : Colors.white,
-                          textColor: isDark
-                              ? Colors.white
-                              : const Color(0xFF0F172A),
-                          borderColor: isDark
-                              ? const Color(0xFF334155)
-                              : const Color(0xFFE2E8F0),
-                          isLoading: _isGoogleLoading,
-                          onTap:
-                              _isGoogleLoading ? null : _handleGoogleLogin,
-                        ),
-                        const SizedBox(height: 12),
-
-                        // 4) Continue with Email
-                        _AuthButton(
-                          label: 'Continue with Email',
-                          icon: Icons.mail_outline_rounded,
-                          backgroundColor: isDark
-                              ? const Color(0xFF1E293B)
-                              : Colors.white,
-                          textColor: isDark
-                              ? Colors.white
-                              : const Color(0xFF0F172A),
-                          borderColor: isDark
-                              ? const Color(0xFF334155)
-                              : const Color(0xFFE2E8F0),
-                          onTap: () {
-                            HapticFeedback.selectionClick();
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const EmailLoginScreen(),
-                              ),
-                            );
-                          },
-                        ),
-
-                        const SizedBox(height: 32),
-
-                        // ── Footer ───────────────────────
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 24),
-                          child: Text.rich(
-                            TextSpan(
-                              text: 'By continuing, you agree to our ',
-                              style: TextStyle(
-                                fontFamily: 'Inter',
-                                fontSize: 12,
-                                color: isDark
-                                    ? const Color(0xFF64748B)
-                                    : const Color(0xFF94A3B8),
-                                height: 1.5,
-                              ),
-                              children: [
-                                TextSpan(
-                                  text: 'Terms of Service',
-                                  style: TextStyle(
-                                    color: AppColors.primary,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                const TextSpan(text: ' and '),
-                                TextSpan(
-                                  text: 'Privacy Policy',
-                                  style: TextStyle(
-                                    color: AppColors.primary,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
+                        Container(
+                          height: MediaQuery.of(context).size.height * 0.42,
+                          width: double.infinity,
+                          clipBehavior: Clip.antiAlias,
+                          decoration: const BoxDecoration(
+                            borderRadius: BorderRadius.vertical(
+                              bottom: Radius.circular(32),
                             ),
-                            textAlign: TextAlign.center,
+                          ),
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              Image.asset(
+                                'assets/images/login_skyline.jpg',
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) =>
+                                    Container(color: AppColors.primaryDark),
+                              ),
+                              Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.bottomCenter,
+                                    end: Alignment.topCenter,
+                                    colors: [
+                                      Colors.black.withValues(alpha: 0.55),
+                                      Colors.transparent,
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              Positioned(
+                                top: 28,
+                                left: 28,
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 34,
+                                      height: 34,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: Text(
+                                        'P',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w800,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      'TechXPark',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(28),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Smart Parking for\nYour Modern Life',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.w800,
+                                  height: 1.2,
+                                  color: isDark
+                                      ? AppColors.textPrimaryDark
+                                      : AppColors.textPrimaryLight,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                'Join TechXPark and discover the easiest\nway to find and book parking spots.',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w400,
+                                  color: isDark
+                                      ? AppColors.textSecondaryDark
+                                      : AppColors.textSecondaryLight,
+                                ),
+                              ),
+                              const SizedBox(height: 32),
+                              _AuthButton(
+                                label: 'Continue with Phone',
+                                icon: Icons.phone_rounded,
+                                backgroundColor: AppColors.primary,
+                                textColor: Colors.white,
+                                shadowColor: AppColors.primary.withValues(
+                                  alpha: 0.22,
+                                ),
+                                onTap: () {
+                                  HapticFeedback.selectionClick();
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const PhoneLoginScreen(),
+                                    ),
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 12),
+                              _AuthButton(
+                                label: 'Continue with Apple',
+                                svgIcon: _appleIcon(),
+                                backgroundColor: Colors.black,
+                                textColor: Colors.white,
+                                isLoading: _isAppleLoading,
+                                onTap: _isAppleLoading
+                                    ? null
+                                    : _handleAppleLogin,
+                              ),
+                              const SizedBox(height: 12),
+                              _AuthButton(
+                                label: 'Continue with Google',
+                                customIcon: Image.asset(
+                                  'assets/images/google.png',
+                                  width: 20,
+                                  height: 20,
+                                ),
+                                backgroundColor: isDark
+                                    ? const Color(0xFF111B31)
+                                    : Colors.white,
+                                textColor: isDark
+                                    ? Colors.white
+                                    : const Color(0xFF0F172A),
+                                borderColor: const Color(0xFFE2E8F0),
+                                isLoading: _isGoogleLoading,
+                                onTap: _isGoogleLoading
+                                    ? null
+                                    : _handleGoogleLogin,
+                              ),
+                              const SizedBox(height: 12),
+                              _AuthButton(
+                                label: 'Continue with Email',
+                                icon: Icons.mail_outline_rounded,
+                                backgroundColor: isDark
+                                    ? const Color(0xFF111B31)
+                                    : Colors.white,
+                                textColor: isDark
+                                    ? Colors.white
+                                    : const Color(0xFF0F172A),
+                                borderColor: const Color(0xFFE2E8F0),
+                                onTap: () {
+                                  HapticFeedback.selectionClick();
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const EmailLoginScreen(),
+                                    ),
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 24),
+                              Center(
+                                child: Text.rich(
+                                  TextSpan(
+                                    text: 'By continuing, you agree to our ',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 12,
+                                      color: isDark
+                                          ? AppColors.textTertiaryDark
+                                          : AppColors.textTertiaryLight,
+                                    ),
+                                    children: [
+                                      TextSpan(
+                                        text: 'Terms of Service',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                      const TextSpan(text: ' and '),
+                                      TextSpan(
+                                        text: 'Privacy Policy',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -428,7 +330,8 @@ class _LoginScreenState extends State<LoginScreen>
               begin: Alignment.bottomCenter,
               end: Alignment.topCenter,
               colors: [
-                (isDark ? const Color(0xFF111321) : const Color(0xFFF6F6F8)).withValues(alpha: 0.8),
+                (isDark ? const Color(0xFF111321) : const Color(0xFFF6F6F8))
+                    .withValues(alpha: 0.8),
                 Colors.transparent,
               ],
               stops: const [0.0, 0.5],
@@ -503,7 +406,9 @@ class _AuthButtonState extends State<_AuthButton> {
     }
 
     return GestureDetector(
-      onTapDown: widget.onTap == null ? null : (_) => setState(() => _isPressed = true),
+      onTapDown: widget.onTap == null
+          ? null
+          : (_) => setState(() => _isPressed = true),
       onTapUp: widget.onTap == null
           ? null
           : (_) {
@@ -539,8 +444,7 @@ class _AuthButtonState extends State<_AuthButton> {
               const SizedBox(width: 12),
               Text(
                 widget.label,
-                style: TextStyle(
-                  fontFamily: 'Inter',
+                style: GoogleFonts.poppins(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
                   color: widget.textColor,

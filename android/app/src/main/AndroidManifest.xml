@@ -24,6 +24,11 @@
             android:name="com.google.firebase.messaging.default_notification_color"
             android:resource="@color/primary_blue"/>
 
+        <!-- ✅ Google Maps API Key -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyC1s15SNBpRhFp5NGBeH63rKB2yKVV6gyU"/>
+
         <!-- ✅ FCM Service Declaration -->
         <service
             android:name="com.google.firebase.messaging.FirebaseMessagingService"

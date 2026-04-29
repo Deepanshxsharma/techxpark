@@ -12,10 +12,14 @@ extension ThemeContextExtension on BuildContext {
 
   // ── Colors ─────────────────────────────────────────────────────────────
   Color get bgColor => _isDark ? AppColors.bgDark : AppColors.bgLight;
-  Color get surfaceColor => _isDark ? AppColors.surfaceDark : AppColors.surfaceLight;
-  Color get borderColor => _isDark ? AppColors.borderDark : AppColors.borderLight;
-  Color get textPrimary => _isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight;
-  Color get textSecondary => _isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight;
+  Color get surfaceColor =>
+      _isDark ? AppColors.surfaceDark : AppColors.surfaceLight;
+  Color get borderColor =>
+      _isDark ? AppColors.borderDark : AppColors.borderLight;
+  Color get textPrimary =>
+      _isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight;
+  Color get textSecondary =>
+      _isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight;
 
   // ── Typography (theme-aware) ───────────────────────────────────────────
   TextStyle get typographyH1 =>

@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-import '../../config/map_config.dart';
-
-class ParkingMapScreen extends StatelessWidget {
+class ParkingMapScreen extends StatefulWidget {
   final double lat;
   final double lng;
   final String name;
@@ -17,45 +14,43 @@ class ParkingMapScreen extends StatelessWidget {
   });
 
   @override
+  State<ParkingMapScreen> createState() => _ParkingMapScreenState();
+}
+
+class _ParkingMapScreenState extends State<ParkingMapScreen> {
+  GoogleMapController? _mapController;
+
+  @override
+  void dispose() {
+    _mapController?.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final LatLng position = LatLng(lat, lng);
+    final position = LatLng(widget.lat, widget.lng);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(name),
+        title: Text(widget.name),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
-
-      body: FlutterMap(
-        options: MapOptions(
-          initialCenter: position,
-          initialZoom: 16.0,
-        ),
-        children: [
-          // MAP LAYER
-          TileLayer(
-            urlTemplate: MapConfig.tileUrl,
-            maxZoom: MapConfig.maxZoom,
-            userAgentPackageName: MapConfig.userAgent,
+      body: GoogleMap(
+        initialCameraPosition: CameraPosition(target: position, zoom: 16),
+        myLocationEnabled: true,
+        myLocationButtonEnabled: true,
+        zoomControlsEnabled: false,
+        markers: {
+          Marker(
+            markerId: const MarkerId('parking'),
+            position: position,
+            infoWindow: InfoWindow(title: widget.name),
           ),
-
-          // MARKER
-          MarkerLayer(
-            markers: [
-              Marker(
-                point: position,
-                width: 80,
-                height: 80,
-                child: Icon(
-                  Icons.location_pin,
-                  size: 50,
-                  color: Colors.red.shade700,
-                ),
-              ),
-            ],
-          ),
-        ],
+        },
+        onMapCreated: (controller) {
+          _mapController = controller;
+        },
       ),
     );
   }

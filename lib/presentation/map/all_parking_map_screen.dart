@@ -2,12 +2,12 @@
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:latlong2/latlong.dart';
-import 'package:techxpark/presentation/parking_details/parking_details_screen.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:techxpark/presentation/parking_details/lot_detail_navigation.dart';
 
-import '../../config/map_config.dart';
+import '../../services/map_service.dart';
+import '../../services/parking_filter_service.dart';
+import '../../theme/app_colors.dart';
 
 class AllParkingMapScreen extends StatefulWidget {
   const AllParkingMapScreen({super.key});
@@ -17,46 +17,37 @@ class AllParkingMapScreen extends StatefulWidget {
 }
 
 class _AllParkingMapScreenState extends State<AllParkingMapScreen> {
-  final MapController _mapController = MapController();
+  GoogleMapController? _mapController;
 
   LatLng? userLocation;
   bool locationLoaded = false;
 
-  static const LatLng fallbackCenter = LatLng(19.0760, 72.8777); // Mumbai
+  static const LatLng fallbackCenter = LatLng(19.0760, 72.8777);
 
   @override
   void initState() {
     super.initState();
+    MapService.loadMarkerIcons().then((_) {
+      if (mounted) setState(() {});
+    });
     _getUserLocation();
   }
 
-  // ⭐ GET USER LOCATION SAFELY
   Future<void> _getUserLocation() async {
     try {
-      if (!await Geolocator.isLocationServiceEnabled()) return;
-
-      LocationPermission permission = await Geolocator.checkPermission();
-
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) return;
-      }
-
-      if (permission == LocationPermission.deniedForever) return;
-
-      Position pos =
-          await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
-
-      if (!mounted) return; // PREVENT setState AFTER dispose
+      final location = await MapService.getUserLocation();
+      if (!mounted || location == null) return;
 
       setState(() {
-        userLocation = LatLng(pos.latitude, pos.longitude);
+        userLocation = location;
         locationLoaded = true;
       });
 
-      if (!mounted) return;
-      _mapController.move(userLocation!, 15);
-
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && userLocation != null) {
+          _moveToLocation(userLocation!);
+        }
+      });
     } catch (e) {
       debugPrint("Location error: $e");
     }
@@ -64,6 +55,7 @@ class _AllParkingMapScreenState extends State<AllParkingMapScreen> {
 
   @override
   void dispose() {
+    _mapController?.dispose();
     super.dispose();
   }
 
@@ -71,34 +63,37 @@ class _AllParkingMapScreenState extends State<AllParkingMapScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xffF6F2FF),
-
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const Text("Parkings Map", style: TextStyle(color: Colors.black)),
+        title: const Text(
+          "Parkings Map",
+          style: TextStyle(color: Colors.black),
+        ),
         centerTitle: true,
       ),
-
-      // 📍 Re-center to user
       floatingActionButton: FloatingActionButton(
-        backgroundColor: const Color(0xff4D6FFF),
+        backgroundColor: AppColors.primary,
         onPressed: () {
           if (userLocation != null) {
-            _mapController.move(userLocation!, 15);
+            _moveToLocation(userLocation!);
           } else {
             _getUserLocation();
           }
         },
         child: const Icon(Icons.my_location),
       ),
-
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('parking_locations').snapshots(),
+      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: ParkingFilterService.streamParking(
+          ParkingFilterService.allFilterLabel,
+        ),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return Center(
-              child: Text("Error: ${snapshot.error}",
-                  style: const TextStyle(color: Colors.red)),
+              child: Text(
+                "Error: ${snapshot.error}",
+                style: const TextStyle(color: Colors.red),
+              ),
             );
           }
 
@@ -107,85 +102,64 @@ class _AllParkingMapScreenState extends State<AllParkingMapScreen> {
           }
 
           final docs = snapshot.data?.docs ?? [];
-          final List<Marker> markers = [];
+          debugPrint('TOTAL DOCS: ${docs.length}');
+          if (docs.isNotEmpty) {
+            debugPrint("Docs count: ${docs.length}");
+            debugPrint("FIRST DOC: ${docs.first.data()}");
+          }
 
-          LatLng initialCenter = userLocation ?? fallbackCenter;
+          final markers = docs
+              .map((doc) {
+                final data = {
+                  ...(doc.data() as Map<String, dynamic>? ?? {}),
+                  'id': doc.id,
+                };
 
-          // ⭐ ADD PARKING MARKERS
-          for (final doc in docs) {
-            final data = doc.data() as Map<String, dynamic>? ?? {};
-
-            final double? lat =
-                (data['lat'] is num) ? (data['lat'] as num).toDouble() : null;
-            final double? lng =
-                (data['lng'] is num) ? (data['lng'] as num).toDouble() : null;
-
-            if (lat == null || lng == null) continue;
-
-            final point = LatLng(lat, lng);
-
-            markers.add(
-              Marker(
-                point: point,
-                width: 50,
-                height: 50,
-                child: GestureDetector(
+                return MapService.createSmartMarker(
+                  id: doc.id,
+                  data: data,
                   onTap: () => _openBottomSheet(data),
-                  child: const Icon(
-                    Icons.location_on,
-                    size: 44,
-                    color: Color(0xff4D6FFF),
-                  ),
-                ),
-              ),
-            );
-          }
+                );
+              })
+              .whereType<Marker>()
+              .toSet();
+          debugPrint("Markers count: ${markers.length}");
 
-          // ⭐ ADD USER MARKER
-          if (userLocation != null) {
-            markers.add(
-              Marker(
-                point: userLocation!,
-                width: 40,
-                height: 40,
-                child: Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.blue,
-                    border: Border.all(color: Colors.white, width: 3),
-                  ),
-                ),
-              ),
-            );
-          }
-
-          return FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter: initialCenter,
-              initialZoom: 13,
-              maxZoom: 18,
+          return GoogleMap(
+            initialCameraPosition: CameraPosition(
+              target: userLocation ?? fallbackCenter,
+              zoom: 13,
             ),
-            children: [
-              TileLayer(
-                urlTemplate: MapConfig.tileUrl,
-                maxZoom: MapConfig.maxZoom,
-                userAgentPackageName: MapConfig.userAgent,
-              ),
-              MarkerLayer(markers: markers),
-            ],
+            myLocationEnabled: userLocation != null,
+            myLocationButtonEnabled: true,
+            zoomControlsEnabled: false,
+            markers: markers,
+            onMapCreated: (controller) {
+              _mapController = controller;
+            },
           );
         },
       ),
     );
   }
 
-  // ⭐ Bottom sheet when tapping marker
+  void _moveToLocation(LatLng target) {
+    _mapController?.animateCamera(CameraUpdate.newLatLngZoom(target, 15));
+  }
+
   void _openBottomSheet(Map<String, dynamic> data) {
     final name = data['name'] ?? "Parking Spot";
-    final price = (data['price'] ?? 0).toDouble();
-    final distance = (data['distance'] ?? 0).toDouble();
-    final rating = (data['rating'] ?? 0).toDouble();
+    final price = MapService.readNumber(data['price_per_hour']);
+    final rating = MapService.readNumber(
+      data['ratingAverage'] ?? data['rating_average'],
+    );
+    final isEv = MapService.isEvLot(data);
+    final evSlots = MapService.readInt(data['ev_slots'] ?? data['evSlots']);
+    final evAvail = MapService.readInt(
+      data['ev_available'] ?? data['evAvailable'],
+      fallback: evSlots,
+    );
+    final accentColor = isEv ? const Color(0xFF00C853) : AppColors.primary;
 
     showModalBottomSheet(
       context: context,
@@ -207,48 +181,87 @@ class _AllParkingMapScreenState extends State<AllParkingMapScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-
               Row(
                 children: [
-                  const Icon(Icons.local_parking,
-                      size: 40, color: Color(0xff4D6FFF)),
+                  Icon(
+                    isEv ? Icons.ev_station_rounded : Icons.local_parking,
+                    size: 40,
+                    color: accentColor,
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Text(
-                      name,
-                      style: const TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          name,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        if (isEv)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE0F7E9),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.bolt_rounded,
+                                    size: 14,
+                                    color: Color(0xFF00C853),
+                                  ),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    '$evAvail/$evSlots EV slots',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF00C853),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                 ],
               ),
-
               const SizedBox(height: 14),
-
               Row(
                 children: [
                   const Icon(Icons.star, size: 18, color: Colors.amber),
                   const SizedBox(width: 6),
                   Text(rating.toStringAsFixed(1)),
                   const Spacer(),
-                  Text("₹${price.toStringAsFixed(0)} / hr"),
+                  Text(
+                    "₹${price.toStringAsFixed(0)} / hr",
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: accentColor,
+                    ),
+                  ),
                 ],
               ),
-
               const SizedBox(height: 18),
-
               ElevatedButton(
                 onPressed: () {
                   Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ParkingDetailsScreen(data: data),
-                    ),
-                  );
+                  openLotDetail(context, data['id']?.toString() ?? '', data);
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xff4D6FFF),
+                  backgroundColor: accentColor,
                   minimumSize: const Size(double.infinity, 48),
                 ),
                 child: const Text("View Details"),

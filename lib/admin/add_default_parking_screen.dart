@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'generate_slots.dart';   // ⭐ IMPORTANT: import our slot generator
+import 'package:techxpark/theme/app_colors.dart';
+
+import 'generate_slots.dart'; // ⭐ IMPORTANT: import our slot generator
 
 class AddDefaultParkingScreen extends StatelessWidget {
   const AddDefaultParkingScreen({super.key});
@@ -9,8 +11,9 @@ class AddDefaultParkingScreen extends StatelessWidget {
   // ADD DEFAULT PARKINGS
   // =========================================================
   Future<void> addDefaultParkings(BuildContext context) async {
-    final CollectionReference ref =
-        FirebaseFirestore.instance.collection('parking_locations');
+    final CollectionReference ref = FirebaseFirestore.instance.collection(
+      'parking_locations',
+    );
 
     final List<Map<String, dynamic>> parkings = [
       {
@@ -84,12 +87,14 @@ class AddDefaultParkingScreen extends StatelessWidget {
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("All default parkings added successfully!")),
+        const SnackBar(
+          content: Text("All default parkings added successfully!"),
+        ),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error: $e")));
     }
   }
 
@@ -101,9 +106,7 @@ class AddDefaultParkingScreen extends StatelessWidget {
     TextEditingController idController = TextEditingController();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Admin Tools"),
-      ),
+      appBar: AppBar(title: const Text("Admin Tools")),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -112,9 +115,11 @@ class AddDefaultParkingScreen extends StatelessWidget {
             ElevatedButton(
               onPressed: () => addDefaultParkings(context),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blueAccent,
-                padding:
-                    const EdgeInsets.symmetric(vertical: 15, horizontal: 40),
+                backgroundColor: AppColors.primary,
+                padding: const EdgeInsets.symmetric(
+                  vertical: 15,
+                  horizontal: 40,
+                ),
               ),
               child: const Text(
                 "Add All Default Parkings",
@@ -143,7 +148,8 @@ class AddDefaultParkingScreen extends StatelessWidget {
                 if (idController.text.trim().isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                        content: Text("Enter a valid Parking Document ID")),
+                      content: Text("Enter a valid Parking Document ID"),
+                    ),
                   );
                   return;
                 }
@@ -158,8 +164,10 @@ class AddDefaultParkingScreen extends StatelessWidget {
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
-                padding:
-                    const EdgeInsets.symmetric(vertical: 15, horizontal: 40),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 15,
+                  horizontal: 40,
+                ),
               ),
               child: const Text(
                 "Generate Slots",

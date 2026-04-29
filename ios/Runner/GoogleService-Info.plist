@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>457287100758-13o6nc7ua6ejkir0rbvv2strp471c5ns.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.457287100758-13o6nc7ua6ejkir0rbvv2strp471c5ns</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>457287100758-023eia10ogm5mbqr9acmvac9tfqc6og5.apps.googleusercontent.com</string>
+	<key>API_KEY</key>
+	<string>AIzaSyCzidstWOerTu2owYuYs8uiO5NRUrvVdxc</string>
+	<key>GCM_SENDER_ID</key>
+	<string>457287100758</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.techxpark.parking</string>
+	<key>PROJECT_ID</key>
+	<string>techxpark-67c25</string>
+	<key>STORAGE_BUCKET</key>
+	<string>techxpark-67c25.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false/>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false/>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true/>
+	<key>IS_GCM_ENABLED</key>
+	<true/>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true/>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:457287100758:ios:0339dd318207d1e6028ef7</string>
+	<key>DATABASE_URL</key>
+	<string>https://techxpark-67c25-default-rtdb.asia-southeast1.firebasedatabase.app</string>
+</dict>
+</plist>

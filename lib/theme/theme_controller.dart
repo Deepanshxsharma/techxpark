@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ThemeController {
-  static final ValueNotifier<ThemeMode> themeMode =
-      ValueNotifier(ThemeMode.light);
+  static final ValueNotifier<ThemeMode> themeMode = ValueNotifier(
+    ThemeMode.light,
+  );
 
   static const _key = "is_dark_mode";
 

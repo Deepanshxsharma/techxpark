@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:techxpark/theme/app_colors.dart';
-import 'package:techxpark/presentation/auth/login/login_screen.dart';
 
-/// Premium onboarding screen — Stitch design: light gradient bg, skip button,
-/// centered illustration, title/subtitle, dot indicator, rounded "Next" button.
+import 'package:techxpark/presentation/auth/login/login_screen.dart';
+import 'package:techxpark/utils/navigation_utils.dart';
+import 'package:techxpark/theme/app_colors.dart';
+
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
 
@@ -16,318 +16,231 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _controller = PageController();
   int _currentPage = 0;
-  late final List<_OnboardingPage> _pages;
 
-  @override
-  void initState() {
-    super.initState();
-    _pages = [
-      _OnboardingPage(
-        imageWidget: Container(
-          width: 320,
-          height: 320,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(32),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 30,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(32),
-            child: Image.asset('assets/images/onboarding1.png', fit: BoxFit.cover),
-          ),
-        ),
-        title: 'Find Parking Instantly',
-        subtitle: 'Locate available slots near you in real time. No more circling the block.',
-      ),
-      _OnboardingPage(
-        imageWidget: _buildPhoneMockupWidget(),
-        title: 'Book in 30 Seconds',
-        subtitle: 'Reserve your slot before you arrive. Your spot waits for you.',
-      ),
-      _OnboardingPage(
-        imageWidget: Container(
-          width: 320,
-          height: 380, // slightly taller for exact aspect ratio of the walk
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(32),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 30,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(32),
-            child: Image.asset('assets/images/onboarding3.png', fit: BoxFit.cover),
-          ),
-        ),
-        title: 'Pay & Go Hassle Free',
-        subtitle: 'Pay digitally, get receipts instantly. No cash needed.',
-      ),
-    ];
-  }
+  final List<_OnboardingContent> _pages = const [
+    _OnboardingContent(
+      title: 'Find Parking Instantly',
+      description:
+          'Locate available slots near you in real time. No more circling the block.',
+      assetPath: 'assets/images/onboarding1.png',
+    ),
+    _OnboardingContent(
+      title: 'Book in 30 Seconds',
+      description:
+          'Reserve your slot before you arrive. Your spot waits for you.',
+      assetPath: 'assets/images/onboarding2.png',
+    ),
+    _OnboardingContent(
+      title: 'Pay & Go Hassle Free',
+      description: 'Pay digitally, get receipts instantly. No cash needed.',
+      assetPath: 'assets/images/onboarding3.png',
+    ),
+  ];
 
-  Widget _buildPhoneMockupWidget() {
-    return Container(
-      width: 320,
-      height: 350,
-      alignment: Alignment.center,
-      child: Container(
-        width: 170,
-        height: 340,
-        decoration: BoxDecoration(
-          color: const Color(0xFF1E293B), // slate-800
-          borderRadius: BorderRadius.circular(40),
-          border: Border.all(color: const Color(0xFF0F172A), width: 6), // slate-900 border
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF0F172A).withValues(alpha: 0.3),
-              blurRadius: 30,
-              offset: const Offset(0, 15),
-            ),
-          ],
-        ),
-        padding: const EdgeInsets.all(4),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(30),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Top notch/speaker
-              Container(
-                margin: const EdgeInsets.only(bottom: 40),
-                width: 48,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              // QR Code box
-              Container(
-                width: 70,
-                height: 70,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.04),
-                  border: Border.all(
-                    color: AppColors.primary.withValues(alpha: 0.3),
-                    width: 2,
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Center(
-                  child: Icon(
-                    Icons.qr_code_2_rounded,
-                    color: AppColors.primary,
-                    size: 40,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              // Loading/scanning line representation
-              Container(
-                width: 60,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              const SizedBox(height: 60), // Space to push QR up
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _nextPage() {
+  void _goNext() {
     if (_currentPage == _pages.length - 1) {
-      _navigateToAuth();
-    } else {
-      _controller.nextPage(
-        duration: const Duration(milliseconds: 400),
-        curve: Curves.easeOutCubic,
-      );
+      _openAuth();
+      return;
     }
+    _controller.nextPage(
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOut,
+    );
   }
 
-  void _navigateToAuth() {
-    Navigator.pushReplacement(
-      context,
-      PageRouteBuilder(
-        pageBuilder: (_, __, ___) => const LoginScreen(),
-        transitionsBuilder: (_, animation, __, child) {
-          return FadeTransition(opacity: animation, child: child);
-        },
-        transitionDuration: const Duration(milliseconds: 400),
-      ),
-    );
+  void _openAuth() {
+  safePushReplacement(context, const LoginScreen());
   }
 
   @override
   Widget build(BuildContext context) {
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
-
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF0F2FF),
+        backgroundColor: Colors.white,
         body: SafeArea(
           child: Column(
             children: [
-              // ── Skip button ───────────────────────────────────────
-              Align(
-                alignment: Alignment.topRight,
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 8, right: 20),
-                  child: TextButton(
-                    onPressed: _navigateToAuth,
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppColors.textSecondaryLight,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                    ),
-                    child: Text(
-                      'Skip',
-                      style: GoogleFonts.inter(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.textSecondaryLight,
+              if (_currentPage < 2)
+                Align(
+                  alignment: Alignment.topRight,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 6, right: 16),
+                    child: TextButton(
+                      onPressed: _openAuth,
+                      child: Text(
+                        'Skip',
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.textSecondaryLight,
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ),
-
-              // ── Page content ──────────────────────────────────────
+                )
+              else
+                const SizedBox(height: 54),
               Expanded(
                 child: PageView.builder(
                   controller: _controller,
-                  onPageChanged: (index) {
-                    setState(() => _currentPage = index);
-                  },
                   itemCount: _pages.length,
+                  onPageChanged: (index) =>
+                      setState(() => _currentPage = index),
                   itemBuilder: (context, index) {
                     final page = _pages[index];
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 28),
-                      child: Column(
-                        children: [
-                          const Spacer(flex: 1),
-
-                          // Illustration card / Widget
-                          page.imageWidget,
-
-                          const SizedBox(height: 48),
-
-                          // Title
-                          Text(
-                            page.title,
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.inter(
-                              fontSize: 28,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimaryLight,
-                              height: 1.2,
-                              letterSpacing: -0.5,
+                    return LayoutBuilder(
+                      builder: (context, constraints) {
+                        final topHeight = constraints.maxHeight * 0.55;
+                        return Column(
+                          children: [
+                            Container(
+                              height: topHeight,
+                              width: double.infinity,
+                              decoration: const BoxDecoration(
+                                borderRadius: BorderRadius.vertical(
+                                  bottom: Radius.circular(32),
+                                ),
+                              ),
+                              clipBehavior: Clip.antiAlias,
+                              child: Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  Image.asset(
+                                    page.assetPath,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => Container(
+                                      color: const Color(0xFFEAF0FF),
+                                      alignment: Alignment.center,
+                                      child: Icon(
+                                        index == 1
+                                            ? Icons.qr_code_2_rounded
+                                            : Icons.local_parking_rounded,
+                                        color: AppColors.primary,
+                                        size: 72,
+                                      ),
+                                    ),
+                                  ),
+                                  if (index == 0)
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                          colors: [
+                                            Colors.transparent,
+                                            Colors.black.withValues(alpha: 0.4),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
                             ),
-                          ),
-
-                          const SizedBox(height: 16),
-
-                          // Subtitle
-                          Text(
-                            page.subtitle,
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.inter(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w400,
-                              color: AppColors.textSecondaryLight,
-                              height: 1.6,
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.all(28),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: List.generate(
+                                        _pages.length,
+                                        (dotIndex) => AnimatedContainer(
+                                          duration: const Duration(
+                                            milliseconds: 250,
+                                          ),
+                                          margin: const EdgeInsets.only(
+                                            right: 8,
+                                          ),
+                                          width: _currentPage == dotIndex
+                                              ? 24
+                                              : 8,
+                                          height: 8,
+                                          decoration: BoxDecoration(
+                                            color: _currentPage == dotIndex
+                                                ? AppColors.primary
+                                                : AppColors.borderLight,
+                                            borderRadius: BorderRadius.circular(
+                                              999,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 20),
+                                    Text(
+                                      page.title,
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 26,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppColors.textPrimaryLight,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    ConstrainedBox(
+                                      constraints: const BoxConstraints(
+                                        maxWidth: 280,
+                                      ),
+                                      child: Text(
+                                        page.description,
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w400,
+                                          height: 1.6,
+                                          color: AppColors.textSecondaryLight,
+                                        ),
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      height: 56,
+                                      child: ElevatedButton(
+                                        onPressed: _goNext,
+                                        style: ElevatedButton.styleFrom(
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              14,
+                                            ),
+                                          ),
+                                        ),
+                                        child: Text(
+                                          _currentPage == 2
+                                              ? 'Get Started'
+                                              : 'Next →',
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    if (_currentPage == 2) ...[
+                                      const SizedBox(height: 12),
+                                      Center(
+                                        child: TextButton(
+                                          onPressed: _openAuth,
+                                          child: Text(
+                                            'Already have an account? Sign In',
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                              color: AppColors.primary,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
                             ),
-                          ),
-
-                          const Spacer(flex: 2),
-                        ],
-                      ),
+                          ],
+                        );
+                      },
                     );
                   },
-                ),
-              ),
-
-              // ── Dot indicator ─────────────────────────────────────
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(
-                  _pages.length,
-                  (index) => AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeOut,
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    width: _currentPage == index ? 28 : 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: _currentPage == index
-                          ? AppColors.primary
-                          : AppColors.borderLight,
-                      borderRadius: BorderRadius.circular(100),
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 28),
-
-              // ── Next / Get Started button ─────────────────────────
-              Padding(
-                padding: EdgeInsets.fromLTRB(
-                  24, 0, 24, bottomPadding + 20,
-                ),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: ElevatedButton(
-                    onPressed: _nextPage,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          _currentPage == _pages.length - 1
-                              ? 'Get Started'
-                              : 'Next',
-                          style: GoogleFonts.inter(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        if (_currentPage < _pages.length - 1) ...[
-                          const SizedBox(width: 8),
-                          const Icon(Icons.arrow_forward_rounded, size: 20),
-                        ],
-                      ],
-                    ),
-                  ),
                 ),
               ),
             ],
@@ -338,14 +251,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 }
 
-class _OnboardingPage {
-  final Widget imageWidget;
+class _OnboardingContent {
   final String title;
-  final String subtitle;
+  final String description;
+  final String assetPath;
 
-  _OnboardingPage({
-    required this.imageWidget,
+  const _OnboardingContent({
     required this.title,
-    required this.subtitle,
+    required this.description,
+    required this.assetPath,
   });
 }

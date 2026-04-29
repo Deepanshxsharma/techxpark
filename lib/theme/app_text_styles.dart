@@ -1,124 +1,130 @@
 import 'package:flutter/material.dart';
+
 import 'app_colors.dart';
 
-/// Centralized Text Styles for TechXPark — Poppins font.
-/// Ensures a consistent, modern typography hierarchy.
 class AppTextStyles {
-  static const String _fontFamily = 'Poppins';
-
-  // ─── Headers ─────────────────────────────────────────────────────────────
-
   static const TextStyle h1 = TextStyle(
-    fontFamily: _fontFamily,
+    fontFamily: 'Poppins',
     fontSize: 28,
-    fontWeight: FontWeight.w700,
-    color: AppColors.textPrimaryLight,
+    fontWeight: FontWeight.w800,
+    letterSpacing: 0,
     height: 1.2,
-    letterSpacing: -0.5,
+    color: AppColors.textPrimaryLight,
   );
 
   static const TextStyle h2 = TextStyle(
-    fontFamily: _fontFamily,
+    fontFamily: 'Poppins',
     fontSize: 22,
-    fontWeight: FontWeight.w600,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 0,
+    height: 1.25,
     color: AppColors.textPrimaryLight,
-    height: 1.3,
-    letterSpacing: -0.3,
   );
 
   static const TextStyle h3 = TextStyle(
-    fontFamily: _fontFamily,
+    fontFamily: 'Poppins',
     fontSize: 18,
-    fontWeight: FontWeight.w600,
+    fontWeight: FontWeight.w700,
+    height: 1.3,
     color: AppColors.textPrimaryLight,
-    height: 1.4,
   );
 
-  // ─── Body Text ───────────────────────────────────────────────────────────
+  static const TextStyle h4 = TextStyle(
+    fontFamily: 'Poppins',
+    fontSize: 16,
+    fontWeight: FontWeight.w600,
+    height: 1.3,
+    color: AppColors.textPrimaryLight,
+  );
 
   static const TextStyle body1 = TextStyle(
-    fontFamily: _fontFamily,
-    fontSize: 16,
+    fontFamily: 'Poppins',
+    fontSize: 14,
     fontWeight: FontWeight.w400,
-    color: AppColors.textPrimaryLight,
     height: 1.5,
+    color: AppColors.textPrimaryLight,
   );
 
   static const TextStyle body1SemiBold = TextStyle(
-    fontFamily: _fontFamily,
-    fontSize: 16,
+    fontFamily: 'Poppins',
+    fontSize: 14,
     fontWeight: FontWeight.w600,
-    color: AppColors.textPrimaryLight,
     height: 1.5,
+    color: AppColors.textPrimaryLight,
   );
 
   static const TextStyle body1Bold = TextStyle(
-    fontFamily: _fontFamily,
-    fontSize: 16,
+    fontFamily: 'Poppins',
+    fontSize: 14,
     fontWeight: FontWeight.w700,
-    color: AppColors.textPrimaryLight,
     height: 1.5,
+    color: AppColors.textPrimaryLight,
   );
 
   static const TextStyle body2 = TextStyle(
-    fontFamily: _fontFamily,
-    fontSize: 14,
+    fontFamily: 'Poppins',
+    fontSize: 13,
     fontWeight: FontWeight.w400,
-    color: AppColors.textSecondaryLight,
     height: 1.5,
+    color: AppColors.textSecondaryLight,
   );
 
   static const TextStyle body2SemiBold = TextStyle(
-    fontFamily: _fontFamily,
-    fontSize: 14,
+    fontFamily: 'Poppins',
+    fontSize: 13,
     fontWeight: FontWeight.w600,
-    color: AppColors.textPrimaryLight,
     height: 1.5,
+    color: AppColors.textPrimaryLight,
   );
 
-  // ─── Captions & Small Text ───────────────────────────────────────────────
+  static const TextStyle body3 = TextStyle(
+    fontFamily: 'Poppins',
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+    height: 1.45,
+    color: AppColors.textSecondaryLight,
+  );
 
   static const TextStyle caption = TextStyle(
-    fontFamily: _fontFamily,
+    fontFamily: 'Poppins',
     fontSize: 12,
     fontWeight: FontWeight.w400,
     color: AppColors.textSecondaryLight,
-    height: 1.45,
-    letterSpacing: 0.1,
   );
 
   static const TextStyle captionBold = TextStyle(
-    fontFamily: _fontFamily,
+    fontFamily: 'Poppins',
     fontSize: 12,
     fontWeight: FontWeight.w600,
+    letterSpacing: 0.4,
     color: AppColors.textSecondaryLight,
-    height: 1.45,
-    letterSpacing: 0.2,
   );
 
-  // ─── Buttons ─────────────────────────────────────────────────────────────
+  static const TextStyle label = TextStyle(
+    fontFamily: 'Poppins',
+    fontSize: 11,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.5,
+    color: AppColors.textTertiaryLight,
+  );
 
   static const TextStyle buttonText = TextStyle(
-    fontFamily: _fontFamily,
-    fontSize: 16,
-    fontWeight: FontWeight.w600,
+    fontFamily: 'Poppins',
+    fontSize: 15,
+    fontWeight: FontWeight.w700,
     color: Colors.white,
-    letterSpacing: 0.2,
   );
 
   static const TextStyle textButton = TextStyle(
-    fontFamily: _fontFamily,
-    fontSize: 14,
-    fontWeight: FontWeight.w500,
+    fontFamily: 'Poppins',
+    fontSize: 13,
+    fontWeight: FontWeight.w700,
     color: AppColors.primary,
   );
-
-  // ─── Dark Mode Variations ────────────────────────────────────────────────
 
   static TextStyle get h1Dark => h1.copyWith(color: AppColors.textPrimaryDark);
   static TextStyle get h2Dark => h2.copyWith(color: AppColors.textPrimaryDark);
   static TextStyle get h3Dark => h3.copyWith(color: AppColors.textPrimaryDark);
-
   static TextStyle get body1Dark =>
       body1.copyWith(color: AppColors.textPrimaryDark);
   static TextStyle get body1BoldDark =>
@@ -127,7 +133,6 @@ class AppTextStyles {
       body2.copyWith(color: AppColors.textSecondaryDark);
   static TextStyle get body2SemiBoldDark =>
       body2SemiBold.copyWith(color: AppColors.textPrimaryDark);
-
   static TextStyle get captionDark =>
       caption.copyWith(color: AppColors.textSecondaryDark);
   static TextStyle get captionBoldDark =>

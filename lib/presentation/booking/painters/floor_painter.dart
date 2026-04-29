@@ -22,14 +22,22 @@ class FloorPainter {
       ..strokeWidth = 1;
 
     const double tileSize = 40.0;
-    
+
     // Vertical lines
     for (double x = 0; x <= ParkingMapConfig.mapW; x += tileSize) {
-       canvas.drawLine(Offset(x, 0), Offset(x, ParkingMapConfig.mapH), gridLinePaint);
+      canvas.drawLine(
+        Offset(x, 0),
+        Offset(x, ParkingMapConfig.mapH),
+        gridLinePaint,
+      );
     }
     // Horizontal lines
     for (double y = 0; y <= ParkingMapConfig.mapH; y += tileSize) {
-       canvas.drawLine(Offset(0, y), Offset(ParkingMapConfig.mapW, y), gridLinePaint);
+      canvas.drawLine(
+        Offset(0, y),
+        Offset(ParkingMapConfig.mapW, y),
+        gridLinePaint,
+      );
     }
 
     // 3. Central Floor Watermark text
@@ -70,7 +78,8 @@ class FloorPainter {
       ..strokeJoin = StrokeJoin.round;
 
     final wallRect = Rect.fromLTWH(
-      10, 10,
+      10,
+      10,
       ParkingMapConfig.mapW - 20,
       ParkingMapConfig.mapH - 20,
     );
@@ -98,8 +107,10 @@ class FloorPainter {
       for (int i = 0; i < dashCount; i++) {
         canvas.drawLine(
           Offset(p1.dx + dx * i, p1.dy + dy * i),
-          Offset(p1.dx + dx * i + dx * (dashWidth / (dashWidth + dashSpace)),
-              p1.dy + dy * i + dy * (dashWidth / (dashWidth + dashSpace))),
+          Offset(
+            p1.dx + dx * i + dx * (dashWidth / (dashWidth + dashSpace)),
+            p1.dy + dy * i + dy * (dashWidth / (dashWidth + dashSpace)),
+          ),
           laneLinePaint,
         );
       }
@@ -107,17 +118,52 @@ class FloorPainter {
 
     // Top horizontal lane
     drawDashedLine(
-      const Offset(20, ParkingMapConfig.topOffset + ParkingMapConfig.slotH + 30),
-      const Offset(ParkingMapConfig.mapW - 20, ParkingMapConfig.topOffset + ParkingMapConfig.slotH + 30),
+      const Offset(
+        20,
+        ParkingMapConfig.topOffset + ParkingMapConfig.slotH + 30,
+      ),
+      const Offset(
+        ParkingMapConfig.mapW - 20,
+        ParkingMapConfig.topOffset + ParkingMapConfig.slotH + 30,
+      ),
     );
-    _drawPaintedLaneLabel(canvas, const Offset(ParkingMapConfig.mapW / 2, ParkingMapConfig.topOffset + ParkingMapConfig.slotH + 30), "LANE A");
+    _drawPaintedLaneLabel(
+      canvas,
+      const Offset(
+        ParkingMapConfig.mapW / 2,
+        ParkingMapConfig.topOffset + ParkingMapConfig.slotH + 30,
+      ),
+      "LANE A",
+    );
 
     // Bottom horizontal lane
     drawDashedLine(
-      const Offset(20, ParkingMapConfig.topOffset + ParkingMapConfig.slotH * 3 + ParkingMapConfig.laneH * 2 - 10),
-      const Offset(ParkingMapConfig.mapW - 20, ParkingMapConfig.topOffset + ParkingMapConfig.slotH * 3 + ParkingMapConfig.laneH * 2 - 10),
+      const Offset(
+        20,
+        ParkingMapConfig.topOffset +
+            ParkingMapConfig.slotH * 3 +
+            ParkingMapConfig.laneH * 2 -
+            10,
+      ),
+      const Offset(
+        ParkingMapConfig.mapW - 20,
+        ParkingMapConfig.topOffset +
+            ParkingMapConfig.slotH * 3 +
+            ParkingMapConfig.laneH * 2 -
+            10,
+      ),
     );
-    _drawPaintedLaneLabel(canvas, const Offset(ParkingMapConfig.mapW / 2, ParkingMapConfig.topOffset + ParkingMapConfig.slotH * 3 + ParkingMapConfig.laneH * 2 - 10), "LANE B");
+    _drawPaintedLaneLabel(
+      canvas,
+      const Offset(
+        ParkingMapConfig.mapW / 2,
+        ParkingMapConfig.topOffset +
+            ParkingMapConfig.slotH * 3 +
+            ParkingMapConfig.laneH * 2 -
+            10,
+      ),
+      "LANE B",
+    );
   }
 
   /// Draws the hazard zones near wall edges
@@ -128,7 +174,11 @@ class FloorPainter {
 
     for (double i = 0; i < ParkingMapConfig.mapW; i += 30) {
       canvas.drawLine(Offset(i, 20), Offset(i + 15, 30), paint);
-      canvas.drawLine(Offset(i, ParkingMapConfig.mapH - 20), Offset(i + 15, ParkingMapConfig.mapH - 30), paint);
+      canvas.drawLine(
+        Offset(i, ParkingMapConfig.mapH - 20),
+        Offset(i + 15, ParkingMapConfig.mapH - 30),
+        paint,
+      );
     }
   }
 
@@ -142,8 +192,13 @@ class FloorPainter {
       canvas.drawRect(r.deflate(3), pillarIn);
     }
 
-    final laneCenter1 = ParkingMapConfig.topOffset + ParkingMapConfig.slotH + 30;
-    final laneCenter2 = ParkingMapConfig.topOffset + ParkingMapConfig.slotH * 3 + ParkingMapConfig.laneH * 2 - 10;
+    final laneCenter1 =
+        ParkingMapConfig.topOffset + ParkingMapConfig.slotH + 30;
+    final laneCenter2 =
+        ParkingMapConfig.topOffset +
+        ParkingMapConfig.slotH * 3 +
+        ParkingMapConfig.laneH * 2 -
+        10;
 
     for (double x = 120; x < ParkingMapConfig.mapW - 60; x += 180) {
       drawPillar(x, laneCenter1);
@@ -164,9 +219,13 @@ class FloorPainter {
 
     for (double x = 100; x < ParkingMapConfig.mapW; x += 200) {
       for (double y = 80; y < ParkingMapConfig.mapH - 50; y += 150) {
-         final rect = Rect.fromCenter(center: Offset(x, y), width: 60, height: 6);
-         canvas.drawRect(rect.inflate(8), lightGlow);
-         canvas.drawRect(rect, lightFixture);
+        final rect = Rect.fromCenter(
+          center: Offset(x, y),
+          width: 60,
+          height: 6,
+        );
+        canvas.drawRect(rect.inflate(8), lightGlow);
+        canvas.drawRect(rect, lightFixture);
       }
     }
   }
@@ -174,19 +233,21 @@ class FloorPainter {
   static void _drawCompassRose(Canvas canvas, Offset center) {
     // Circle background
     canvas.drawCircle(
-      center, 
-      24, 
-      Paint()..color = Colors.white.withValues(alpha: 0.05)
-             ..style = PaintingStyle.fill
+      center,
+      24,
+      Paint()
+        ..color = Colors.white.withValues(alpha: 0.05)
+        ..style = PaintingStyle.fill,
     );
-    
+
     // Outer Ring
     canvas.drawCircle(
-      center, 
-      24, 
-      Paint()..color = Colors.white.withValues(alpha: 0.2)
-             ..style = PaintingStyle.stroke
-             ..strokeWidth = 1
+      center,
+      24,
+      Paint()
+        ..color = Colors.white.withValues(alpha: 0.2)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1,
     );
 
     // North Pointer (Red)
@@ -195,7 +256,10 @@ class FloorPainter {
       ..lineTo(center.dx - 6, center.dy)
       ..lineTo(center.dx + 6, center.dy)
       ..close();
-    canvas.drawPath(northPath, Paint()..color = const Color(0xFFEF4444).withValues(alpha: 0.8));
+    canvas.drawPath(
+      northPath,
+      Paint()..color = const Color(0xFFEF4444).withValues(alpha: 0.8),
+    );
 
     // South/East/West Pointers (White)
     final otherPath = Path()
@@ -211,14 +275,28 @@ class FloorPainter {
       ..lineTo(center.dx, center.dy - 6)
       ..lineTo(center.dx, center.dy + 6)
       ..close();
-    canvas.drawPath(otherPath, Paint()..color = Colors.white.withValues(alpha: 0.2));
-    
+    canvas.drawPath(
+      otherPath,
+      Paint()..color = Colors.white.withValues(alpha: 0.2),
+    );
+
     // Center Dot
-    canvas.drawCircle(center, 3, Paint()..color = Colors.white.withValues(alpha: 0.8));
+    canvas.drawCircle(
+      center,
+      3,
+      Paint()..color = Colors.white.withValues(alpha: 0.8),
+    );
 
     // 'N' Label
     final tp = TextPainter(
-      text: const TextSpan(text: 'N', style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w900)),
+      text: const TextSpan(
+        text: 'N',
+        style: TextStyle(
+          color: Colors.white70,
+          fontSize: 10,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
       textDirection: TextDirection.ltr,
     )..layout();
     tp.paint(canvas, Offset(center.dx - 4, center.dy - 34));
@@ -229,7 +307,7 @@ class FloorPainter {
       text: TextSpan(
         text: label,
         style: TextStyle(
-          color: Colors.white.withValues(alpha: 0.15), 
+          color: Colors.white.withValues(alpha: 0.15),
           fontSize: 24,
           fontWeight: FontWeight.w900,
           letterSpacing: 4,
@@ -238,6 +316,9 @@ class FloorPainter {
       textDirection: TextDirection.ltr,
     );
     textPainter.layout();
-    textPainter.paint(canvas, Offset(pos.dx - textPainter.width / 2, pos.dy - textPainter.height / 2));
+    textPainter.paint(
+      canvas,
+      Offset(pos.dx - textPainter.width / 2, pos.dy - textPainter.height / 2),
+    );
   }
 }

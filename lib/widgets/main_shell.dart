@@ -1,14 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'dart:ui';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../presentation/home/home_screen.dart';
-import '../presentation/profile/saved_parkings_screen.dart';
+import '../presentation/map/dashboard_map_screen.dart';
+import '../presentation/search/search_parking_screen.dart';
 import '../presentation/booking/my_bookings_screen.dart';
-import '../presentation/profile/wallet_screen.dart';
+import '../presentation/messages/messages_screen.dart';
 import '../presentation/profile/profile_screen.dart';
 import '../theme/app_colors.dart';
 
@@ -31,16 +32,24 @@ class _MainShellState extends State<MainShell> {
 
   // Unread messages count
   int _unreadCount = 0;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _conversationSub;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _notificationSub;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _inboxSub;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _supportChatSub;
+  int _conversationUnread = 0;
+  int _notificationUnread = 0;
+  int _inboxUnread = 0;
+  int _supportChatUnread = 0;
 
   @override
   void initState() {
     super.initState();
     _currentIndex = widget.initialIndex;
     _screens = [
-      HomeScreen(onTabSelected: _selectTab),
-      const SavedParkingsScreen(),
+      DashboardMapScreen(onTabSwitch: _selectTab),
+      const SearchParkingScreen(),
       const MyBookingsScreen(),
-      const WalletScreen(),
+      const MessagesScreen(),
       const ProfileScreen(),
     ];
     _listenUnreadMessages();
@@ -50,7 +59,7 @@ class _MainShellState extends State<MainShell> {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
 
-    FirebaseFirestore.instance
+    _conversationSub = FirebaseFirestore.instance
         .collection('conversations')
         .where('participants', arrayContains: uid)
         .snapshots()
@@ -63,8 +72,64 @@ class _MainShellState extends State<MainShell> {
             final unread = (unreadMap[uid] as num?)?.toInt() ?? 0;
             count += unread;
           }
-          if (mounted) setState(() => _unreadCount = count);
+          _conversationUnread = count;
+          _updateUnreadCount();
         });
+
+    _notificationSub = FirebaseFirestore.instance
+        .collection('notifications')
+        .where('userId', isEqualTo: uid)
+        .where('read', isEqualTo: false)
+        .snapshots()
+        .listen((snapshot) {
+          _notificationUnread = snapshot.docs.length;
+          _updateUnreadCount();
+        });
+
+    _inboxSub = FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('messages')
+        .where('isRead', isEqualTo: false)
+        .snapshots()
+        .listen((snapshot) {
+          _inboxUnread = snapshot.docs.length;
+          _updateUnreadCount();
+        });
+
+    _supportChatSub = FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('support_chats')
+        .snapshots()
+        .listen((snapshot) {
+          var count = 0;
+          for (final doc in snapshot.docs) {
+            count += (doc.data()['unreadCount'] as num?)?.toInt() ?? 0;
+          }
+          _supportChatUnread = count;
+          _updateUnreadCount();
+        });
+  }
+
+  void _updateUnreadCount() {
+    if (!mounted) return;
+    setState(() {
+      _unreadCount =
+          _conversationUnread +
+          _notificationUnread +
+          _inboxUnread +
+          _supportChatUnread;
+    });
+  }
+
+  @override
+  void dispose() {
+    _conversationSub?.cancel();
+    _notificationSub?.cancel();
+    _inboxSub?.cancel();
+    _supportChatSub?.cancel();
+    super.dispose();
   }
 
   @override
@@ -82,72 +147,64 @@ class _MainShellState extends State<MainShell> {
   }
 
   Widget _buildBottomNavBar(BuildContext context) {
-    final bottomInset = MediaQuery.of(context).padding.bottom;
     const destinations = <_ShellDestination>[
       _ShellDestination(
-        label: 'Explore',
-        icon: Icons.explore_outlined,
-        selectedIcon: Icons.explore_rounded,
+        label: 'Home',
+        icon: Icons.home_outlined,
+        selectedIcon: Icons.home_rounded,
       ),
       _ShellDestination(
-        label: 'Saved',
-        icon: Icons.bookmark_border_rounded,
-        selectedIcon: Icons.bookmark_rounded,
+        label: 'Map',
+        icon: Icons.map_outlined,
+        selectedIcon: Icons.map_rounded,
       ),
       _ShellDestination(
-        label: 'Activity',
-        icon: Icons.local_activity_outlined,
-        selectedIcon: Icons.local_activity_rounded,
+        label: 'Bookings',
+        icon: Icons.confirmation_number_outlined,
+        selectedIcon: Icons.confirmation_number,
       ),
       _ShellDestination(
-        label: 'Wallet',
-        icon: Icons.account_balance_wallet_outlined,
-        selectedIcon: Icons.account_balance_wallet_rounded,
+        label: 'Messages',
+        icon: Icons.chat_bubble_outline_rounded,
+        selectedIcon: Icons.chat_bubble_rounded,
       ),
       _ShellDestination(
         label: 'Profile',
-        icon: Icons.person_outline_rounded,
-        selectedIcon: Icons.person_rounded,
+        icon: Icons.person_outline,
+        selectedIcon: Icons.person,
       ),
     ];
 
-    return Padding(
-      padding: EdgeInsets.only(bottom: bottomInset),
-      child: ClipRRect(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-          child: Container(
-            height: 72 + bottomInset,
-            padding: EdgeInsets.fromLTRB(14, 8, 14, 8 + bottomInset),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.96),
-              border: const Border(top: BorderSide(color: Color(0xFFF1F5F9))),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 24,
-                  offset: const Offset(0, -8),
-                ),
-              ],
-            ),
-            child: Row(
-              children: List.generate(destinations.length, (index) {
-                final destination = destinations[index];
-                return Expanded(
-                  child: _NavBarItem(
-                    label: destination.label,
-                    icon: _currentIndex == index
-                        ? destination.selectedIcon
-                        : destination.icon,
-                    isSelected: _currentIndex == index,
-                    unreadCount: destination.label == 'Messages'
-                        ? _unreadCount
-                        : 0,
-                    onTap: () => _selectTab(index),
-                  ),
-                );
-              }),
-            ),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.9),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 30,
+            offset: const Offset(0, -10),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: List.generate(destinations.length, (index) {
+              final destination = destinations[index];
+              return _NavBarItem(
+                label: destination.label,
+                icon: _currentIndex == index
+                    ? destination.selectedIcon
+                    : destination.icon,
+                isSelected: _currentIndex == index,
+                unreadCount: index == 3 ? _unreadCount : 0,
+                onTap: () => _selectTab(index),
+              );
+            }),
           ),
         ),
       ),
@@ -172,58 +229,39 @@ class _NavBarItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isSelected ? AppColors.primary : AppColors.textTertiaryLight;
+    final color = isSelected ? AppColors.primary : const Color(0xFF444655);
 
-    return InkWell(
+    return GestureDetector(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(24),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
+      child: SizedBox(
+        width: 58,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Stack(
               clipBehavior: Clip.none,
               children: [
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(icon, color: color, size: 24),
-                    const SizedBox(height: 6),
-                    AnimatedOpacity(
-                      duration: const Duration(milliseconds: 180),
-                      opacity: isSelected ? 1 : 0,
-                      child: Container(
-                        width: 6,
-                        height: 6,
-                        decoration: const BoxDecoration(
-                          color: AppColors.primary,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                Icon(icon, color: color, size: 24),
                 if (unreadCount > 0)
                   Positioned(
-                    top: -6,
-                    right: -11,
+                    top: -7,
+                    right: -12,
                     child: Container(
-                      constraints: const BoxConstraints(minWidth: 18),
+                      constraints: const BoxConstraints(minWidth: 17),
                       padding: const EdgeInsets.symmetric(
                         horizontal: 5,
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE5393B),
+                        color: const Color(0xFFBA1A1A),
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(
                         unreadCount > 99 ? '99+' : '$unreadCount',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
+                        style: GoogleFonts.poppins(
                           color: Colors.white,
-                          fontSize: 9,
+                          fontSize: 8,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -231,16 +269,30 @@ class _NavBarItem extends StatelessWidget {
                   ),
               ],
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 4),
             Text(
-              label,
+              label.toUpperCase(),
+              maxLines: 1,
+              overflow: TextOverflow.visible,
               style: GoogleFonts.poppins(
                 color: color,
-                fontSize: 11,
+                fontSize: 9,
                 fontWeight: FontWeight.w600,
-                letterSpacing: 0.2,
+                letterSpacing: 0.8,
               ),
             ),
+            if (isSelected) ...[
+              const SizedBox(height: 4),
+              Container(
+                width: 4,
+                height: 4,
+                decoration: const BoxDecoration(
+                  color: AppColors.primary,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ] else
+              const SizedBox(height: 8),
           ],
         ),
       ),

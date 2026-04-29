@@ -44,12 +44,12 @@ class ParkingBasementPainter extends CustomPainter {
 
     // Phase 2: Slots
     SlotPainter.drawSlots(
-      canvas, 
-      slots, 
-      bookedSlotId, 
-      isBookedFloor, 
-      pulseValue, 
-      _layout
+      canvas,
+      slots,
+      bookedSlotId,
+      isBookedFloor,
+      pulseValue,
+      _layout,
     );
 
     // Phase 3: Path and Animation
@@ -57,11 +57,11 @@ class ParkingBasementPainter extends CustomPainter {
       final bookedIdx = slots.indexWhere((s) => s['id'] == bookedSlotId);
       if (bookedIdx >= 0) {
         PathPainter.drawPath(
-          canvas, 
-          bookedIdx, 
-          pathProgress, 
-          vehiclePhase, 
-          _layout
+          canvas,
+          bookedIdx,
+          pathProgress,
+          vehiclePhase,
+          _layout,
         );
       }
     }
@@ -71,9 +71,9 @@ class ParkingBasementPainter extends CustomPainter {
   bool shouldRepaint(covariant ParkingBasementPainter oldDelegate) {
     // Only repaint if critical properties change (pulse/path handled via Listenable merge on parent)
     return oldDelegate.isBookedFloor != isBookedFloor ||
-           oldDelegate.pulseValue != pulseValue ||
-           oldDelegate.pathProgress != pathProgress ||
-           oldDelegate.vehiclePhase != vehiclePhase ||
-           oldDelegate.slots.length != slots.length;
+        oldDelegate.pulseValue != pulseValue ||
+        oldDelegate.pathProgress != pathProgress ||
+        oldDelegate.vehiclePhase != vehiclePhase ||
+        oldDelegate.slots.length != slots.length;
   }
 }

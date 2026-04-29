@@ -3,6 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/foundation.dart'; // Required for kIsWeb
 
+import '../../theme/app_colors.dart';
+
 class ParkingLandscapeScreen extends StatefulWidget {
   final String parkingId;
 
@@ -25,17 +27,20 @@ class _ParkingLandscapeScreenState extends State<ParkingLandscapeScreen> {
   Widget build(BuildContext context) {
     // 📏 Responsive Layout Logic
     double width = MediaQuery.of(context).size.width;
-    
+
     // On Web, use more columns (6 for desktop, 4 for tablet size)
     int gridColumns = width > 1200 ? 6 : (width > 800 ? 4 : 3);
-    
+
     // Sidebar width is fixed on desktop, slightly smaller on tablets
     double sidebarWidth = width > 1000 ? 300 : 250;
 
     return Scaffold(
       backgroundColor: _bg,
       appBar: AppBar(
-        title: const Text("Dashboard Mode", style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          "Dashboard Mode",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         backgroundColor: _panelColor,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
@@ -60,23 +65,47 @@ class _ParkingLandscapeScreenState extends State<ParkingLandscapeScreen> {
                   children: [
                     Container(
                       padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(color: Colors.blueAccent.withValues(alpha: 0.1), shape: BoxShape.circle),
-                      child: const Icon(Icons.local_parking_rounded, color: Colors.blueAccent, size: 32),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.local_parking_rounded,
+                        color: AppColors.primary,
+                        size: 32,
+                      ),
                     ),
                     const SizedBox(width: 16),
-                    const Text("STATUS", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 22)),
+                    const Text(
+                      "STATUS",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 22,
+                      ),
+                    ),
                   ],
                 ),
-                
+
                 const Divider(color: Colors.white10, height: 40),
 
                 // Live Stats
-                Expanded(child: _buildSidebarStats()), // Uses Expanded to avoid overflow
+                Expanded(
+                  child: _buildSidebarStats(),
+                ), // Uses Expanded to avoid overflow
 
                 const Divider(color: Colors.white10, height: 40),
 
                 // Floor Toggles
-                const Text("SELECT LEVEL", style: TextStyle(color: Colors.white38, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+                const Text(
+                  "SELECT LEVEL",
+                  style: TextStyle(
+                    color: Colors.white38,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.2,
+                  ),
+                ),
                 const SizedBox(height: 16),
                 _buildCompactFloorTabs(),
               ],
@@ -91,24 +120,34 @@ class _ParkingLandscapeScreenState extends State<ParkingLandscapeScreen> {
               children: [
                 // Grid Header
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 20,
+                  ),
                   decoration: BoxDecoration(
                     color: _bg,
-                    border: const Border(bottom: BorderSide(color: Colors.white10)),
+                    border: const Border(
+                      bottom: BorderSide(color: Colors.white10),
+                    ),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text("LEVEL $selectedFloor", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 28)),
+                      Text(
+                        "LEVEL $selectedFloor",
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 28,
+                        ),
+                      ),
                       _legendRow(),
                     ],
                   ),
                 ),
-                
+
                 // The Grid (Scrollable)
-                Expanded(
-                  child: _buildLandscapeGrid(gridColumns),
-                ),
+                Expanded(child: _buildLandscapeGrid(gridColumns)),
               ],
             ),
           ),
@@ -122,24 +161,39 @@ class _ParkingLandscapeScreenState extends State<ParkingLandscapeScreen> {
   Widget _legendRow() {
     return Row(
       children: [
-        _dot(_freeGreen), const SizedBox(width: 8),
-        const Text("Free", style: TextStyle(color: Colors.white54, fontSize: 14)),
+        _dot(_freeGreen),
+        const SizedBox(width: 8),
+        const Text(
+          "Free",
+          style: TextStyle(color: Colors.white54, fontSize: 14),
+        ),
         const SizedBox(width: 24),
-        _dot(_occupiedRed), const SizedBox(width: 8),
-        const Text("Busy", style: TextStyle(color: Colors.white54, fontSize: 14)),
+        _dot(_occupiedRed),
+        const SizedBox(width: 8),
+        const Text(
+          "Busy",
+          style: TextStyle(color: Colors.white54, fontSize: 14),
+        ),
       ],
     );
   }
 
-  Widget _dot(Color c) => Container(width: 12, height: 12, decoration: BoxDecoration(color: c, shape: BoxShape.circle));
+  Widget _dot(Color c) => Container(
+    width: 12,
+    height: 12,
+    decoration: BoxDecoration(color: c, shape: BoxShape.circle),
+  );
 
   Widget _buildSidebarStats() {
     return StreamBuilder<DocumentSnapshot>(
-      stream: FirebaseFirestore.instance.collection("parking_locations").doc(widget.parkingId).snapshots(),
+      stream: FirebaseFirestore.instance
+          .collection("parking_locations")
+          .doc(widget.parkingId)
+          .snapshots(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const SizedBox();
         var data = snapshot.data!.data() as Map<String, dynamic>;
-        
+
         int total = data['total_slots'] ?? 0;
         int available = data['available_slots'] ?? 0;
         int occupied = total - available;
@@ -167,8 +221,23 @@ class _ParkingLandscapeScreenState extends State<ParkingLandscapeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(value, style: TextStyle(color: color, fontSize: 42, fontWeight: FontWeight.w900, height: 1.0)),
-          Text(label, style: TextStyle(color: color.withValues(alpha: 0.8), fontSize: 14, fontWeight: FontWeight.bold)),
+          Text(
+            value,
+            style: TextStyle(
+              color: color,
+              fontSize: 42,
+              fontWeight: FontWeight.w900,
+              height: 1.0,
+            ),
+          ),
+          Text(
+            label,
+            style: TextStyle(
+              color: color.withValues(alpha: 0.8),
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ],
       ),
     );
@@ -184,14 +253,24 @@ class _ParkingLandscapeScreenState extends State<ParkingLandscapeScreen> {
           onTap: () => setState(() => selectedFloor = i),
           borderRadius: BorderRadius.circular(12),
           child: Container(
-            width: 60, height: 50,
+            width: 60,
+            height: 50,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: isSelected ? Colors.blueAccent : Colors.white10,
+              color: isSelected ? AppColors.primary : Colors.white10,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: isSelected ? Colors.blueAccent : Colors.transparent),
+              border: Border.all(
+                color: isSelected ? AppColors.primary : Colors.transparent,
+              ),
             ),
-            child: Text("$i", style: TextStyle(color: isSelected ? Colors.white : Colors.white38, fontSize: 18, fontWeight: FontWeight.bold)),
+            child: Text(
+              "$i",
+              style: TextStyle(
+                color: isSelected ? Colors.white : Colors.white38,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         );
       }).toList(),
@@ -208,9 +287,13 @@ class _ParkingLandscapeScreenState extends State<ParkingLandscapeScreen> {
           .collection("slots")
           .snapshots(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+        if (!snapshot.hasData)
+          return const Center(child: CircularProgressIndicator());
         var slots = snapshot.data!.docs;
-        if (slots.isEmpty) return const Center(child: Text("No Slots", style: TextStyle(color: Colors.white24)));
+        if (slots.isEmpty)
+          return const Center(
+            child: Text("No Slots", style: TextStyle(color: Colors.white24)),
+          );
 
         return GridView.builder(
           padding: const EdgeInsets.all(32),
@@ -240,11 +323,13 @@ class _ParkingLandscapeScreenState extends State<ParkingLandscapeScreen> {
         builder: (context, sensorSnap) {
           bool isLiveTaken = false;
           if (sensorSnap.hasData && sensorSnap.data!.snapshot.value != null) {
-             try {
-               final val = sensorSnap.data!.snapshot.value;
-               if (val is Map) isLiveTaken = val['taken'] == true;
-               else if (val is bool) isLiveTaken = val;
-             } catch (_) {}
+            try {
+              final val = sensorSnap.data!.snapshot.value;
+              if (val is Map)
+                isLiveTaken = val['taken'] == true;
+              else if (val is bool)
+                isLiveTaken = val;
+            } catch (_) {}
           }
           return _visualCard(slotId, isLiveTaken);
         },
@@ -254,7 +339,9 @@ class _ParkingLandscapeScreenState extends State<ParkingLandscapeScreen> {
   }
 
   Widget _visualCard(String id, bool isOccupied) {
-    Color bg = isOccupied ? _occupiedRed.withValues(alpha: 0.15) : _freeGreen.withValues(alpha: 0.15);
+    Color bg = isOccupied
+        ? _occupiedRed.withValues(alpha: 0.15)
+        : _freeGreen.withValues(alpha: 0.15);
     Color border = isOccupied ? _occupiedRed : _freeGreen;
 
     return MouseRegion(
@@ -264,17 +351,34 @@ class _ParkingLandscapeScreenState extends State<ParkingLandscapeScreen> {
           color: bg,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: border.withValues(alpha: 0.6), width: 2),
-          boxShadow: [BoxShadow(color: border.withValues(alpha: 0.15), blurRadius: 12)]
+          boxShadow: [
+            BoxShadow(color: border.withValues(alpha: 0.15), blurRadius: 12),
+          ],
         ),
         child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(id, style: const TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.bold)),
+              Text(
+                id,
+                style: const TextStyle(
+                  color: Colors.white54,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               const SizedBox(height: 6),
               isOccupied
-                 ? Icon(Icons.directions_car, color: _occupiedRed, size: 36)
-                 : Text("FREE", style: TextStyle(color: _freeGreen, fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+                  ? Icon(Icons.directions_car, color: _occupiedRed, size: 36)
+                  : Text(
+                      "FREE",
+                      style: TextStyle(
+                        color: _freeGreen,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
             ],
           ),
         ),

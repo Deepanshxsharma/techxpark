@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -102,7 +101,7 @@ void main() async {
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.dark,
+      statusBarIconBrightness: Brightness.light,
     ),
   );
 
@@ -181,7 +180,8 @@ class _TechxParkAppState extends State<TechxParkApp>
                 const MainShell(initialIndex: 2), // fallback to bookings
             '/slot_selection': (context) =>
                 const MainShell(initialIndex: 2), // Bookings tab
-            '/messages': (context) => const MessagesScreen(),
+            '/messages': (context) =>
+                const MessagesScreen(showStandaloneNav: true),
           },
         );
       },
@@ -192,11 +192,8 @@ class _TechxParkAppState extends State<TechxParkApp>
 /* -------------------------------------------------------------------------- */
 /* 🔤 SHARED POPPINS TYPOGRAPHY                                               */
 /* -------------------------------------------------------------------------- */
-// Refactored to use the `google_fonts` package for a cleaner, more maintainable,
-// and future-proof typography system, as requested.
 TextTheme _poppinsTextTheme(Brightness brightness) {
   final baseTheme = ThemeData(brightness: brightness).textTheme;
-  final poppinsTheme = GoogleFonts.poppinsTextTheme(baseTheme);
 
   final isDark = brightness == Brightness.dark;
   final primaryTextColor = isDark
@@ -206,17 +203,56 @@ TextTheme _poppinsTextTheme(Brightness brightness) {
       ? AppColors.textSecondaryDark
       : AppColors.textSecondaryLight;
 
-  // Apply the primary color to all styles by default
-  return poppinsTheme.apply(
-    bodyColor: primaryTextColor,
-    displayColor: primaryTextColor,
-  ).copyWith(
-    // Manually override specific styles that should use the secondary color,
-    // matching the original implementation.
-    titleSmall: poppinsTheme.titleSmall?.copyWith(color: secondaryTextColor),
-    bodyMedium: poppinsTheme.bodyMedium?.copyWith(color: secondaryTextColor),
-    bodySmall: poppinsTheme.bodySmall?.copyWith(color: secondaryTextColor),
-  );
+  return baseTheme
+      .apply(
+        fontFamily: 'Poppins',
+        bodyColor: primaryTextColor,
+        displayColor: primaryTextColor,
+      )
+      .copyWith(
+        headlineLarge: baseTheme.headlineLarge?.copyWith(
+          fontFamily: 'Poppins',
+          fontWeight: FontWeight.w700,
+          color: primaryTextColor,
+        ),
+        headlineMedium: baseTheme.headlineMedium?.copyWith(
+          fontFamily: 'Poppins',
+          fontWeight: FontWeight.w600,
+          color: primaryTextColor,
+        ),
+        titleLarge: baseTheme.titleLarge?.copyWith(
+          fontFamily: 'Poppins',
+          fontWeight: FontWeight.w600,
+          color: primaryTextColor,
+        ),
+        titleMedium: baseTheme.titleMedium?.copyWith(
+          fontFamily: 'Poppins',
+          fontWeight: FontWeight.w600,
+          color: primaryTextColor,
+        ),
+        titleSmall: baseTheme.titleSmall?.copyWith(
+          fontFamily: 'Poppins',
+          color: secondaryTextColor,
+        ),
+        bodyLarge: baseTheme.bodyLarge?.copyWith(
+          fontFamily: 'Poppins',
+          fontWeight: FontWeight.w400,
+          color: primaryTextColor,
+        ),
+        bodyMedium: baseTheme.bodyMedium?.copyWith(
+          fontFamily: 'Poppins',
+          fontWeight: FontWeight.w400,
+          color: secondaryTextColor,
+        ),
+        bodySmall: baseTheme.bodySmall?.copyWith(
+          fontFamily: 'Poppins',
+          color: secondaryTextColor,
+        ),
+        labelLarge: baseTheme.labelLarge?.copyWith(
+          fontFamily: 'Poppins',
+          fontWeight: FontWeight.w600,
+        ),
+      );
 }
 
 /* -------------------------------------------------------------------------- */
@@ -240,14 +276,19 @@ ThemeData _lightTheme() {
       error: AppColors.error,
     ),
 
-    scaffoldBackgroundColor: AppColors.bgLight,
+    scaffoldBackgroundColor: AppColors.background,
 
     appBarTheme: const AppBarTheme(
       backgroundColor: Colors.transparent,
       elevation: 0,
-      centerTitle: false,
-      iconTheme: IconThemeData(color: AppColors.textPrimaryLight),
-      titleTextStyle: AppTextStyles.h2,
+      centerTitle: true,
+      iconTheme: IconThemeData(color: AppColors.primary),
+      titleTextStyle: TextStyle(
+        fontFamily: 'Poppins',
+        fontSize: 18,
+        fontWeight: FontWeight.w600,
+        color: AppColors.textPrimary,
+      ),
       systemOverlayStyle: SystemUiOverlayStyle.dark,
     ),
 
@@ -255,6 +296,7 @@ ThemeData _lightTheme() {
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
+        minimumSize: const Size.fromHeight(52),
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         elevation: 0,
         shadowColor: AppColors.primary.withValues(alpha: 0.3),
@@ -267,7 +309,7 @@ ThemeData _lightTheme() {
       style: OutlinedButton.styleFrom(
         foregroundColor: AppColors.primary,
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-        side: const BorderSide(color: AppColors.borderLight, width: 1.5),
+        side: const BorderSide(color: AppColors.border, width: 1.5),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         textStyle: AppTextStyles.buttonText.copyWith(color: AppColors.primary),
       ),
@@ -281,13 +323,51 @@ ThemeData _lightTheme() {
     ),
 
     cardTheme: CardThemeData(
-      color: AppColors.surfaceLight,
+      color: AppColors.surface,
       elevation: 0,
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         side: const BorderSide(color: AppColors.borderLight),
       ),
+    ),
+
+    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      selectedItemColor: AppColors.primary,
+      unselectedItemColor: AppColors.textSecondary,
+      selectedLabelStyle: TextStyle(
+        fontFamily: 'Poppins',
+        fontWeight: FontWeight.w600,
+      ),
+      unselectedLabelStyle: TextStyle(fontFamily: 'Poppins'),
+    ),
+
+    navigationBarTheme: NavigationBarThemeData(
+      backgroundColor: AppColors.surface,
+      indicatorColor: AppColors.activeBlueLight,
+      iconTheme: WidgetStateProperty.resolveWith((states) {
+        return IconThemeData(
+          color: states.contains(WidgetState.selected)
+              ? AppColors.primary
+              : AppColors.textSecondary,
+        );
+      }),
+      labelTextStyle: WidgetStateProperty.resolveWith((states) {
+        return TextStyle(
+          fontFamily: 'Poppins',
+          fontWeight: states.contains(WidgetState.selected)
+              ? FontWeight.w600
+              : FontWeight.w400,
+          color: states.contains(WidgetState.selected)
+              ? AppColors.primary
+              : AppColors.textSecondary,
+        );
+      }),
+    ),
+
+    floatingActionButtonTheme: const FloatingActionButtonThemeData(
+      backgroundColor: AppColors.primary,
+      foregroundColor: Colors.white,
     ),
 
     snackBarTheme: SnackBarThemeData(
@@ -300,11 +380,9 @@ ThemeData _lightTheme() {
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: AppColors.inputBgLight,
-      hintStyle: AppTextStyles.body1.copyWith(
-        color: AppColors.textSecondaryLight,
-      ),
+      hintStyle: AppTextStyles.body1.copyWith(color: AppColors.textSecondary),
       labelStyle: AppTextStyles.body2SemiBold.copyWith(
-        color: AppColors.textSecondaryLight,
+        color: AppColors.textSecondary,
       ),
       floatingLabelStyle: AppTextStyles.captionBold.copyWith(
         color: AppColors.primary,
@@ -348,7 +426,7 @@ ThemeData _darkTheme() {
     primaryTextTheme: textTheme,
 
     colorScheme: ColorScheme.fromSeed(
-      seedColor: AppColors.primaryLight,
+      seedColor: AppColors.primary,
       brightness: Brightness.dark,
       primary: AppColors.primaryLight,
       secondary: AppColors.success,
@@ -361,9 +439,9 @@ ThemeData _darkTheme() {
     appBarTheme: AppBarTheme(
       backgroundColor: Colors.transparent,
       elevation: 0,
-      centerTitle: false,
-      iconTheme: const IconThemeData(color: AppColors.textPrimaryDark),
-      titleTextStyle: AppTextStyles.h2Dark,
+      centerTitle: true,
+      iconTheme: const IconThemeData(color: AppColors.primaryLight),
+      titleTextStyle: AppTextStyles.h3Dark,
       systemOverlayStyle: SystemUiOverlayStyle.light,
     ),
 
@@ -371,6 +449,7 @@ ThemeData _darkTheme() {
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.primaryLight,
         foregroundColor: Colors.white,
+        minimumSize: const Size.fromHeight(52),
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -402,9 +481,47 @@ ThemeData _darkTheme() {
       elevation: 0,
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         side: const BorderSide(color: AppColors.borderDark),
       ),
+    ),
+
+    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      selectedItemColor: AppColors.primaryLight,
+      unselectedItemColor: AppColors.textSecondaryDark,
+      selectedLabelStyle: TextStyle(
+        fontFamily: 'Poppins',
+        fontWeight: FontWeight.w600,
+      ),
+      unselectedLabelStyle: TextStyle(fontFamily: 'Poppins'),
+    ),
+
+    navigationBarTheme: NavigationBarThemeData(
+      backgroundColor: AppColors.surfaceDark,
+      indicatorColor: AppColors.primary.withValues(alpha: 0.22),
+      iconTheme: WidgetStateProperty.resolveWith((states) {
+        return IconThemeData(
+          color: states.contains(WidgetState.selected)
+              ? AppColors.primaryLight
+              : AppColors.textSecondaryDark,
+        );
+      }),
+      labelTextStyle: WidgetStateProperty.resolveWith((states) {
+        return TextStyle(
+          fontFamily: 'Poppins',
+          fontWeight: states.contains(WidgetState.selected)
+              ? FontWeight.w600
+              : FontWeight.w400,
+          color: states.contains(WidgetState.selected)
+              ? AppColors.primaryLight
+              : AppColors.textSecondaryDark,
+        );
+      }),
+    ),
+
+    floatingActionButtonTheme: const FloatingActionButtonThemeData(
+      backgroundColor: AppColors.primaryLight,
+      foregroundColor: Colors.white,
     ),
 
     snackBarTheme: SnackBarThemeData(

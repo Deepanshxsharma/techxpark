@@ -2,6 +2,7 @@
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:techxpark/theme/app_colors.dart';
 
 class AddParkingScreen extends StatefulWidget {
   const AddParkingScreen({super.key});
@@ -26,9 +27,9 @@ class _AddParkingScreenState extends State<AddParkingScreen> {
         priceCtrl.text.isEmpty ||
         latCtrl.text.isEmpty ||
         lngCtrl.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Fill all required fields")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Fill all required fields")));
       return;
     }
 
@@ -61,9 +62,9 @@ class _AddParkingScreenState extends State<AddParkingScreen> {
 
     Navigator.pop(context);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Parking added successfully")),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text("Parking added successfully")));
   }
 
   // ---------------------------------------------------------------------------
@@ -91,11 +92,7 @@ class _AddParkingScreenState extends State<AddParkingScreen> {
               keyboard: TextInputType.number,
             ),
 
-            _field(
-              "Total Floors",
-              floorsCtrl,
-              keyboard: TextInputType.number,
-            ),
+            _field("Total Floors", floorsCtrl, keyboard: TextInputType.number),
 
             const SizedBox(height: 10),
 
@@ -117,12 +114,12 @@ class _AddParkingScreenState extends State<AddParkingScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.blue.shade50,
+                color: AppColors.activeBlueLight,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
                 children: const [
-                  Icon(Icons.info, color: Colors.blue),
+                  Icon(Icons.info, color: AppColors.primary),
                   SizedBox(width: 10),
                   Expanded(
                     child: Text(
@@ -150,10 +147,7 @@ class _AddParkingScreenState extends State<AddParkingScreen> {
                 ),
                 child: loading
                     ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text(
-                        "Add Parking",
-                        style: TextStyle(fontSize: 17),
-                      ),
+                    : const Text("Add Parking", style: TextStyle(fontSize: 17)),
               ),
             ),
           ],
@@ -177,9 +171,7 @@ class _AddParkingScreenState extends State<AddParkingScreen> {
           labelText: label,
           filled: true,
           fillColor: Colors.white,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
         ),
       ),
     );

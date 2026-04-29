@@ -51,7 +51,6 @@ class ParkingTicketScreen extends StatefulWidget {
 
 class _ParkingTicketScreenState extends State<ParkingTicketScreen>
     with SingleTickerProviderStateMixin {
-
   // ── State ───────────────────────────────────────────────────────────────
   bool _isLaunching = false;
   bool _arrived = false;
@@ -96,8 +95,7 @@ class _ParkingTicketScreenState extends State<ParkingTicketScreen>
       widget.parking['id']?.toString() ??
       widget.parking['parkingId']?.toString() ??
       '';
-  String get _userId =>
-      FirebaseAuth.instance.currentUser?.uid ?? '';
+  String get _userId => FirebaseAuth.instance.currentUser?.uid ?? '';
 
   /// Build secure QR payload. Returns empty string if critical data missing.
   String get _qrData {
@@ -126,9 +124,10 @@ class _ParkingTicketScreenState extends State<ParkingTicketScreen>
       vsync: this,
       duration: const Duration(milliseconds: 1200),
     )..repeat(reverse: true);
-    _pulseAnim = Tween<double>(begin: 0.96, end: 1.04).animate(
-      CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut),
-    );
+    _pulseAnim = Tween<double>(
+      begin: 0.96,
+      end: 1.04,
+    ).animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
   }
 
   @override
@@ -209,7 +208,8 @@ class _ParkingTicketScreenState extends State<ParkingTicketScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 40, height: 4,
+              width: 40,
+              height: 4,
               decoration: BoxDecoration(
                 color: AppColors.borderLight,
                 borderRadius: BorderRadius.circular(2),
@@ -217,20 +217,27 @@ class _ParkingTicketScreenState extends State<ParkingTicketScreen>
             ),
             const SizedBox(height: 24),
             Container(
-              width: 64, height: 64,
+              width: 64,
+              height: 64,
               decoration: BoxDecoration(
                 color: AppColors.success.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.check_circle_rounded,
-                  color: AppColors.success, size: 36),
+              child: const Icon(
+                Icons.check_circle_rounded,
+                color: AppColors.success,
+                size: 36,
+              ),
             ),
             const SizedBox(height: 16),
-            Text("You've arrived at",
-                style: AppTextStyles.body2.copyWith(color: AppColors.textSecondaryLight)),
+            Text(
+              "You've arrived at",
+              style: AppTextStyles.body2.copyWith(
+                color: AppColors.textSecondaryLight,
+              ),
+            ),
             const SizedBox(height: 4),
-            Text(_parkingName,
-                style: AppTextStyles.h2),
+            Text(_parkingName, style: AppTextStyles.h2),
             const SizedBox(height: 32),
             SizedBox(
               width: double.infinity,
@@ -247,8 +254,12 @@ class _ParkingTicketScreenState extends State<ParkingTicketScreen>
             const SizedBox(height: 16),
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: Text('Maybe later',
-                  style: AppTextStyles.buttonText.copyWith(color: AppColors.textSecondaryLight)),
+              child: Text(
+                'Maybe later',
+                style: AppTextStyles.buttonText.copyWith(
+                  color: AppColors.textSecondaryLight,
+                ),
+              ),
             ),
           ],
         ),
@@ -270,10 +281,13 @@ class _ParkingTicketScreenState extends State<ParkingTicketScreen>
         ),
         transitionsBuilder: (_, anim, __, child) {
           return SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0, 0.3),
-              end: Offset.zero,
-            ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
+            position:
+                Tween<Offset>(
+                  begin: const Offset(0, 0.3),
+                  end: Offset.zero,
+                ).animate(
+                  CurvedAnimation(parent: anim, curve: Curves.easeOutCubic),
+                ),
             child: FadeTransition(opacity: anim, child: child),
           );
         },
@@ -306,16 +320,18 @@ class _ParkingTicketScreenState extends State<ParkingTicketScreen>
           child: Column(
             children: [
               // ── Status banners ─────────────────────────────────────
-              if (_isCancelled) _buildStatusBanner(
-                icon: Icons.cancel_rounded,
-                text: 'This booking has been cancelled',
-                color: AppColors.error,
-              ),
-              if (_isExpired && !_isCancelled) _buildStatusBanner(
-                icon: Icons.timer_off_rounded,
-                text: 'This booking has expired',
-                color: AppColors.warning,
-              ),
+              if (_isCancelled)
+                _buildStatusBanner(
+                  icon: Icons.cancel_rounded,
+                  text: 'This booking has been cancelled',
+                  color: AppColors.error,
+                ),
+              if (_isExpired && !_isCancelled)
+                _buildStatusBanner(
+                  icon: Icons.timer_off_rounded,
+                  text: 'This booking has expired',
+                  color: AppColors.warning,
+                ),
 
               // ── Ticket card ────────────────────────────────────────
               _buildTicketCard(context),
@@ -365,8 +381,13 @@ class _ParkingTicketScreenState extends State<ParkingTicketScreen>
             Icon(icon, color: color, size: 24),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(text,
-                  style: AppTextStyles.body2.copyWith(color: color, fontWeight: FontWeight.w600)),
+              child: Text(
+                text,
+                style: AppTextStyles.body2.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ],
         ),
@@ -423,12 +444,15 @@ class _ParkingTicketScreenState extends State<ParkingTicketScreen>
 
           // ── Perforated divider ──────────────────────────────────
           Row(
-            children: List.generate(40, (i) => Expanded(
-              child: Container(
-                height: 1,
-                color: i.isEven ? Colors.transparent : AppColors.borderLight,
+            children: List.generate(
+              40,
+              (i) => Expanded(
+                child: Container(
+                  height: 1,
+                  color: i.isEven ? Colors.transparent : AppColors.borderLight,
+                ),
               ),
-            )),
+            ),
           ),
 
           // ── Vehicle, time, QR ───────────────────────────────────
@@ -472,8 +496,12 @@ class _ParkingTicketScreenState extends State<ParkingTicketScreen>
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          Text(_vehicleType,
-              style: AppTextStyles.captionBold.copyWith(color: AppColors.textSecondaryLight)),
+          Text(
+            _vehicleType,
+            style: AppTextStyles.captionBold.copyWith(
+              color: AppColors.textSecondaryLight,
+            ),
+          ),
         ],
       ),
     );
@@ -494,12 +522,18 @@ class _ParkingTicketScreenState extends State<ParkingTicketScreen>
   Widget _timeDetail(String label, DateTime time) {
     return Column(
       children: [
-        Text(label,
-            style: AppTextStyles.captionBold.copyWith(color: AppColors.textSecondaryLight)),
+        Text(
+          label,
+          style: AppTextStyles.captionBold.copyWith(
+            color: AppColors.textSecondaryLight,
+          ),
+        ),
         const SizedBox(height: 8),
-        Text(DateFormat('dd MMM, hh:mm a').format(time),
-            textAlign: TextAlign.center,
-            style: AppTextStyles.body2SemiBold),
+        Text(
+          DateFormat('dd MMM, hh:mm a').format(time),
+          textAlign: TextAlign.center,
+          style: AppTextStyles.body2SemiBold,
+        ),
       ],
     );
   }
@@ -510,13 +544,25 @@ class _ParkingTicketScreenState extends State<ParkingTicketScreen>
     final qr = _qrData;
 
     if (_isCancelled) {
-      return _qrPlaceholder(Icons.cancel_rounded, 'QR Disabled\nBooking Cancelled', AppColors.error);
+      return _qrPlaceholder(
+        Icons.cancel_rounded,
+        'QR Disabled\nBooking Cancelled',
+        AppColors.error,
+      );
     }
     if (_isExpired) {
-      return _qrPlaceholder(Icons.timer_off_rounded, 'QR Expired\nBooking Ended', AppColors.warning);
+      return _qrPlaceholder(
+        Icons.timer_off_rounded,
+        'QR Expired\nBooking Ended',
+        AppColors.warning,
+      );
     }
     if (qr.isEmpty) {
-      return _qrPlaceholder(Icons.error_outline_rounded, 'QR Unavailable\nMissing booking data', AppColors.textSecondaryLight);
+      return _qrPlaceholder(
+        Icons.error_outline_rounded,
+        'QR Unavailable\nMissing booking data',
+        AppColors.textSecondaryLight,
+      );
     }
 
     return Column(
@@ -539,8 +585,13 @@ class _ParkingTicketScreenState extends State<ParkingTicketScreen>
           },
         ),
         const SizedBox(height: 16),
-        Text('Show this QR at the entry gate',
-            style: AppTextStyles.captionBold.copyWith(color: AppColors.textSecondaryLight, fontWeight: FontWeight.normal)),
+        Text(
+          'Show this QR at the entry gate',
+          style: AppTextStyles.captionBold.copyWith(
+            color: AppColors.textSecondaryLight,
+            fontWeight: FontWeight.normal,
+          ),
+        ),
       ],
     );
   }
@@ -558,9 +609,11 @@ class _ParkingTicketScreenState extends State<ParkingTicketScreen>
         children: [
           Icon(icon, color: color, size: 48),
           const SizedBox(height: 16),
-          Text(text,
-              textAlign: TextAlign.center,
-              style: AppTextStyles.body2SemiBold.copyWith(color: color)),
+          Text(
+            text,
+            textAlign: TextAlign.center,
+            style: AppTextStyles.body2SemiBold.copyWith(color: color),
+          ),
         ],
       ),
     );
@@ -587,18 +640,22 @@ class _ParkingTicketScreenState extends State<ParkingTicketScreen>
           onPressed: disabled ? null : _handleStartNavigation,
           icon: _isLaunching
               ? const SizedBox(
-                  width: 20, height: 20,
+                  width: 20,
+                  height: 20,
                   child: CircularProgressIndicator(
-                      color: Colors.white, strokeWidth: 2.5))
+                    color: Colors.white,
+                    strokeWidth: 2.5,
+                  ),
+                )
               : const Icon(Icons.near_me_rounded),
           label: Text(
             _isExpired
                 ? 'Booking Expired'
                 : !_canNavigate
-                    ? 'Location Unavailable'
-                    : _isLaunching
-                        ? 'Preparing...'
-                        : 'Start Navigation',
+                ? 'Location Unavailable'
+                : _isLaunching
+                ? 'Preparing...'
+                : 'Start Navigation',
           ),
           // style relies on AppTheme defaults we set in main.dart
         ),
@@ -630,10 +687,18 @@ class _ParkingTicketScreenState extends State<ParkingTicketScreen>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 20),
+          const Icon(
+            Icons.check_circle_rounded,
+            color: AppColors.success,
+            size: 20,
+          ),
           const SizedBox(width: 12),
-          Text('You have arrived — indoor map ready',
-              style: AppTextStyles.body2SemiBold.copyWith(color: AppColors.success)),
+          Text(
+            'You have arrived — indoor map ready',
+            style: AppTextStyles.body2SemiBold.copyWith(
+              color: AppColors.success,
+            ),
+          ),
         ],
       ),
     );
@@ -646,13 +711,15 @@ class _ParkingTicketScreenState extends State<ParkingTicketScreen>
   Widget _ticketInfoItem(String label, String value) {
     return Column(
       children: [
-        Text(label,
-            style: AppTextStyles.captionBold.copyWith(
-                color: AppColors.textSecondaryLight,
-                letterSpacing: 1.5)),
+        Text(
+          label,
+          style: AppTextStyles.captionBold.copyWith(
+            color: AppColors.textSecondaryLight,
+            letterSpacing: 1.5,
+          ),
+        ),
         const SizedBox(height: 8),
-        Text(value,
-            style: AppTextStyles.h1.copyWith(color: AppColors.primary)),
+        Text(value, style: AppTextStyles.h1.copyWith(color: AppColors.primary)),
       ],
     );
   }

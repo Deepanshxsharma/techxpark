@@ -138,11 +138,13 @@ class _MyVehicleScreenState extends State<MyVehicleScreen> {
         }
       }
       if (mounted) Navigator.pop(context);
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('❌ Save vehicle error: $e');
+      debugPrint('Stack: $st');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Could not save vehicle'),
+          SnackBar(
+            content: Text('Could not save vehicle: $e'),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
           ),
@@ -217,7 +219,7 @@ class _MyVehicleScreenState extends State<MyVehicleScreen> {
               leading: IconButton(
                 icon: Icon(Icons.arrow_back,
                     color:
-                        isDark ? Colors.white : const Color(0xFF0029B9)),
+                        isDark ? Colors.white : AppColors.primary),
                 onPressed: () => Navigator.pop(context),
               ),
               title: Text(
@@ -227,7 +229,7 @@ class _MyVehicleScreenState extends State<MyVehicleScreen> {
                         : 'Add Vehicle')
                     : 'My Garage',
                 style: TextStyle(
-                  fontFamily: 'Plus Jakarta Sans',
+                  fontFamily: 'Poppins',
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
                   color:
@@ -290,7 +292,7 @@ class _MyVehicleScreenState extends State<MyVehicleScreen> {
                           child: Text(
                             '${_vehicles.length} vehicle${_vehicles.length > 1 ? 's' : ''}',
                             style: TextStyle(
-                              fontFamily: 'Manrope',
+                              fontFamily: 'Poppins',
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
                               color: isDark
@@ -343,7 +345,7 @@ class _MyVehicleScreenState extends State<MyVehicleScreen> {
           Text(
             'No vehicles added yet',
             style: TextStyle(
-              fontFamily: 'Plus Jakarta Sans',
+              fontFamily: 'Poppins',
               fontSize: 20,
               fontWeight: FontWeight.w700,
               color: isDark ? Colors.white : const Color(0xFF0F172A),
@@ -354,7 +356,7 @@ class _MyVehicleScreenState extends State<MyVehicleScreen> {
             'Add your car or bike to easily\nbook parking spots.',
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontFamily: 'Manrope',
+              fontFamily: 'Poppins',
               fontSize: 14,
               color:
                   isDark ? Colors.white54 : const Color(0xFF64748B),
@@ -391,7 +393,7 @@ class _MyVehicleScreenState extends State<MyVehicleScreen> {
                   Text(
                     'Add Vehicle',
                     style: TextStyle(
-                      fontFamily: 'Plus Jakarta Sans',
+                      fontFamily: 'Poppins',
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
                       color: Colors.white,
@@ -451,7 +453,7 @@ class _MyVehicleScreenState extends State<MyVehicleScreen> {
               controller: _vehicleNumberCtrl,
               textCapitalization: TextCapitalization.characters,
               style: TextStyle(
-                fontFamily: 'Manrope',
+                fontFamily: 'Poppins',
                 fontWeight: FontWeight.w700,
                 fontSize: 16,
                 letterSpacing: 1.5,
@@ -467,7 +469,7 @@ class _MyVehicleScreenState extends State<MyVehicleScreen> {
               decoration: InputDecoration(
                 hintText: 'e.g. DL8CAF1234',
                 hintStyle: TextStyle(
-                  fontFamily: 'Manrope',
+                  fontFamily: 'Poppins',
                   fontWeight: FontWeight.w500,
                   color: isDark
                       ? Colors.white24
@@ -530,7 +532,7 @@ class _MyVehicleScreenState extends State<MyVehicleScreen> {
                             ? 'Update Vehicle'
                             : 'Save Vehicle',
                         style: const TextStyle(
-                          fontFamily: 'Plus Jakarta Sans',
+                          fontFamily: 'Poppins',
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
                           color: Colors.white,
@@ -596,7 +598,7 @@ class _MyVehicleScreenState extends State<MyVehicleScreen> {
               Text(
                 label,
                 style: TextStyle(
-                  fontFamily: 'Manrope',
+                  fontFamily: 'Poppins',
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
                   color: isSelected
@@ -618,7 +620,7 @@ class _MyVehicleScreenState extends State<MyVehicleScreen> {
         child: Text(
           label,
           style: const TextStyle(
-            fontFamily: 'Plus Jakarta Sans',
+            fontFamily: 'Poppins',
             fontSize: 11,
             fontWeight: FontWeight.w800,
             color: Color(0xFF94A3B8),
@@ -743,7 +745,7 @@ class _MyVehicleScreenState extends State<MyVehicleScreen> {
                     Text(
                       number,
                       style: TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
+                        fontFamily: 'Poppins',
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
                         color: isDark
@@ -758,7 +760,7 @@ class _MyVehicleScreenState extends State<MyVehicleScreen> {
                         Text(
                           vehicleType,
                           style: TextStyle(
-                            fontFamily: 'Manrope',
+                            fontFamily: 'Poppins',
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                             color: isDark
@@ -779,7 +781,7 @@ class _MyVehicleScreenState extends State<MyVehicleScreen> {
                             child: const Text(
                               'DEFAULT',
                               style: TextStyle(
-                                fontFamily: 'Plus Jakarta Sans',
+                                fontFamily: 'Poppins',
                                 color: Colors.white,
                                 fontSize: 9,
                                 fontWeight: FontWeight.w800,

@@ -54,33 +54,38 @@ class _CCTVPreviewScreenState extends State<CCTVPreviewScreen>
   @override
   void initState() {
     super.initState();
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-    ]);
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
     // Scan line moving top to bottom
     _scanCtrl = AnimationController(
-        vsync: this, duration: const Duration(seconds: 3))
-      ..repeat();
-    _scanAnim = Tween<double>(begin: -0.1, end: 1.1).animate(
-        CurvedAnimation(parent: _scanCtrl, curve: Curves.linear));
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    )..repeat();
+    _scanAnim = Tween<double>(
+      begin: -0.1,
+      end: 1.1,
+    ).animate(CurvedAnimation(parent: _scanCtrl, curve: Curves.linear));
 
     // Pulse for LIVE badge
     _pulseCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 800))
-      ..repeat(reverse: true);
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    )..repeat(reverse: true);
     _pulseAnim = Tween<double>(begin: 0.4, end: 1.0).animate(_pulseCtrl);
 
     // Initial fade-in
     _fadeCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 600));
-    _fadeAnim =
-        CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
 
     // Clock
     _updateClock();
-    _clockTimer =
-        Timer.periodic(const Duration(seconds: 1), (_) => _updateClock());
+    _clockTimer = Timer.periodic(
+      const Duration(seconds: 1),
+      (_) => _updateClock(),
+    );
 
     // Simulate connection
     Future.delayed(const Duration(milliseconds: 1500), () {
@@ -162,8 +167,11 @@ class _CCTVPreviewScreenState extends State<CCTVPreviewScreen>
                 color: Colors.white.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.arrow_back_rounded,
-                  color: Colors.white, size: 20),
+              child: const Icon(
+                Icons.arrow_back_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
             ),
           ),
           const SizedBox(width: 14),
@@ -171,15 +179,21 @@ class _CCTVPreviewScreenState extends State<CCTVPreviewScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(_cameras[_selectedCamera],
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700)),
-                Text(widget.parkingName,
-                    style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.5),
-                        fontSize: 12)),
+                Text(
+                  _cameras[_selectedCamera],
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Text(
+                  widget.parkingName,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.5),
+                    fontSize: 12,
+                  ),
+                ),
               ],
             ),
           ),
@@ -187,13 +201,13 @@ class _CCTVPreviewScreenState extends State<CCTVPreviewScreen>
           AnimatedBuilder(
             animation: _pulseAnim,
             builder: (_, __) => Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
                 color: _liveRed.withValues(alpha: _pulseAnim.value * 0.3),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                    color: _liveRed.withValues(alpha: _pulseAnim.value)),
+                  color: _liveRed.withValues(alpha: _pulseAnim.value),
+                ),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -207,12 +221,15 @@ class _CCTVPreviewScreenState extends State<CCTVPreviewScreen>
                     ),
                   ),
                   const SizedBox(width: 5),
-                  const Text('LIVE',
-                      style: TextStyle(
-                          color: _liveRed,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 1)),
+                  const Text(
+                    'LIVE',
+                    style: TextStyle(
+                      color: _liveRed,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -229,7 +246,9 @@ class _CCTVPreviewScreenState extends State<CCTVPreviewScreen>
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-            color: Colors.white.withValues(alpha: 0.08), width: 1),
+          color: Colors.white.withValues(alpha: 0.08),
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
             color: const Color(0xFF4D6FFF).withValues(alpha: 0.1),
@@ -250,10 +269,16 @@ class _CCTVPreviewScreenState extends State<CCTVPreviewScreen>
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Color.lerp(const Color(0xFF0A0A1A),
-                      const Color(0xFF0D1B2A), _selectedCamera / 2.0)!,
-                  Color.lerp(const Color(0xFF1A1A2E),
-                      const Color(0xFF162447), _selectedCamera / 2.0)!,
+                  Color.lerp(
+                    const Color(0xFF0A0A1A),
+                    const Color(0xFF0D1B2A),
+                    _selectedCamera / 2.0,
+                  )!,
+                  Color.lerp(
+                    const Color(0xFF1A1A2E),
+                    const Color(0xFF162447),
+                    _selectedCamera / 2.0,
+                  )!,
                 ],
               ),
             ),
@@ -309,13 +334,18 @@ class _CCTVPreviewScreenState extends State<CCTVPreviewScreen>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     CircularProgressIndicator(
-                        color: Colors.white, strokeWidth: 2),
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
                     SizedBox(height: 16),
-                    Text('Connecting to camera...',
-                        style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500)),
+                    Text(
+                      'Connecting to camera...',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -327,18 +357,20 @@ class _CCTVPreviewScreenState extends State<CCTVPreviewScreen>
               left: 40,
               top: 60,
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   border: Border.all(color: Colors.greenAccent, width: 1.5),
                   borderRadius: BorderRadius.circular(4),
                   color: Colors.greenAccent.withValues(alpha: 0.1),
                 ),
-                child: const Text('🚗 Vehicle Detected',
-                    style: TextStyle(
-                        color: Colors.greenAccent,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700)),
+                child: const Text(
+                  '🚗 Vehicle Detected',
+                  style: TextStyle(
+                    color: Colors.greenAccent,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
             ),
 
@@ -354,22 +386,29 @@ class _CCTVPreviewScreenState extends State<CCTVPreviewScreen>
                   // Timestamp
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 4),
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    child: Text(_currentTime,
-                        style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 12,
-                            fontFamily: 'monospace',
-                            fontWeight: FontWeight.w600)),
+                    child: Text(
+                      _currentTime,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                        fontFamily: 'monospace',
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                   // Connection status
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 4),
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(6),
@@ -377,14 +416,20 @@ class _CCTVPreviewScreenState extends State<CCTVPreviewScreen>
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.wifi_rounded,
-                            color: Colors.greenAccent, size: 12),
+                        Icon(
+                          Icons.wifi_rounded,
+                          color: Colors.greenAccent,
+                          size: 12,
+                        ),
                         SizedBox(width: 4),
-                        Text('Live • 1.2s',
-                            style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500)),
+                        Text(
+                          'Live • 1.2s',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -411,36 +456,37 @@ class _CCTVPreviewScreenState extends State<CCTVPreviewScreen>
             onTap: () => _switchCamera(i),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
                 color: isActive
                     ? const Color(0xFF4D6FFF).withValues(alpha: 0.2)
                     : Colors.white.withValues(alpha: 0.06),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                    color: isActive
-                        ? const Color(0xFF4D6FFF)
-                        : Colors.white.withValues(alpha: 0.1)),
+                  color: isActive
+                      ? const Color(0xFF4D6FFF)
+                      : Colors.white.withValues(alpha: 0.1),
+                ),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
                     Icons.videocam_rounded,
-                    color: isActive
-                        ? const Color(0xFF4D6FFF)
-                        : Colors.white38,
+                    color: isActive ? const Color(0xFF4D6FFF) : Colors.white38,
                     size: 16,
                   ),
                   const SizedBox(width: 6),
-                  Text(_cameras[i].split(' — ').last,
-                      style: TextStyle(
-                          color: isActive
-                              ? const Color(0xFF4D6FFF)
-                              : Colors.white38,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600)),
+                  Text(
+                    _cameras[i].split(' — ').last,
+                    style: TextStyle(
+                      color: isActive
+                          ? const Color(0xFF4D6FFF)
+                          : Colors.white38,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -466,15 +512,17 @@ class _CCTVPreviewScreenState extends State<CCTVPreviewScreen>
           return Expanded(
             child: Column(
               children: [
-                Icon(b['icon'] as IconData,
-                    color: Colors.white24, size: 18),
+                Icon(b['icon'] as IconData, color: Colors.white24, size: 18),
                 const SizedBox(height: 4),
-                Text(b['text'] as String,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                        color: Colors.white24,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w600)),
+                Text(
+                  b['text'] as String,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white24,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ],
             ),
           );
@@ -501,14 +549,16 @@ class _CCTVPreviewScreenState extends State<CCTVPreviewScreen>
                 );
               },
               icon: const Icon(Icons.camera_alt_outlined, size: 18),
-              label: const Text('Screenshot',
-                  style: TextStyle(
-                      fontWeight: FontWeight.w600, fontSize: 13)),
+              label: const Text(
+                'Screenshot',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+              ),
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.white70,
                 side: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
+                  borderRadius: BorderRadius.circular(14),
+                ),
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
             ),
@@ -521,15 +571,17 @@ class _CCTVPreviewScreenState extends State<CCTVPreviewScreen>
                 _showReportSheet();
               },
               icon: const Icon(Icons.warning_amber_rounded, size: 18),
-              label: const Text('Report Activity',
-                  style: TextStyle(
-                      fontWeight: FontWeight.w600, fontSize: 13)),
+              label: const Text(
+                'Report Activity',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+              ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: _liveRed.withValues(alpha: 0.15),
                 foregroundColor: _liveRed,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
+                  borderRadius: BorderRadius.circular(14),
+                ),
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
             ),
@@ -544,7 +596,8 @@ class _CCTVPreviewScreenState extends State<CCTVPreviewScreen>
       context: context,
       backgroundColor: const Color(0xFF1A1A2E),
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (_) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -552,14 +605,19 @@ class _CCTVPreviewScreenState extends State<CCTVPreviewScreen>
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Report Suspicious Activity',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800)),
+              const Text(
+                'Report Suspicious Activity',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
               const SizedBox(height: 8),
-              Text('Our security team will be notified immediately.',
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.5))),
+              Text(
+                'Our security team will be notified immediately.',
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
+              ),
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
@@ -577,12 +635,16 @@ class _CCTVPreviewScreenState extends State<CCTVPreviewScreen>
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _liveRed,
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                   ),
-                  child: const Text('Submit Report',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700)),
+                  child: const Text(
+                    'Submit Report',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -612,11 +674,17 @@ class _ParkingGridPainter extends CustomPainter {
 
     for (int i = 0; i <= cols; i++) {
       canvas.drawLine(
-          Offset(i * cellW, 0), Offset(i * cellW, size.height), paint);
+        Offset(i * cellW, 0),
+        Offset(i * cellW, size.height),
+        paint,
+      );
     }
     for (int j = 0; j <= rows; j++) {
       canvas.drawLine(
-          Offset(0, j * cellH), Offset(size.width, j * cellH), paint);
+        Offset(0, j * cellH),
+        Offset(size.width, j * cellH),
+        paint,
+      );
     }
 
     // Draw some "parked car" rectangles
@@ -631,7 +699,11 @@ class _ParkingGridPainter extends CustomPainter {
           canvas.drawRRect(
             RRect.fromRectAndRadius(
               Rect.fromLTWH(
-                  c * cellW + 8, r * cellH + 6, cellW - 16, cellH - 12),
+                c * cellW + 8,
+                r * cellH + 6,
+                cellW - 16,
+                cellH - 12,
+              ),
               const Radius.circular(4),
             ),
             carPaint,

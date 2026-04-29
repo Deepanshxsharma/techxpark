@@ -1,11 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:techxpark/theme/app_colors.dart';
 
 class AddDefaultParkingScreen extends StatefulWidget {
   const AddDefaultParkingScreen({super.key});
 
   @override
-  State<AddDefaultParkingScreen> createState() => _AddDefaultParkingScreenState();
+  State<AddDefaultParkingScreen> createState() =>
+      _AddDefaultParkingScreenState();
 }
 
 class _AddDefaultParkingScreenState extends State<AddDefaultParkingScreen> {
@@ -47,7 +49,7 @@ class _AddDefaultParkingScreenState extends State<AddDefaultParkingScreen> {
       "rating": 4.6,
       "distance": 190,
       "image": "park1.png",
-    }
+    },
   ];
 
   Future<void> addDefaultParkings() async {
@@ -57,7 +59,9 @@ class _AddDefaultParkingScreenState extends State<AddDefaultParkingScreen> {
 
     for (var parking in defaultParkings) {
       // Check if parking already exists
-      final existing = await ref.where("name", isEqualTo: parking["name"]).get();
+      final existing = await ref
+          .where("name", isEqualTo: parking["name"])
+          .get();
 
       if (existing.docs.isEmpty) {
         await ref.add(parking);
@@ -87,8 +91,11 @@ class _AddDefaultParkingScreenState extends State<AddDefaultParkingScreen> {
             ? const CircularProgressIndicator()
             : ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blueAccent,
-                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 18),
+                  backgroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 40,
+                    vertical: 18,
+                  ),
                 ),
                 onPressed: addDefaultParkings,
                 child: const Text(

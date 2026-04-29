@@ -25,8 +25,7 @@ dependencies:
   # UI & Utils
   cupertino_icons: ^1.0.8
   google_sign_in: ^6.3.0
-  flutter_map: ^6.2.1
-  latlong2: ^0.9.1
+  google_maps_flutter: ^2.6.0
   location: ^5.0.3
   http: ^1.6.0
   crypto: ^3.0.6
@@ -48,8 +47,9 @@ dependencies:
   intl: ^0.20.2
   provider: ^6.1.2
   sign_in_with_apple: ^6.1.4
-  google_fonts: ^8.0.2
+  google_fonts: ^8.1.0
   share_plus: ^12.0.2
+  flutter_polyline_points: ^3.1.0
 
 dev_dependencies:
   flutter_test:
@@ -66,6 +66,12 @@ flutter:
   fonts:
     - family: Poppins
       fonts:
+        - asset: assets/fonts/Poppins-Thin.ttf
+          weight: 100
+        - asset: assets/fonts/Poppins-ExtraLight.ttf
+          weight: 200
+        - asset: assets/fonts/Poppins-Light.ttf
+          weight: 300
         - asset: assets/fonts/Poppins-Regular.ttf
           weight: 400
         - asset: assets/fonts/Poppins-Medium.ttf
@@ -74,6 +80,10 @@ flutter:
           weight: 600
         - asset: assets/fonts/Poppins-Bold.ttf
           weight: 700
+        - asset: assets/fonts/Poppins-ExtraBold.ttf
+          weight: 800
+        - asset: assets/fonts/Poppins-Black.ttf
+          weight: 900
 
 flutter_launcher_icons:
   android: true

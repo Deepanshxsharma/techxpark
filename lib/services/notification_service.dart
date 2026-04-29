@@ -30,8 +30,8 @@ class NotificationService {
   final _localNotifications = FlutterLocalNotificationsPlugin();
 
   // ─── Notification IDs (unique per reminder type) ─────────────────────────
-  static const _channelId = 'high_importance_channel';
-  static const _channelName = 'TechXPark Alerts';
+  static const _channelId = 'techxpark_channel';
+  static const _channelName = 'TechXPark Notifications';
 
   static const int _idExpiry10 = 1001;
   static const int _idStartReminder30 = 1002;
@@ -122,7 +122,7 @@ class NotificationService {
       final token = await _fcm.getToken();
       if (token == null) return;
       await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-        'fcm_token': token,
+        'fcmToken': token,
       }, SetOptions(merge: true));
       debugPrint('🔑 FCM Token saved: $token');
     } catch (e) {
@@ -335,6 +335,7 @@ class NotificationService {
         nav.pushNamed('/slot_selection');
         break;
       case 'chat':
+      case 'message':
         nav.pushNamed('/messages');
         break;
       default:

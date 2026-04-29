@@ -14,6 +14,18 @@
 	<string>6.0</string>
 	<key>CFBundleName</key>
 	<string>TechXPark</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.457287100758-13o6nc7ua6ejkir0rbvv2strp471c5ns</string>
+				<string>com.techxpark.parking</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -27,19 +39,23 @@
 
 	<!-- Permissions -->
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>TechXPark needs your location to show nearby parking lots and guide you to your slot</string>
+	<string>TechXPark uses your location to find nearby parking lots and calculate distances accurately.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>TechXPark needs location access to track your parking session and send timely reminders</string>
+	<string>TechXPark uses your location in the background to update parking availability near you.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
-	<string>TechXPark needs location to show nearby parking lots</string>
+	<string>TechXPark uses your location in the background to update parking availability near you.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>TechXPark needs camera access to scan parking QR codes</string>
+	<string>TechXPark uses your camera to scan QR codes at parking entry gates.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>TechXPark uses Face ID for quick and secure sign-in.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>TechXPark needs photo access to set your profile picture</string>
+	<string>TechXPark accesses your photos to let you set a profile picture.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>TechXPark needs to save parking receipts to your photos</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>TechXPark needs microphone access for voice search</string>
+	<string>TechXPark may use your microphone for voice search features.</string>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>TechXPark uses tracking to provide personalized parking recommendations and relevant offers.</string>
 
 	<!-- Push Notifications -->
 	<key>UIBackgroundModes</key>
