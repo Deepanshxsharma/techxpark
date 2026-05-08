@@ -1,5 +1,4 @@
 import 'package:techxpark/theme/app_colors.dart';
-import 'dart:ui';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -24,7 +23,6 @@ class _SearchParkingScreenState extends State<SearchParkingScreen>
   final FocusNode _focusNode = FocusNode();
   late AnimationController _entryAnimController;
   late Animation<double> _entryFadeAnim;
-  late Animation<Offset> _entrySlideAnim;
 
   // -- Design Tokens --
   static const Color _dark = Color(0xFF0F172A);
@@ -44,14 +42,6 @@ class _SearchParkingScreenState extends State<SearchParkingScreen>
       parent: _entryAnimController,
       curve: const Interval(0.2, 1.0, curve: Curves.easeOut),
     );
-    _entrySlideAnim =
-        Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero).animate(
-          CurvedAnimation(
-            parent: _entryAnimController,
-            curve: Curves.easeOutCubic,
-          ),
-        );
-
     _loadLocations();
     // Short delay so the screen can mount before autofocusing
     Future.delayed(const Duration(milliseconds: 150), () {
@@ -295,7 +285,10 @@ class _SearchParkingScreenState extends State<SearchParkingScreen>
             const SizedBox(height: 8),
             Text(
               'Try a different name or area',
-              style: TextStyle(fontSize: 14, color: _slate.withValues(alpha: 0.7)),
+              style: TextStyle(
+                fontSize: 14,
+                color: _slate.withValues(alpha: 0.7),
+              ),
             ),
           ],
         ),

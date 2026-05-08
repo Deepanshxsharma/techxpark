@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../services/google_auth_service.dart';
 import '../../../theme/app_colors.dart';
+import '../../../utils/navigation_utils.dart';
 
 /// Phone Login Screen — Enter phone number, verify OTP.
 /// Uses Firebase Phone Authentication.
@@ -133,7 +134,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
         if (!synced) return;
 
         HapticFeedback.heavyImpact();
-        // AuthWrapper handles navigation
+        if (mounted) safeShowAuthState(context);
       }
     } catch (e) {
       if (mounted) {
@@ -628,7 +629,7 @@ class _OTPVerificationScreenState extends State<_OTPVerificationScreen> {
         if (!synced) return;
 
         HapticFeedback.heavyImpact();
-        // AuthWrapper handles navigation — pop back to root
+        if (mounted) safeShowAuthState(context);
       }
     } on FirebaseAuthException catch (e) {
       if (mounted) {
@@ -660,11 +661,12 @@ class _OTPVerificationScreenState extends State<_OTPVerificationScreen> {
               .signInWithCredential(credential);
           final user = userCredential.user;
           if (user != null && mounted) {
-            await GoogleAuthService().syncUserAfterSignIn(
+            final synced = await GoogleAuthService().syncUserAfterSignIn(
               context,
               user,
               provider: 'phone',
             );
+            if (synced && mounted) safeShowAuthState(context);
           }
         },
         verificationFailed: (e) {

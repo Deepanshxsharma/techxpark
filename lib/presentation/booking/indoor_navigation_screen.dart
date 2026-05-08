@@ -1,6 +1,4 @@
-import 'dart:math' as math;
 import 'dart:async';
-import 'dart:ui' as ui;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -193,16 +191,6 @@ class _IndoorNavigationScreenState extends State<IndoorNavigationScreen>
   List<Map<String, dynamic>> get _currentFloorSlots => _slots
       .where((s) => (s['floor'] as num?)?.toInt() == _selectedFloor)
       .toList();
-
-  // Direction instruction
-  String get _directionHint {
-    final progress = _pathAnim.value;
-    if (progress < 0.25) return '↓  Enter and go straight 20m';
-    if (progress < 0.5) return '→  Turn right at Lane B';
-    if (progress < 0.75) return '↑  Continue straight 15m';
-    if (progress < 0.95) return '←  Your slot is on the left';
-    return '🅿️  You have arrived — Slot ${widget.bookedSlotId}';
-  }
 
   @override
   Widget build(BuildContext context) {

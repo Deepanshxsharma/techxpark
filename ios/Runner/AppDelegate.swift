@@ -1,6 +1,5 @@
 import UIKit
 import Flutter
-import Firebase
 import UserNotifications
 import GoogleMaps
 
@@ -12,26 +11,18 @@ import GoogleMaps
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
 
-    // Initialize Firebase
-    FirebaseApp.configure()
-
-    // Request notification permissions
     if #available(iOS 10.0, *) {
       UNUserNotificationCenter.current().delegate = self
-      let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
-      UNUserNotificationCenter.current().requestAuthorization(
-        options: authOptions,
-        completionHandler: { _, _ in }
-      )
-    } else {
-      let settings: UIUserNotificationSettings =
-        UIUserNotificationSettings(types: [.alert, .badge, .sound], categories: nil)
-      application.registerUserNotificationSettings(settings)
     }
-    application.registerForRemoteNotifications()
 
-    // Initialize Google Maps
-    GMSServices.provideAPIKey("AIzaSyC1s15SNBpRhFp5NGBeH63rKB2yKVV6gyU")
+    // Initialize Google Maps from a build setting / CI secret.
+    if let mapsApiKey = Bundle.main.object(forInfoDictionaryKey: "GoogleMapsApiKey") as? String,
+       !mapsApiKey.isEmpty,
+       !mapsApiKey.hasPrefix("$(") {
+      GMSServices.provideAPIKey(mapsApiKey)
+    } else {
+      print("⚠️ [TechXPark] Google Maps API key is missing! Create ios/Flutter/Secrets.xcconfig with: GOOGLE_MAPS_API_KEY=your_key")
+    }
 
     GeneratedPluginRegistrant.register(with: self)
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)

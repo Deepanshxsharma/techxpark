@@ -26,12 +26,16 @@ class GoogleAuthService {
   Future<UserCredential?> signInWithGoogle(BuildContext context) async {
     try {
       final googleSignIn = GoogleSignIn(scopes: const ['email', 'profile']);
-      await googleSignIn.signOut();
+      await googleSignIn.signOut().timeout(const Duration(seconds: 5));
 
-      final googleUser = await googleSignIn.signIn();
+      final googleUser = await googleSignIn.signIn().timeout(
+        const Duration(seconds: 30),
+      );
       if (googleUser == null) return null;
 
-      final auth = await googleUser.authentication;
+      final auth = await googleUser.authentication.timeout(
+        const Duration(seconds: 15),
+      );
       if (auth.idToken == null) {
         throw Exception('No ID token');
       }
@@ -41,7 +45,9 @@ class GoogleAuthService {
         idToken: auth.idToken,
       );
 
-      final userCredential = await _auth.signInWithCredential(credential);
+      final userCredential = await _auth
+          .signInWithCredential(credential)
+          .timeout(const Duration(seconds: 20));
       final user = userCredential.user;
       if (user == null) {
         throw Exception('No user returned');
@@ -82,19 +88,20 @@ class GoogleAuthService {
           AppleIDAuthorizationScopes.fullName,
         ],
         nonce: nonceHash,
-      );
+      ).timeout(const Duration(seconds: 30));
 
       final identityToken = appleCredential.identityToken;
       if (identityToken == null) {
         throw Exception('Missing Apple identity token');
       }
 
-      final oauthCredential = OAuthProvider('apple.com').credential(
-        idToken: identityToken,
-        rawNonce: nonce,
-      );
+      final oauthCredential = OAuthProvider(
+        'apple.com',
+      ).credential(idToken: identityToken, rawNonce: nonce);
 
-      final userCredential = await _auth.signInWithCredential(oauthCredential);
+      final userCredential = await _auth
+          .signInWithCredential(oauthCredential)
+          .timeout(const Duration(seconds: 20));
       final user = userCredential.user;
       if (user == null) {
         throw Exception('No user returned');
@@ -114,8 +121,9 @@ class GoogleAuthService {
         context,
         user,
         provider: 'apple',
-        fallbackName: '${appleCredential.givenName ?? ''} ${appleCredential.familyName ?? ''}'
-            .trim(),
+        fallbackName:
+            '${appleCredential.givenName ?? ''} ${appleCredential.familyName ?? ''}'
+                .trim(),
       );
       return allowed ? userCredential : null;
     } on SignInWithAppleAuthorizationException catch (e) {
@@ -184,7 +192,7 @@ class GoogleAuthService {
     String? fallbackName,
   }) async {
     final ref = _firestore.collection('users').doc(user.uid);
-    final doc = await ref.get();
+    final doc = await ref.get().timeout(const Duration(seconds: 10));
     final data = doc.data() ?? const <String, dynamic>{};
 
     if (data['banned'] == true) {
@@ -198,40 +206,49 @@ class GoogleAuthService {
     );
 
     if (!doc.exists) {
-      await ref.set({
-        'uid': user.uid,
-        'name': resolvedName,
-        'email': user.email ?? '',
-        'phone': user.phoneNumber ?? '',
-        'photoUrl': user.photoURL ?? '',
-        'provider': provider,
-        'role': 'customer',
-        'createdAt': FieldValue.serverTimestamp(),
-        'isOnline': true,
-        'lastSeen': FieldValue.serverTimestamp(),
-        'fcmToken': null,
-        'banned': false,
-        'blocked': false,
-        'accessStatus': 'none',
-        'assignedLotId': null,
-        'totalBookings': 0,
-        'totalHours': 0,
-      });
+      await ref
+          .set({
+            'uid': user.uid,
+            'name': resolvedName,
+            'email': user.email ?? '',
+            'phone': user.phoneNumber ?? '',
+            'photoUrl': user.photoURL ?? '',
+            'provider': provider,
+            'role': 'customer',
+            'createdAt': FieldValue.serverTimestamp(),
+            'isOnline': true,
+            'lastSeen': FieldValue.serverTimestamp(),
+            'fcmToken': null,
+            'banned': false,
+            'blocked': false,
+            'accessStatus': 'none',
+            'assignedLotId': null,
+            'totalBookings': 0,
+            'totalHours': 0,
+          })
+          .timeout(const Duration(seconds: 10));
     } else {
-      await ref.set({
-        'provider': provider,
-        'isOnline': true,
-        'lastSeen': FieldValue.serverTimestamp(),
-        if (resolvedName.isNotEmpty) 'name': resolvedName,
-        if ((user.email ?? '').isNotEmpty) 'email': user.email,
-        if ((user.phoneNumber ?? '').isNotEmpty) 'phone': user.phoneNumber,
-        if ((user.photoURL ?? '').isNotEmpty) 'photoUrl': user.photoURL,
-      }, SetOptions(merge: true));
+      await ref
+          .set({
+            'provider': provider,
+            'isOnline': true,
+            'lastSeen': FieldValue.serverTimestamp(),
+            if (resolvedName.isNotEmpty) 'name': resolvedName,
+            if ((user.email ?? '').isNotEmpty) 'email': user.email,
+            if ((user.phoneNumber ?? '').isNotEmpty) 'phone': user.phoneNumber,
+            if ((user.photoURL ?? '').isNotEmpty) 'photoUrl': user.photoURL,
+          }, SetOptions(merge: true))
+          .timeout(const Duration(seconds: 10));
     }
 
-    final token = await _messaging.getToken();
+    final token = await _messaging.getToken().timeout(
+      const Duration(seconds: 8),
+      onTimeout: () => null,
+    );
     if (token != null) {
-      await ref.set({'fcmToken': token}, SetOptions(merge: true));
+      await ref
+          .set({'fcmToken': token}, SetOptions(merge: true))
+          .timeout(const Duration(seconds: 8));
     }
   }
 
@@ -258,7 +275,8 @@ class GoogleAuthService {
         'This email is already linked to another sign-in method.',
       'invalid-credential' => 'The sign-in credential is invalid or expired.',
       'user-disabled' => 'This account has been disabled.',
-      'network-request-failed' => 'Network error. Check your connection and try again.',
+      'network-request-failed' =>
+        'Network error. Check your connection and try again.',
       'sign_in_failed' => 'Google sign in failed. Please try again.',
       'sign_in_canceled' => 'Sign in was canceled.',
       _ => 'Sign in failed. Please try again.',
@@ -271,10 +289,7 @@ class GoogleAuthService {
     final messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentSnackBar();
     messenger.showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-      ),
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
     );
   }
 

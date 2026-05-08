@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -7,13 +6,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
+import '../../services/booking_status_helper.dart';
 import '../../theme/app_colors.dart';
-import '../../theme/app_text_styles.dart';
 import '../search/search_parking_screen.dart';
 import 'indoor_navigation_screen.dart';
 import 'parking_ticket_screen.dart';
 import 'parking_timer_screen.dart';
-import 'rating_bottom_sheet.dart';
 
 // =============================================================================
 //  MY BOOKINGS SCREEN — Premium Tabbed Booking Dashboard
@@ -26,13 +24,18 @@ class MyBookingsScreen extends StatefulWidget {
   State<MyBookingsScreen> createState() => _MyBookingsScreenState();
 }
 
-class _MyBookingsScreenState extends State<MyBookingsScreen> {
+class _MyBookingsScreenState extends State<MyBookingsScreen>
+    with AutomaticKeepAliveClientMixin {
   int _activeTabIndex = 0;
 
   static const List<String> _tabLabels = ['Active', 'Upcoming', 'Past'];
 
   @override
+  bool get wantKeepAlive => true;
+
+  @override
   Widget build(BuildContext context) {
+    super.build(context);
     final user = FirebaseAuth.instance.currentUser;
 
     if (user == null) {
@@ -228,26 +231,24 @@ class _BookingsContent extends StatelessWidget {
         final past = <Map<String, dynamic>>[];
 
         for (final b in allBookings) {
-          final status = (b['status'] ?? '').toString().toLowerCase();
-          final start = _toDateTime(b['startTime'] ?? b['start_ts']);
-          final end = _toDateTime(b['endTime'] ?? b['end_ts']);
-
-          if (status == 'cancelled') {
-            past.add(b);
-          } else if (end != null && now.isAfter(end)) {
-            past.add(b);
-          } else if (start != null && now.isBefore(start)) {
-            upcoming.add(b);
-          } else {
-            active.add(b);
+          switch (_bookingBucket(b, now)) {
+            case _BookingBucket.active:
+              active.add(b);
+              break;
+            case _BookingBucket.upcoming:
+              upcoming.add(b);
+              break;
+            case _BookingBucket.past:
+              past.add(b);
+              break;
           }
         }
 
         // Sort each list (latest first)
         void sortByStart(List<Map<String, dynamic>> list) {
           list.sort((a, b) {
-            final t1 = _toDateTime(a['startTime'] ?? a['start_ts']);
-            final t2 = _toDateTime(b['startTime'] ?? b['start_ts']);
+            final t1 = _bookingStart(a);
+            final t2 = _bookingStart(b);
             if (t1 == null || t2 == null) return 0;
             return t2.compareTo(t1);
           });
@@ -284,6 +285,27 @@ class _BookingsContent extends StatelessWidget {
               // Show featured active card for Active tab
               if (activeTabIndex == 0 && currentList.isNotEmpty) ...[
                 _ActiveBookingCard(booking: currentList.first),
+                if (past.isNotEmpty) ...[
+                  const SizedBox(height: 28),
+                  const Text(
+                    'RECENT ACTIVITY',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF94A3B8),
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ...past
+                      .take(3)
+                      .map(
+                        (b) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _PastBookingCard(booking: b),
+                        ),
+                      ),
+                ],
                 if (currentList.length > 1) ...[
                   const SizedBox(height: 28),
                   const Text(
@@ -477,9 +499,69 @@ class _BookingsContent extends StatelessWidget {
   static DateTime? _toDateTime(dynamic value) {
     if (value is Timestamp) return value.toDate();
     if (value is DateTime) return value;
+    if (value is num) return DateTime.fromMillisecondsSinceEpoch(value.toInt());
+    if (value is String) return DateTime.tryParse(value);
     return null;
   }
+
+  static DateTime? _bookingStart(Map<String, dynamic> booking) {
+    return _toDateTime(
+      booking['startTime'] ??
+          booking['start_ts'] ??
+          booking['startTimeMs'] ??
+          booking['bookingTimeMs'],
+    );
+  }
+
+  static DateTime? _bookingEnd(Map<String, dynamic> booking) {
+    final explicitEnd = _toDateTime(
+      booking['endTime'] ?? booking['end_ts'] ?? booking['endTimeMs'],
+    );
+    if (explicitEnd != null) return explicitEnd;
+
+    final start = _bookingStart(booking);
+    final duration = booking['durationMinutes'];
+    if (start != null && duration is num && duration > 0) {
+      return start.add(Duration(minutes: duration.toInt()));
+    }
+    return null;
+  }
+
+  static _BookingBucket _bookingBucket(
+    Map<String, dynamic> booking,
+    DateTime now,
+  ) {
+    final status = BookingStatusHelper.normalize(booking['status']);
+    final start = _bookingStart(booking);
+    final end = _bookingEnd(booking);
+
+    if (status == 'cancelled' || status == 'completed' || status == 'expired') {
+      return _BookingBucket.past;
+    }
+
+    if (end != null && !end.isAfter(now)) {
+      return _BookingBucket.past;
+    }
+
+    if (BookingStatusHelper.isLive(status)) {
+      return _BookingBucket.active;
+    }
+
+    if (BookingStatusHelper.isUpcoming(status) &&
+        start != null &&
+        start.isAfter(now)) {
+      return _BookingBucket.upcoming;
+    }
+
+    if (start != null && start.isAfter(now)) {
+      return _BookingBucket.upcoming;
+    }
+
+    return _BookingBucket.active;
+  }
 }
+
+enum _BookingBucket { active, upcoming, past }
 
 // =============================================================================
 //  ACTIVE BOOKING CARD — Featured card with live timer
@@ -499,22 +581,28 @@ class _ActiveBookingCardState extends State<_ActiveBookingCard> {
 
   Map<String, dynamic> get b => widget.booking;
 
-  DateTime get _start =>
-      _BookingsContent._toDateTime(b['startTime'] ?? b['start_ts']) ??
-      DateTime.now();
+  DateTime get _start => _BookingsContent._bookingStart(b) ?? DateTime.now();
   DateTime get _end =>
-      _BookingsContent._toDateTime(b['endTime'] ?? b['end_ts']) ??
-      DateTime.now();
+      _BookingsContent._bookingEnd(b) ?? _start.add(const Duration(hours: 1));
   String get _bookingId => b['_docId'] ?? '';
   String get _parkingName =>
       b['parkingName'] ?? b['parking_name'] ?? 'Parking Location';
-  String get _location => b['location'] ?? b['address'] ?? '';
-  String get _slot => b['slotId'] ?? b['slot_id'] ?? '--';
+  String get _location =>
+      b['parkingAddress'] ??
+      b['parking_address'] ??
+      b['location'] ??
+      b['address'] ??
+      '';
+  String get _slot =>
+      b['slotNumber'] ??
+      b['slot_number'] ??
+      b['slotId'] ??
+      b['slot_id'] ??
+      '--';
   int get _floorIndex => (b['floor'] as num?)?.toInt() ?? 0;
-  String get _parkingImage => b['parkingImage'] ?? b['image'] ?? '';
+  String get _parkingImage =>
+      b['parkingImage'] ?? b['imageUrl'] ?? b['image'] ?? '';
   String get _parkingId => b['parkingId'] ?? b['parking_id'] ?? '';
-  Map<String, dynamic> get _vehicle =>
-      (b['vehicle'] is Map) ? b['vehicle'] as Map<String, dynamic> : {};
 
   @override
   void initState() {
@@ -560,52 +648,54 @@ class _ActiveBookingCardState extends State<_ActiveBookingCard> {
       child: Column(
         children: [
           // ── Image Section ──────────────────────────────────────────
-          ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                SizedBox(
-                  height: 220,
-                  width: double.infinity,
-                  child: _SmartImage(
+          SizedBox(
+            height: 220,
+            width: double.infinity,
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(32),
+              ),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  _SmartImage(
                     url: _parkingImage,
                     fallbackName: _parkingName,
                     parkingId: _parkingId,
                   ),
-                ),
-                // Status Badge
-                Positioned(
-                  top: 16,
-                  right: 16,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary, // blue-600
-                      borderRadius: BorderRadius.circular(999),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
+                  // Status Badge
+                  Positioned(
+                    top: 16,
+                    right: 16,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary, // blue-600
+                        borderRadius: BorderRadius.circular(999),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: const Text(
+                        'ACTIVE',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1,
                         ),
-                      ],
-                    ),
-                    child: const Text(
-                      'ACTIVE',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1,
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
 
@@ -883,13 +973,6 @@ class _ActiveBookingCardState extends State<_ActiveBookingCard> {
       ),
     );
   }
-
-  String _formatDuration(Duration d) {
-    final h = d.inHours;
-    final m = d.inMinutes % 60;
-    if (h > 0) return '${h}h ${m.toString().padLeft(2, '0')}m';
-    return '${m}m';
-  }
 }
 
 // =============================================================================
@@ -906,17 +989,22 @@ class _CompactBookingCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final parkingName =
         booking['parkingName'] ?? booking['parking_name'] ?? 'Parking Location';
-    final slot = booking['slotId'] ?? booking['slot_id'] ?? '--';
+    final slot =
+        booking['slotNumber'] ??
+        booking['slot_number'] ??
+        booking['slotId'] ??
+        booking['slot_id'] ??
+        '--';
     final floorIndex = (booking['floor'] as num?)?.toInt() ?? 0;
-    final start =
-        _BookingsContent._toDateTime(
-          booking['startTime'] ?? booking['start_ts'],
-        ) ??
-        DateTime.now();
+    final start = _BookingsContent._bookingStart(booking) ?? DateTime.now();
     final end =
-        _BookingsContent._toDateTime(booking['endTime'] ?? booking['end_ts']) ??
-        DateTime.now();
-    final image = booking['parkingImage'] ?? booking['image'] ?? '';
+        _BookingsContent._bookingEnd(booking) ??
+        start.add(const Duration(hours: 1));
+    final image =
+        booking['parkingImage'] ??
+        booking['imageUrl'] ??
+        booking['image'] ??
+        '';
     final bookingId = booking['_docId'] ?? '';
     final parkingId = booking['parkingId'] ?? booking['parking_id'] ?? '';
     final vehicle = (booking['vehicle'] is Map)
@@ -932,7 +1020,12 @@ class _CompactBookingCard extends StatelessWidget {
             builder: (_) => ParkingTicketScreen(
               parking: {
                 'name': parkingName,
-                'address': booking['address'] ?? booking['location'] ?? '',
+                'address':
+                    booking['parkingAddress'] ??
+                    booking['parking_address'] ??
+                    booking['address'] ??
+                    booking['location'] ??
+                    '',
                 'latitude': booking['latitude'],
                 'longitude': booking['longitude'],
               },
@@ -1057,13 +1150,13 @@ class _PastBookingCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final parkingName =
         booking['parkingName'] ?? booking['parking_name'] ?? 'Parking';
-    final start =
-        _BookingsContent._toDateTime(
-          booking['startTime'] ?? booking['start_ts'],
-        ) ??
-        DateTime.now();
+    final start = _BookingsContent._bookingStart(booking) ?? DateTime.now();
     final price = booking['price'] ?? booking['totalAmount'] ?? 0;
-    final image = booking['parkingImage'] ?? booking['image'] ?? '';
+    final image =
+        booking['parkingImage'] ??
+        booking['imageUrl'] ??
+        booking['image'] ??
+        '';
     final status = (booking['status'] ?? '').toString().toLowerCase();
     final isCancelled = status == 'cancelled';
     final parkingId = booking['parkingId'] ?? booking['parking_id'] ?? '';
@@ -1254,7 +1347,7 @@ class _SmartImage extends StatelessWidget {
           ),
         );
       },
-      errorBuilder: (_, __, ___) => _fallbackWidget(),
+      errorBuilder: (_, _, _) => _fallbackWidget(),
     );
   }
 

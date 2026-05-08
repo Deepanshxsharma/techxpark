@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:http/http.dart' as http;
 
 import '../../theme/app_colors.dart';
@@ -32,7 +31,6 @@ class LiveNavigationScreen extends StatefulWidget {
 class _LiveNavigationScreenState extends State<LiveNavigationScreen>
     with TickerProviderStateMixin {
   // ── Constants ──────────────────────────────────────────────────────
-  static const _kApiKey = 'AIzaSyC1s15SNBpRhFp5NGBeH63rKB2yKVV6gyU';
   static const Color _blue = AppColors.primary;
   static const Color _dark = Color(0xFF0F172A);
 
@@ -130,30 +128,35 @@ class _LiveNavigationScreenState extends State<LiveNavigationScreen>
 
     try {
       final url = Uri.parse(
-        'https://maps.googleapis.com/maps/api/directions/json'
-        '?origin=${_userPosition!.latitude},${_userPosition!.longitude}'
-        '&destination=${_destination.latitude},${_destination.longitude}'
-        '&mode=driving'
-        '&key=$_kApiKey',
+        'https://router.project-osrm.org/route/v1/driving/'
+        '${_userPosition!.longitude},${_userPosition!.latitude};'
+        '${_destination.longitude},${_destination.latitude}'
+        '?overview=full&geometries=geojson',
       );
 
       final response = await http.get(url).timeout(const Duration(seconds: 10));
       if (response.statusCode != 200) return;
 
       final data = json.decode(response.body);
-      if (data['status'] != 'OK') return;
+      if (data is! Map || data['code'] != 'Ok') return;
 
-      final route = data['routes'][0];
-      final leg = route['legs'][0];
-
-      // Decode polyline
-      final points = PolylinePoints.decodePolyline(
-        route['overview_polyline']['points'],
-      );
-
-      final coords = points
-          .map((p) => LatLng(p.latitude, p.longitude))
+      final routes = data['routes'];
+      if (routes is! List || routes.isEmpty) return;
+      final route = routes.first as Map;
+      final geometry = route['geometry'] as Map?;
+      final rawCoords = geometry?['coordinates'] as List?;
+      if (rawCoords == null || rawCoords.isEmpty) return;
+      final coords = rawCoords
+          .whereType<List>()
+          .where((point) => point.length >= 2)
+          .map(
+            (point) => LatLng(
+              (point[1] as num).toDouble(),
+              (point[0] as num).toDouble(),
+            ),
+          )
           .toList();
+      if (coords.isEmpty) return;
 
       if (!mounted) return;
       setState(() {
@@ -161,8 +164,8 @@ class _LiveNavigationScreenState extends State<LiveNavigationScreen>
           ..clear()
           ..addAll(coords);
 
-        _eta = leg['duration']['text'] ?? '--';
-        _distance = leg['distance']['text'] ?? '--';
+        _eta = _formatDuration(route['duration']);
+        _distance = _formatDistance(route['distance']);
 
         _polylines = {
           Polyline(
@@ -178,6 +181,25 @@ class _LiveNavigationScreenState extends State<LiveNavigationScreen>
     } catch (e) {
       debugPrint('⚠️ Route fetch error: $e');
     }
+  }
+
+  String _formatDuration(Object? seconds) {
+    final value = seconds is num ? seconds.toDouble() : null;
+    if (value == null) return '--';
+    final minutes = (value / 60).round();
+    if (minutes < 60) return '$minutes min';
+    final hours = minutes ~/ 60;
+    final remainingMinutes = minutes % 60;
+    return remainingMinutes == 0
+        ? '$hours hr'
+        : '$hours hr $remainingMinutes min';
+  }
+
+  String _formatDistance(Object? meters) {
+    final value = meters is num ? meters.toDouble() : null;
+    if (value == null) return '--';
+    if (value < 1000) return '${value.round()} m';
+    return '${(value / 1000).toStringAsFixed(1)} km';
   }
 
   // ═══════════════════════════════════════════════════════════════════

@@ -183,16 +183,16 @@ class BookingService {
         // ── Resolve payment fields ──────────────────────────────────────
         final bookingStatus = isUpcomingBooking ? 'upcoming' : 'active';
         final resolvedPaymentMethod = paymentMethod.trim().isEmpty
-            ? 'Instant Pay'
+            ? 'Pay at Parking'
             : paymentMethod.trim();
         final resolvedPaymentStatus = paymentStatus.trim().isEmpty
-            ? 'simulated_success'
+            ? 'pending'
             : paymentStatus.trim();
         final resolvedPaymentMode = paymentMode.trim().isEmpty
-            ? 'mock'
+            ? 'offline'
             : paymentMode.trim();
         final resolvedPaymentGateway = paymentGateway.trim().isEmpty
-            ? 'test_bypass'
+            ? 'manual_collection'
             : paymentGateway.trim();
         final paymentCaptured = _paymentIsCaptured(resolvedPaymentStatus);
         final entryCode = _buildEntryCode(bookingRef.id);
@@ -516,9 +516,9 @@ class BookingService {
         'totalAmount': 0,
         'paymentMethod': 'No Payment Required',
         'paymentStatus': 'skipped',
-        'paymentMode': 'demo',
-        'paymentGateway': 'bypass',
-        'paymentReference': 'SKIPPED',
+        'paymentMode': 'not_required',
+        'paymentGateway': 'none',
+        'paymentReference': 'NOT_REQUIRED',
         'entryCode': entryCode,
         'qrData': qrData,
         'entryInstructions': entryInstructions,

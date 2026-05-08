@@ -68,7 +68,7 @@ class SupportChatMessage {
   final bool isRead;
   final bool isTyping;
   final bool isSystem;
-  final SupportChatAction? action;
+  final List<SupportChatAction> actions;
 
   const SupportChatMessage({
     required this.id,
@@ -78,13 +78,38 @@ class SupportChatMessage {
     this.isRead = false,
     this.isTyping = false,
     this.isSystem = false,
-    this.action,
+    this.actions = const [],
   });
 
   bool get isUser => sender == 'user';
   bool get isAi => sender == 'ai';
+  SupportChatAction? get action => actions.isEmpty ? null : actions.first;
 
   factory SupportChatMessage.fromMap(String id, Map<String, dynamic> data) {
+    final actions = <SupportChatAction>[];
+    final rawActions = data['actions'];
+    if (rawActions is List) {
+      for (final item in rawActions) {
+        if (item is Map<String, dynamic>) {
+          actions.add(SupportChatAction.fromMap(item));
+        } else if (item is Map) {
+          actions.add(
+            SupportChatAction.fromMap(Map<String, dynamic>.from(item)),
+          );
+        }
+      }
+    }
+    if (actions.isEmpty) {
+      final legacyAction = data['action'];
+      if (legacyAction is Map<String, dynamic>) {
+        actions.add(SupportChatAction.fromMap(legacyAction));
+      } else if (legacyAction is Map) {
+        actions.add(
+          SupportChatAction.fromMap(Map<String, dynamic>.from(legacyAction)),
+        );
+      }
+    }
+
     return SupportChatMessage(
       id: id,
       text: data['text']?.toString() ?? '',
@@ -93,13 +118,7 @@ class SupportChatMessage {
       isRead: data['isRead'] == true,
       isTyping: data['isTyping'] == true,
       isSystem: data['isSystem'] == true,
-      action: data['action'] is Map<String, dynamic>
-          ? SupportChatAction.fromMap(data['action'] as Map<String, dynamic>)
-          : data['action'] is Map
-          ? SupportChatAction.fromMap(
-              Map<String, dynamic>.from(data['action'] as Map),
-            )
-          : null,
+      actions: actions,
     );
   }
 }

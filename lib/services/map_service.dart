@@ -14,15 +14,23 @@ class MapService {
   }
 
   static Future<void> _loadMarkerIcons() async {
-    const config = ImageConfiguration(size: Size(48, 48));
-    _normalIcon = await BitmapDescriptor.asset(
-      config,
-      'assets/icons/parking_marker.png',
-    );
-    _evIcon = await BitmapDescriptor.asset(
-      config,
-      'assets/icons/ev_marker.png',
-    );
+    try {
+      const config = ImageConfiguration(size: Size(48, 48));
+      _normalIcon = await BitmapDescriptor.asset(
+        config,
+        'assets/icons/parking_marker.png',
+      );
+      _evIcon = await BitmapDescriptor.asset(
+        config,
+        'assets/icons/ev_marker.png',
+      );
+    } catch (error) {
+      debugPrint('MapService: marker icons unavailable: $error');
+      _normalIcon = BitmapDescriptor.defaultMarker;
+      _evIcon = BitmapDescriptor.defaultMarkerWithHue(
+        BitmapDescriptor.hueGreen,
+      );
+    }
   }
 
   // ── Coordinate parsing ────────────────────────────────────────────
@@ -155,11 +163,13 @@ class MapService {
 
   // ── Location with proper permission handling ─────────────────────
 
-  static Future<LatLng?> getUserLocation() async {
+  static Future<MapLocationResult> getUserLocationResult() async {
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       debugPrint('⚠️ MapService: location services disabled');
-      return null;
+      return const MapLocationResult(
+        message: 'Turn on GPS to sort parking by your current location.',
+      );
     }
 
     var permission = await Geolocator.checkPermission();
@@ -169,7 +179,9 @@ class MapService {
 
     if (permission == LocationPermission.denied) {
       debugPrint('⚠️ MapService: location permission denied');
-      return null;
+      return const MapLocationResult(
+        message: 'Location permission is needed to show nearby parking.',
+      );
     }
 
     if (permission == LocationPermission.deniedForever) {
@@ -177,18 +189,32 @@ class MapService {
         '⚠️ MapService: location permission permanently denied — '
         'user must enable in Settings',
       );
-      return null;
+      return const MapLocationResult(
+        message:
+            'Location is blocked. Enable it from Settings to use nearby parking.',
+      );
     }
 
     try {
       final position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 10),
       ).timeout(const Duration(seconds: 10));
-      return LatLng(position.latitude, position.longitude);
+      return MapLocationResult(
+        position: LatLng(position.latitude, position.longitude),
+      );
     } catch (e) {
       debugPrint('⚠️ MapService: failed to get location — $e');
-      return null;
+      return const MapLocationResult(
+        message:
+            'Current location is unavailable. Showing available parking lots.',
+      );
     }
+  }
+
+  static Future<LatLng?> getUserLocation() async {
+    final result = await getUserLocationResult();
+    return result.position;
   }
 
   // ── Type-safe number parsers ──────────────────────────────────────
@@ -213,4 +239,13 @@ class MapService {
     if (value is String) return double.tryParse(value);
     return null;
   }
+}
+
+class MapLocationResult {
+  final LatLng? position;
+  final String? message;
+
+  const MapLocationResult({this.position, this.message});
+
+  bool get hasLocation => position != null;
 }

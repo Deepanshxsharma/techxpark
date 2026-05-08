@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../services/google_auth_service.dart';
 import '../../../theme/app_colors.dart';
+import '../../../utils/navigation_utils.dart';
 import '../signup/signup_screen.dart';
 
 /// Email/Password Login Screen — full form with validation,
@@ -95,7 +96,7 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
       }
 
       HapticFeedback.heavyImpact();
-      // AuthWrapper handles navigation
+      if (mounted) safeShowAuthState(context);
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

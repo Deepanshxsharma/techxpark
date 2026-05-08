@@ -36,7 +36,8 @@ class MessagesScreen extends StatefulWidget {
   State<MessagesScreen> createState() => _MessagesScreenState();
 }
 
-class _MessagesScreenState extends State<MessagesScreen> {
+class _MessagesScreenState extends State<MessagesScreen>
+    with AutomaticKeepAliveClientMixin {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final ChatService _chatService = ChatService();
@@ -55,7 +56,11 @@ class _MessagesScreenState extends State<MessagesScreen> {
   String? get _uid => _auth.currentUser?.uid;
 
   @override
+  bool get wantKeepAlive => true;
+
+  @override
   Widget build(BuildContext context) {
+    super.build(context);
     final uid = _uid;
     final bottomInset = widget.showStandaloneNav ? 160.0 : 136.0;
 
@@ -676,7 +681,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
         break;
     }
 
-  await safePushReplacement(context, destination);
+    await safePushReplacement(context, destination);
   }
 }
 

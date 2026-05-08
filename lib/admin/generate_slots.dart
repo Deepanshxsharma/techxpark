@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// Call this once to auto-create slots for a parking.
@@ -5,8 +7,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 /// floors = number of floors (default 3)
 /// slotsPerFloor = how many slots per floor (default 8)
 
-Future<void> generateSlotsForParking(String parkingId,
-    {int floors = 3, int slotsPerFloor = 8}) async {
+Future<void> generateSlotsForParking(
+  String parkingId, {
+  int floors = 3,
+  int slotsPerFloor = 8,
+}) async {
   final Map<String, bool> slotMap = {};
 
   for (int f = 1; f <= floors; f++) {
@@ -21,5 +26,5 @@ Future<void> generateSlotsForParking(String parkingId,
       .doc(parkingId)
       .update({"slots": slotMap});
 
-  print("✅ Slots added for parking $parkingId");
+  developer.log("Slots added for parking $parkingId", name: 'generate_slots');
 }

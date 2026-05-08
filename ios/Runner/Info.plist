@@ -39,23 +39,17 @@
 
 	<!-- Permissions -->
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>TechXPark uses your location to find nearby parking lots and calculate distances accurately.</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>TechXPark uses your location in the background to update parking availability near you.</string>
-	<key>NSLocationAlwaysUsageDescription</key>
-	<string>TechXPark uses your location in the background to update parking availability near you.</string>
+	<string>TechXPark uses your location to show nearby parking locations, calculate distance, and guide you to your booking.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>TechXPark uses your camera to scan QR codes at parking entry gates.</string>
+	<string>TechXPark uses your camera to scan parking QR codes for entry and exit.</string>
+	<key>NSAppleIDUsageDescription</key>
+	<string>TechXPark uses Apple Sign-In for secure authentication.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>TechXPark uses Face ID for quick and secure sign-in.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>TechXPark accesses your photos to let you set a profile picture.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>TechXPark needs to save parking receipts to your photos</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>TechXPark may use your microphone for voice search features.</string>
-	<key>NSUserTrackingUsageDescription</key>
-	<string>TechXPark uses tracking to provide personalized parking recommendations and relevant offers.</string>
+	<string>TechXPark saves parking receipts to your photo library when you choose to export them.</string>
 
 	<!-- Push Notifications -->
 	<key>UIBackgroundModes</key>
@@ -65,15 +59,10 @@
 	</array>
 
 	<!-- Google Maps -->
+	<key>GoogleMapsApiKey</key>
+	<string>$(GOOGLE_MAPS_API_KEY)</string>
 	<key>io.flutter.embedded_views_preview</key>
 	<true/>
-
-	<!-- App Transport Security -->
-	<key>NSAppTransportSecurity</key>
-	<dict>
-		<key>NSAllowsArbitraryLoads</key>
-		<true/>
-	</dict>
 
 	<!-- Launch Screen -->
 	<key>UILaunchStoryboardName</key>

@@ -7,10 +7,7 @@ import 'package:flutter/material.dart';
 Future<T?> safePush<T>(BuildContext context, Widget page) {
   if (!context.mounted) return Future.value(null);
   debugPrint('Navigating to: ${page.runtimeType}');
-  return Navigator.push<T>(
-    context,
-    MaterialPageRoute(builder: (_) => page),
-  );
+  return Navigator.push<T>(context, MaterialPageRoute(builder: (_) => page));
 }
 
 Future<T?> safePushReplacement<T, TO>(BuildContext context, Widget page) {
@@ -31,7 +28,19 @@ Future<T?> safePushAndRemoveUntil<T>(BuildContext context, Widget page) {
   );
 }
 
+void safeShowAuthState(BuildContext context) {
+  if (!context.mounted) return;
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (!context.mounted) return;
+    Navigator.of(
+      context,
+      rootNavigator: true,
+    ).pushNamedAndRemoveUntil('/auth', (route) => false);
+  });
+}
+
 void safePop(BuildContext context, [Object? result]) {
+  if (!context.mounted) return;
   if (Navigator.canPop(context)) {
     debugPrint('Popping screen');
     Navigator.pop(context, result);

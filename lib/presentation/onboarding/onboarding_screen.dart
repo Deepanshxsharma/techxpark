@@ -49,7 +49,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _openAuth() {
-  safePushReplacement(context, const LoginScreen());
+    safePush(context, const LoginScreen());
   }
 
   @override
@@ -109,7 +109,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                   Image.asset(
                                     page.assetPath,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => Container(
+                                    errorBuilder: (_, _, _) => Container(
                                       color: const Color(0xFFEAF0FF),
                                       alignment: Alignment.center,
                                       child: Icon(

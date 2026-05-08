@@ -12,7 +12,7 @@ class ReviewRepository {
   User? get _user => FirebaseAuth.instance.currentUser;
 
   /* ── References ────────────────────────────────────────────────────────── */
-  CollectionReference get _reviewsCol =>
+  CollectionReference<Map<String, dynamic>> get _reviewsCol =>
       _firestore.collection('reviews');
 
   /* ═══════════════════════════════════════════════════════════════════════ */
@@ -21,8 +21,10 @@ class ReviewRepository {
   Future<bool> hasReviewed(String bookingId) async {
     if (_user == null) return false;
     // Check booking doc for reviewed flag first (fast path)
-    final bookingDoc =
-        await _firestore.collection('bookings').doc(bookingId).get();
+    final bookingDoc = await _firestore
+        .collection('bookings')
+        .doc(bookingId)
+        .get();
     if (bookingDoc.exists) {
       final data = bookingDoc.data() as Map<String, dynamic>;
       if (data['reviewed'] == true) return true;
@@ -44,10 +46,8 @@ class ReviewRepository {
     if (user == null) throw Exception('Not authenticated');
 
     // Get user name
-    final userDoc =
-        await _firestore.collection('users').doc(user.uid).get();
-    final userName =
-        (userDoc.data() as Map<String, dynamic>?)?['name'] ?? 'User';
+    final userDoc = await _firestore.collection('users').doc(user.uid).get();
+    final userName = userDoc.data()?['name'] ?? 'User';
 
     final review = ReviewModel(
       id: '',
@@ -64,10 +64,12 @@ class ReviewRepository {
     await _reviewsCol.add(review.toMap());
 
     // Update parking aggregation using transaction
-    final parkingRef = _firestore.collection('parking_locations').doc(parkingId);
+    final parkingRef = _firestore
+        .collection('parking_locations')
+        .doc(parkingId);
     await _firestore.runTransaction((tx) async {
       final parkingSnap = await tx.get(parkingRef);
-      final data = parkingSnap.data() as Map<String, dynamic>? ?? {};
+      final data = parkingSnap.data() ?? {};
 
       final oldAvg = (data['ratingAverage'] as num?)?.toDouble() ?? 0.0;
       final oldCount = (data['ratingCount'] as num?)?.toInt() ?? 0;
@@ -82,10 +84,9 @@ class ReviewRepository {
     });
 
     // Mark booking as reviewed
-    await _firestore
-        .collection('bookings')
-        .doc(bookingId)
-        .update({'reviewed': true});
+    await _firestore.collection('bookings').doc(bookingId).update({
+      'reviewed': true,
+    });
   }
 
   /* ═══════════════════════════════════════════════════════════════════════ */
@@ -96,9 +97,10 @@ class ReviewRepository {
         .where('parkingId', isEqualTo: parkingId)
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snap) => snap.docs
-            .map((d) =>
-                ReviewModel.fromMap(d.id, d.data() as Map<String, dynamic>))
-            .toList());
+        .map(
+          (snap) => snap.docs
+              .map((d) => ReviewModel.fromMap(d.id, d.data()))
+              .toList(),
+        );
   }
 }

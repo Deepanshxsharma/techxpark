@@ -75,12 +75,6 @@ class _ParkingTicketScreenState extends State<ParkingTicketScreen>
   bool get _canNavigate => _destLat != null && _destLng != null;
   bool get _isExpired => DateTime.now().isAfter(widget.end);
   bool get _isCancelled => widget.status == 'cancelled';
-  bool get _isActive =>
-      !_isCancelled &&
-      DateTime.now().isAfter(widget.start) &&
-      DateTime.now().isBefore(widget.end);
-  bool get _isUpcoming =>
-      !_isCancelled && DateTime.now().isBefore(widget.start);
 
   String get _vehicleNumber =>
       widget.vehicle['number']?.toString().toUpperCase() ?? 'UNKNOWN';

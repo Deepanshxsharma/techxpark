@@ -1,12 +1,10 @@
 import 'dart:async';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 import '../../services/booking_repository.dart';
 import '../../theme/app_colors.dart';
-import 'cctv_preview_screen.dart';
 import 'live_navigation_screen.dart';
 
 class ParkingTimerScreen extends StatefulWidget {
@@ -667,127 +665,6 @@ class _ParkingTimerScreenState extends State<ParkingTimerScreen> {
                                 ),
                               ),
                               const SizedBox(height: 12),
-                            ],
-
-                            // ── CCTV Preview ────────────────────────────────────────
-                            if (!_isCancelled && !isExpired) ...[
-                              GestureDetector(
-                                onTap: () {
-                                  HapticFeedback.mediumImpact();
-                                  Navigator.push(
-                                    context,
-                                    PageRouteBuilder(
-                                      pageBuilder: (_, __, ___) =>
-                                          CCTVPreviewScreen(
-                                            parkingName:
-                                                widget.parking['name'] ?? '',
-                                            slotId: widget.slot,
-                                            floorIndex: widget.floorIndex,
-                                          ),
-                                      transitionsBuilder:
-                                          (_, anim, __, child) =>
-                                              FadeTransition(
-                                                opacity: anim,
-                                                child: child,
-                                              ),
-                                      transitionDuration: const Duration(
-                                        milliseconds: 300,
-                                      ),
-                                    ),
-                                  );
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF0A0A1A),
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.06,
-                                      ),
-                                    ),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(10),
-                                        decoration: BoxDecoration(
-                                          color: _techBlue.withValues(
-                                            alpha: 0.15,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                        ),
-                                        child: const Icon(
-                                          Icons.videocam_rounded,
-                                          color: _techBlue,
-                                          size: 20,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 14),
-                                      const Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              'Live Parking Camera',
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.w700,
-                                                fontSize: 14,
-                                              ),
-                                            ),
-                                            SizedBox(height: 2),
-                                            Text(
-                                              'Tap to view live CCTV feed',
-                                              style: TextStyle(
-                                                color: Colors.white38,
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 8,
-                                          vertical: 4,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: const Color(
-                                            0xFFFF3B30,
-                                          ).withValues(alpha: 0.15),
-                                          borderRadius: BorderRadius.circular(
-                                            6,
-                                          ),
-                                        ),
-                                        child: const Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(
-                                              Icons.circle,
-                                              color: Color(0xFFFF3B30),
-                                              size: 6,
-                                            ),
-                                            SizedBox(width: 4),
-                                            Text(
-                                              'LIVE',
-                                              style: TextStyle(
-                                                color: Color(0xFFFF3B30),
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.w900,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 16),
                             ],
 
                             // ── Action Buttons ──────────────────────────────────────

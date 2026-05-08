@@ -15,14 +15,16 @@ import '../parking_details/lot_detail_navigation.dart';
 /// Premium Search Parking Screen based on HTML template.
 class SearchParkingScreen extends StatefulWidget {
   final LatLng? userLocation;
+  final VoidCallback? onBack;
 
-  const SearchParkingScreen({super.key, this.userLocation});
+  const SearchParkingScreen({super.key, this.userLocation, this.onBack});
 
   @override
   State<SearchParkingScreen> createState() => _SearchParkingScreenState();
 }
 
-class _SearchParkingScreenState extends State<SearchParkingScreen> {
+class _SearchParkingScreenState extends State<SearchParkingScreen>
+    with AutomaticKeepAliveClientMixin {
   // Theme colors from the shared app palette
   static const Color _primary = AppColors.primary;
   static const Color _primaryContainer = AppColors.primaryLight;
@@ -42,6 +44,7 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
 
   bool _loading = true;
   LatLng? _myLocation;
+  String? _locationNotice;
 
   int _selectedSortIndex = 0;
   final List<_SortOption> _sortOptions = [
@@ -71,12 +74,17 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
     super.dispose();
   }
 
+  @override
+  bool get wantKeepAlive => true;
+
   Future<void> _initLocation() async {
     try {
       if (widget.userLocation != null) {
         _myLocation = widget.userLocation;
       } else {
-        _myLocation = await MapService.getUserLocation();
+        final location = await MapService.getUserLocationResult();
+        _myLocation = location.position;
+        _locationNotice = location.message;
       }
       if (mounted) {
         setState(() {});
@@ -215,8 +223,18 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
     return false;
   }
 
+  void _handleBack() {
+    FocusScope.of(context).unfocus();
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+      return;
+    }
+    widget.onBack?.call();
+  }
+
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark,
       child: Scaffold(
@@ -253,15 +271,26 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
     debugPrint("Markers count: ${markers.length}");
 
     return Positioned.fill(
-      child: GoogleMap(
-        initialCameraPosition: CameraPosition(target: center, zoom: 14),
-        myLocationEnabled: _myLocation != null,
-        myLocationButtonEnabled: true,
-        zoomControlsEnabled: false,
-        markers: markers,
-        onMapCreated: (controller) {
-          _mapController = controller;
-        },
+      child: Stack(
+        children: [
+          GoogleMap(
+            initialCameraPosition: CameraPosition(target: center, zoom: 14),
+            myLocationEnabled: _myLocation != null,
+            myLocationButtonEnabled: _myLocation != null,
+            zoomControlsEnabled: false,
+            markers: markers,
+            onMapCreated: (controller) {
+              _mapController = controller;
+            },
+          ),
+          if (_locationNotice != null)
+            Positioned(
+              left: 16,
+              right: 16,
+              top: MediaQuery.of(context).padding.top + 116,
+              child: _MapNotice(message: _locationNotice!),
+            ),
+        ],
       ),
     );
   }
@@ -328,7 +357,7 @@ class _SearchParkingScreenState extends State<SearchParkingScreen> {
               IconButton(
                 icon: const Icon(Icons.arrow_back),
                 color: _primary,
-                onPressed: () => Navigator.pop(context),
+                onPressed: _handleBack,
               ),
               Expanded(
                 child: TextField(
@@ -919,4 +948,44 @@ class _SortOption {
   final String label;
   final IconData? icon;
   const _SortOption(this.label, this.icon);
+}
+
+class _MapNotice extends StatelessWidget {
+  const _MapNotice({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      elevation: 6,
+      borderRadius: BorderRadius.circular(14),
+      color: Colors.white,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.location_off_rounded,
+              color: AppColors.warning,
+              size: 18,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                message,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.poppins(
+                  color: const Color(0xFF1A1C1D),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

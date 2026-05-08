@@ -28,6 +28,7 @@ class NotificationService {
 
   final _fcm = FirebaseMessaging.instance;
   final _localNotifications = FlutterLocalNotificationsPlugin();
+  bool _initialized = false;
 
   // ─── Notification IDs (unique per reminder type) ─────────────────────────
   static const _channelId = 'techxpark_channel';
@@ -44,17 +45,27 @@ class NotificationService {
   //  INIT
   // ═══════════════════════════════════════════════════════════════════════════
   Future<void> init() async {
+    if (_initialized) return;
+
     tz.initializeTimeZones();
 
     // 1. Request permission
-    await _fcm.requestPermission(alert: true, badge: true, sound: true);
+    final settings = await _fcm.requestPermission(
+      alert: true,
+      badge: true,
+      provisional: true,
+      sound: true,
+    );
+    if (settings.authorizationStatus == AuthorizationStatus.denied) {
+      debugPrint('Notifications permission denied');
+    }
 
     // 2. Initialize flutter_local_notifications
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosInit = DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
     );
     await _localNotifications.initialize(
       settings: const InitializationSettings(
@@ -109,6 +120,7 @@ class NotificationService {
     // 8. Listen for token refresh
     _fcm.onTokenRefresh.listen((_) => saveTokenToFirestore());
 
+    _initialized = true;
     debugPrint('✅ NotificationService initialized');
   }
 

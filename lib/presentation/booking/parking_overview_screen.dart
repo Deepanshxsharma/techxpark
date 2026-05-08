@@ -331,9 +331,7 @@ class _ParkingOverviewScreenState extends State<ParkingOverviewScreen> {
                 isLiveTaken = val['taken'] == true;
               else if (val is bool)
                 isLiveTaken = val;
-            } catch (e) {
-              print(e);
-            }
+            } catch (_) {}
           }
           return _parkingBayVisual(slotId, isLiveTaken, isLive: true);
         },

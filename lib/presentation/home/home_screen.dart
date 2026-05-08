@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -534,13 +535,28 @@ class _ActiveBookingSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('[HomeTicket] BUILD CALLED for userId=$userId');
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: FirebaseFirestore.instance
           .collection('bookings')
           .where('userId', isEqualTo: userId)
           .snapshots(),
       builder: (context, snapshot) {
+        debugPrint(
+          '[HomeTicket] userId=$userId '
+          'connState=${snapshot.connectionState} '
+          'hasData=${snapshot.hasData} '
+          'hasError=${snapshot.hasError} '
+          'docCount=${snapshot.data?.docs.length ?? 0}',
+        );
+        if (snapshot.hasError) {
+          debugPrint('[HomeTicket] ERROR: ${snapshot.error}');
+        }
+
         final booking = _resolveActiveBooking(snapshot.data?.docs ?? const []);
+        debugPrint(
+          '[HomeTicket] Resolved booking: ${booking?.bookingId ?? 'NONE'}',
+        );
 
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -837,7 +853,7 @@ class _SectionHeading extends StatelessWidget {
   }
 }
 
-class _ActiveTicketCard extends StatelessWidget {
+class _ActiveTicketCard extends StatefulWidget {
   final _HomeBooking booking;
   final VoidCallback onDetailsTap;
   final VoidCallback onPrimaryTap;
@@ -849,178 +865,534 @@ class _ActiveTicketCard extends StatelessWidget {
     required this.onPrimaryTap,
   });
 
+  @override
+  State<_ActiveTicketCard> createState() => _ActiveTicketCardState();
+}
+
+class _ActiveTicketCardState extends State<_ActiveTicketCard> {
   static const String _fallbackImage = 'assets/images/parking_placeholder.png';
+  Timer? _timer;
+  late DateTime _now;
+
+  @override
+  void initState() {
+    super.initState();
+    _now = DateTime.now();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() => _now = DateTime.now());
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        // Asymmetric Layering Blur
-        Positioned.fill(
-          child: Container(
-            margin: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppColors.primary.withValues(alpha: 0.1),
-                  Colors.transparent,
-                ],
-              ),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                  blurRadius: 24,
-                  spreadRadius: 4,
-                ),
-              ],
+    final booking = widget.booking;
+    final isUpcoming = booking.start.isAfter(_now);
+    final remaining = isUpcoming
+        ? booking.start.difference(_now)
+        : booking.remainingAt(_now);
+    final progress = isUpcoming ? 0.0 : booking.progressAt(_now);
+    final elapsed = booking.totalDuration - booking.remainingAt(_now);
+    final vehicleName =
+        booking.vehicle['model'] as String? ??
+        booking.vehicle['name'] as String? ??
+        '';
+    final vehicleNumber =
+        booking.vehicle['number'] as String? ??
+        booking.vehicle['plate'] as String? ??
+        '';
+
+    return GestureDetector(
+      onTap: widget.onDetailsTap,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: <BoxShadow>[
+            BoxShadow(
+              color: AppColors.primary.withValues(alpha: 0.12),
+              blurRadius: 32,
+              spreadRadius: 0,
+              offset: const Offset(0, 12),
             ),
-          ),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 48,
+              offset: const Offset(0, 24),
+            ),
+          ],
         ),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white, // surface-container-lowest
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: <BoxShadow>[
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 40,
-                offset: const Offset(0, 20),
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: Column(
-              children: <Widget>[
-                SizedBox(
-                  height: 224, // h-56
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: <Widget>[
-                      _SmartParkingImage(
-                        imagePath: booking.imagePath,
-                        fallbackAsset: _fallbackImage,
-                        parkingId: booking.parkingId,
-                      ),
-                      DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.bottomCenter,
-                            end: Alignment.topCenter,
-                            colors: <Color>[
-                              Colors.black.withValues(alpha: 0.8),
-                              Colors.black.withValues(alpha: 0.2),
-                              Colors.transparent,
-                            ],
-                          ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: Column(
+            children: <Widget>[
+              // ─── HERO IMAGE SECTION ───
+              SizedBox(
+                height: 280,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: <Widget>[
+                    // Background image
+                    _SmartParkingImage(
+                      imagePath: booking.imagePath,
+                      fallbackAsset: _fallbackImage,
+                      parkingId: booking.parkingId,
+                    ),
+                    // Dark gradient overlay
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          stops: const [0.0, 0.3, 0.7, 1.0],
+                          colors: <Color>[
+                            Colors.black.withValues(alpha: 0.3),
+                            Colors.black.withValues(alpha: 0.15),
+                            Colors.black.withValues(alpha: 0.5),
+                            Colors.black.withValues(alpha: 0.85),
+                          ],
                         ),
                       ),
-                      Positioned(
-                        top: 16,
-                        left: 16,
-                        child: _BookingBadge(
-                          isUpcoming: booking.start.isAfter(DateTime.now()),
-                        ),
-                      ),
-                      Positioned(
-                        left: 24,
-                        right: 24,
-                        bottom: 24,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            Text(
-                              booking.parkingName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.poppins(
-                                color: Colors.white,
-                                fontSize: 20,
-                                fontWeight: FontWeight.w700,
-                                height: 1.25,
+                    ),
+                    // Top row: Badge + Est. Cost
+                    Positioned(
+                      top: 16,
+                      left: 16,
+                      right: 16,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: <Widget>[
+                          _BookingBadge(isUpcoming: isUpcoming),
+                          // Glass cost pill
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: BackdropFilter(
+                              filter: ui.ImageFilter.blur(
+                                sigmaX: 20,
+                                sigmaY: 20,
+                              ),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.2),
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: <Widget>[
+                                    Text(
+                                      'SLOT',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.white.withValues(
+                                          alpha: 0.7,
+                                        ),
+                                        letterSpacing: 1.5,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      booking.slotNumber,
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w800,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: <Widget>[
-                                const Icon(
-                                  Icons.garage_rounded,
-                                  size: 14,
-                                  color: Colors.white,
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Bottom: Timer + Progress
+                    Positioned(
+                      left: 20,
+                      right: 20,
+                      bottom: 20,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            isUpcoming ? 'Starts In' : 'Time Remaining',
+                            style: GoogleFonts.poppins(
+                              color: Colors.white.withValues(alpha: 0.7),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _formatHumanDuration(remaining),
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: 42,
+                              fontWeight: FontWeight.w800,
+                              height: 1.1,
+                              letterSpacing: -1.5,
+                              fontFeatures: const [
+                                FontFeature.tabularFigures(),
+                              ],
+                              shadows: <Shadow>[
+                                Shadow(
+                                  color: Colors.black.withValues(alpha: 0.4),
+                                  blurRadius: 20,
                                 ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    'Floor ${booking.floorDisplay} • Slot ${booking.slotNumber}',
-                                    style: GoogleFonts.poppins(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                      letterSpacing: 0.2,
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          // Glowing progress bar
+                          Container(
+                            height: 6,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(99),
+                              color: Colors.white.withValues(alpha: 0.15),
+                            ),
+                            child: Stack(
+                              children: [
+                                FractionallySizedBox(
+                                  widthFactor: progress.clamp(0.02, 1.0),
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(99),
+                                      gradient: LinearGradient(
+                                        colors: isUpcoming
+                                            ? [
+                                                const Color(0xFFF59E0B),
+                                                const Color(0xFFFBBF24),
+                                              ]
+                                            : [
+                                                AppColors.primaryLight,
+                                                const Color(0xFF60A5FA),
+                                              ],
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color:
+                                              (isUpcoming
+                                                      ? const Color(0xFFF59E0B)
+                                                      : AppColors.primary)
+                                                  .withValues(alpha: 0.5),
+                                          blurRadius: 12,
+                                          spreadRadius: 1,
+                                        ),
+                                      ],
                                     ),
-                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                               ],
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: <Widget>[
+                              Text(
+                                'Started ${_formatDurationCompact(elapsed)} ago',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white.withValues(alpha: 0.7),
+                                  letterSpacing: 0.8,
+                                ),
+                              ),
+                              Text(
+                                'Total ${_formatDurationCompact(booking.totalDuration)}',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white.withValues(alpha: 0.7),
+                                  letterSpacing: 0.8,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // ─── DETAILS SECTION ───
+              Container(
+                color: Colors.white,
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+                child: Column(
+                  children: <Widget>[
+                    // Parking name + info row
+                    Row(
+                      children: <Widget>[
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: AppColors.activeBlueLight,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: const Icon(
+                            Icons.location_on_rounded,
+                            color: AppColors.primary,
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Text(
+                                booking.parkingName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF181C20),
+                                ),
+                              ),
+                              if (booking.address.isNotEmpty)
+                                Text(
+                                  booking.address,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    color: const Color(0xFF64748B),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              const Icon(
+                                Icons.directions_car_rounded,
+                                size: 13,
+                                color: Color(0xFF64748B),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'L${booking.floorDisplay}',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF475569),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    // Vehicle info row (if available)
+                    if (vehicleName.isNotEmpty || vehicleNumber.isNotEmpty) ...[
+                      const SizedBox(height: 14),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: const Color(0xFFE2E8F0),
+                            width: 0.5,
+                          ),
+                        ),
+                        child: Row(
+                          children: <Widget>[
+                            Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEEF2FF),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(
+                                Icons.electric_car_rounded,
+                                size: 18,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: <Widget>[
+                                  if (vehicleName.isNotEmpty)
+                                    Text(
+                                      vehicleName,
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: const Color(0xFF1E293B),
+                                      ),
+                                    ),
+                                  if (vehicleNumber.isNotEmpty)
+                                    Text(
+                                      vehicleNumber.toUpperCase(),
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: const Color(0xFF64748B),
+                                        letterSpacing: 1.2,
+                                      ),
+                                    ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
                       ),
                     ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(32),
-                  child: Column(
-                    children: <Widget>[
-                      _CountdownPanel(booking: booking),
-                      const SizedBox(height: 32),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: onPrimaryTap,
-                          icon: const Icon(
-                            Icons.add_circle_outline_rounded,
-                            size: 20,
+                    const SizedBox(height: 16),
+                    // Action buttons row
+                    Row(
+                      children: <Widget>[
+                        // Navigate button
+                        Expanded(
+                          child: _ActionButton(
+                            icon: Icons.near_me_rounded,
+                            label: 'Navigate',
+                            color: AppColors.primary,
+                            textColor: Colors.white,
+                            onTap: widget.onDetailsTap,
                           ),
-                          label: const Text('Extend Duration'),
-                          style:
-                              ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primary,
-                                foregroundColor: Colors.white,
-                                elevation: 0,
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 20,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(999),
-                                ),
-                                textStyle: GoogleFonts.poppins(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 16,
-                                ),
-                              ).copyWith(
-                                shadowColor: WidgetStateProperty.all(
-                                  AppColors.primary.withValues(alpha: 0.2),
-                                ),
-                                elevation: WidgetStateProperty.resolveWith(
-                                  (states) =>
-                                      states.contains(WidgetState.pressed)
-                                      ? 2
-                                      : 10,
-                                ),
-                              ),
                         ),
+                        const SizedBox(width: 10),
+                        // Extend button
+                        Expanded(
+                          child: _ActionButton(
+                            icon: Icons.add_circle_outline_rounded,
+                            label: 'Extend',
+                            color: const Color(0xFF4955B3),
+                            textColor: Colors.white,
+                            onTap: widget.onPrimaryTap,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    // View Entry Pass button
+                    SizedBox(
+                      width: double.infinity,
+                      child: _ActionButton(
+                        icon: Icons.confirmation_number_outlined,
+                        label: 'View Entry Pass',
+                        color: const Color(0xFFF1F5F9),
+                        textColor: const Color(0xFF334155),
+                        iconColor: AppColors.primary,
+                        onTap: widget.onDetailsTap,
+                        hasBorder: true,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
-      ],
+      ),
+    );
+  }
+
+  String _formatHumanDuration(Duration d) {
+    final h = d.inHours;
+    final m = d.inMinutes.remainder(60);
+    final s = d.inSeconds.remainder(60);
+    final hStr = h.toString().padLeft(1, '0');
+    final mStr = m.toString().padLeft(2, '0');
+    final sStr = s.toString().padLeft(2, '0');
+    return '${hStr}h ${mStr}m ${sStr}s';
+  }
+}
+
+class _ActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final Color textColor;
+  final Color? iconColor;
+  final VoidCallback onTap;
+  final bool hasBorder;
+
+  const _ActionButton({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.textColor,
+    this.iconColor,
+    required this.onTap,
+    this.hasBorder = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: color,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onTap();
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: hasBorder
+              ? BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: const Color(0xFFE2E8F0),
+                    width: 0.5,
+                  ),
+                )
+              : null,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              Icon(icon, size: 18, color: iconColor ?? textColor),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: textColor,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -2245,14 +2617,37 @@ _HomeBooking? _resolveActiveBooking(
   List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
 ) {
   final now = DateTime.now();
-  final allBookings = docs.map(_HomeBooking.fromFirestore).toList();
+  final allBookings = <_HomeBooking>[];
+  debugPrint('[ActiveBooking] Raw doc count from Firestore: ${docs.length}');
+
+  for (final doc in docs) {
+    try {
+      allBookings.add(_HomeBooking.fromFirestore(doc));
+    } catch (e) {
+      debugPrint('[ActiveBooking] ERROR parsing doc ${doc.id}: $e');
+    }
+  }
+  debugPrint('[ActiveBooking] Parsed bookings: ${allBookings.length}');
+  for (final b in allBookings) {
+    debugPrint(
+      '[ActiveBooking] id=${b.bookingId} status=${b.status} '
+      'start=${b.start} end=${b.end} '
+      'isCancelled=${b.isCancelled} isCompleted=${b.isCompleted} '
+      'isActiveNow=${b.isActiveAt(now)}',
+    );
+  }
 
   // First, try to find a currently active booking (now >= start && now < end)
   final activeBookings =
       allBookings.where((booking) => booking.isActiveAt(now)).toList()
         ..sort((a, b) => a.end.compareTo(b.end));
 
-  if (activeBookings.isNotEmpty) return activeBookings.first;
+  if (activeBookings.isNotEmpty) {
+    debugPrint(
+      '[ActiveBooking] Found active: ${activeBookings.first.bookingId}',
+    );
+    return activeBookings.first;
+  }
 
   // If no active booking, find the nearest upcoming booking
   // (not cancelled/completed, end is in the future, start is in the future)
@@ -2268,7 +2663,35 @@ _HomeBooking? _resolveActiveBooking(
           .toList()
         ..sort((a, b) => a.start.compareTo(b.start));
 
-  return upcomingBookings.isEmpty ? null : upcomingBookings.first;
+  if (upcomingBookings.isNotEmpty) {
+    debugPrint(
+      '[ActiveBooking] Found upcoming: ${upcomingBookings.first.bookingId}',
+    );
+    return upcomingBookings.first;
+  }
+
+  // Grace window — show bookings that ended within last 5 minutes
+  // so the ticket doesn't vanish abruptly
+  final recentlyEndedBookings =
+      allBookings
+          .where(
+            (b) =>
+                !b.isCancelled &&
+                !b.isCompleted &&
+                b.end.isBefore(now) &&
+                now.difference(b.end).inMinutes < 5,
+          )
+          .toList()
+        ..sort((a, b) => b.end.compareTo(a.end));
+
+  if (recentlyEndedBookings.isNotEmpty) {
+    debugPrint(
+      '[ActiveBooking] Found recently-ended: ${recentlyEndedBookings.first.bookingId}',
+    );
+    return recentlyEndedBookings.first;
+  }
+  debugPrint('[ActiveBooking] No active/upcoming booking found');
+  return null;
 }
 
 List<_HomeParkingLot> _prepareParkingLots(

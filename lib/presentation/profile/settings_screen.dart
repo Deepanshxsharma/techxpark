@@ -4,8 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../config/legal_links.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/theme_controller.dart';
+import '../../services/google_auth_service.dart';
+import '../../utils/navigation_utils.dart';
 import '../notifications/notifications_screen.dart';
 import 'privacy_security_screen.dart';
 import 'payment_methods_screen.dart';
@@ -28,6 +31,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     _darkMode = ThemeController.themeMode.value == ThemeMode.dark;
+  }
+
+  Future<void> _openExternalLink(Future<bool> Function() opener) async {
+    final opened = await opener();
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not open this link. Please try again.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   @override
@@ -206,19 +221,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       icon: Icons.help_outline,
                       iconBg: Colors.blueGrey,
                       title: 'Help Center',
-                      onTap: () {},
+                      onTap: () => _openExternalLink(LegalLinks.openHelpCenter),
                     ),
                     _SettingsTile(
                       icon: Icons.description_outlined,
                       iconBg: Colors.blueGrey,
                       title: 'Terms of Service',
-                      onTap: () {},
+                      onTap: () =>
+                          _openExternalLink(LegalLinks.openTermsOfService),
                     ),
                     _SettingsTile(
                       icon: Icons.privacy_tip_outlined,
                       iconBg: Colors.blueGrey,
                       title: 'Privacy Policy',
-                      onTap: () {},
+                      onTap: () =>
+                          _openExternalLink(LegalLinks.openPrivacyPolicy),
                     ),
                     _SettingsTile(
                       icon: Icons.info_outline,
@@ -544,7 +561,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         );
         if (confirmed == true) {
-          await FirebaseAuth.instance.signOut();
+          await GoogleAuthService().signOut();
+          if (context.mounted) safeShowAuthState(context);
         }
       },
       child: Container(

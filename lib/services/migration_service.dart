@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 
 import 'booking_status_helper.dart';
 
-import 'booking_status_helper.dart';
-
 /// Production-ready migration service with 4 phases:
 /// 1. MIGRATE — Copy old data to new structure
 /// 2. VERIFY — Compare slot counts, ensure floor fields exist
@@ -67,8 +65,11 @@ class MigrationService {
         }
         data.putIfAbsent('ratingAverage', () => 0.0);
         data.putIfAbsent('ratingCount', () => 0);
-        data.putIfAbsent('imageUrl', () =>
-            'https://images.unsplash.com/photo-1590674899484-d5640e854abe?q=80&w=800');
+        data.putIfAbsent(
+          'imageUrl',
+          () =>
+              'https://images.unsplash.com/photo-1590674899484-d5640e854abe?q=80&w=800',
+        );
         data.putIfAbsent('isActive', () => true);
         data.putIfAbsent('lastUpdated', () => FieldValue.serverTimestamp());
 
@@ -84,12 +85,10 @@ class MigrationService {
             int.tryParse(floorDoc.id.replaceAll('floor_', '')) ?? 1;
         final floorIndex = floorNum - 1;
 
-        final slotsSnap =
-            await floorDoc.reference.collection('slots').get();
+        final slotsSnap = await floorDoc.reference.collection('slots').get();
         for (final slotDoc in slotsSnap.docs) {
           // Only copy if not already in new structure
-          final newSlotRef =
-              target.collection('slots').doc(slotDoc.id);
+          final newSlotRef = target.collection('slots').doc(slotDoc.id);
           final newSlotSnap = await newSlotRef.get();
 
           if (!newSlotSnap.exists) {
@@ -97,7 +96,10 @@ class MigrationService {
             slotData['floor'] = floorIndex;
             slotData.putIfAbsent('type', () => 'car');
             slotData.putIfAbsent('isActive', () => true);
-            slotData.putIfAbsent('isOccupied', () => slotData['taken'] ?? false);
+            slotData.putIfAbsent(
+              'isOccupied',
+              () => slotData['taken'] ?? false,
+            );
             slotData.putIfAbsent('slotNumber', () => slotDoc.id);
 
             await newSlotRef.set(slotData);
@@ -110,14 +112,14 @@ class MigrationService {
           }
         }
         debugPrint(
-            '    📂 Processed ${slotsSnap.docs.length} slots from ${floorDoc.id} → parking_locations/${doc.id}/slots');
+          '    📂 Processed ${slotsSnap.docs.length} slots from ${floorDoc.id} → parking_locations/${doc.id}/slots',
+        );
       }
 
       // ── Move reviews to top-level ──
       final reviewsSnap = await doc.reference.collection('reviews').get();
       for (final rev in reviewsSnap.docs) {
-        final existingRev =
-            await _fs.collection('reviews').doc(rev.id).get();
+        final existingRev = await _fs.collection('reviews').doc(rev.id).get();
         if (!existingRev.exists) {
           final revData = Map<String, dynamic>.from(rev.data());
           revData['parkingId'] = doc.id;
@@ -126,7 +128,8 @@ class MigrationService {
       }
       if (reviewsSnap.docs.isNotEmpty) {
         debugPrint(
-            '    ⭐ Moved ${reviewsSnap.docs.length} reviews to top-level');
+          '    ⭐ Moved ${reviewsSnap.docs.length} reviews to top-level',
+        );
       }
     }
 
@@ -150,11 +153,14 @@ class MigrationService {
     final usersSnap = await _fs.collection('users').get();
     int notifsMoved = 0;
     for (final userDoc in usersSnap.docs) {
-      final notifsSnap =
-          await userDoc.reference.collection('notifications').get();
+      final notifsSnap = await userDoc.reference
+          .collection('notifications')
+          .get();
       for (final notif in notifsSnap.docs) {
-        final existing =
-            await _fs.collection('notifications').doc(notif.id).get();
+        final existing = await _fs
+            .collection('notifications')
+            .doc(notif.id)
+            .get();
         if (!existing.exists) {
           final nData = Map<String, dynamic>.from(notif.data());
           nData['userId'] = userDoc.id;
@@ -172,8 +178,10 @@ class MigrationService {
       final updates = <String, dynamic>{};
       if (!userData.containsKey('role')) updates['role'] = 'user';
       if (!userData.containsKey('isVerified')) updates['isVerified'] = true;
-      if (!userData.containsKey('activeBookings')) updates['activeBookings'] = 0;
-      if (!userData.containsKey('maxActiveBookings')) updates['maxActiveBookings'] = 3;
+      if (!userData.containsKey('activeBookings'))
+        updates['activeBookings'] = 0;
+      if (!userData.containsKey('maxActiveBookings'))
+        updates['maxActiveBookings'] = 3;
       if (updates.isNotEmpty) await userDoc.reference.update(updates);
     }
 
@@ -214,8 +222,7 @@ class MigrationService {
       int oldSlotCount = 0;
       final floorsSnap = await doc.reference.collection('floors').get();
       for (final floorDoc in floorsSnap.docs) {
-        final slotsSnap =
-            await floorDoc.reference.collection('slots').get();
+        final slotsSnap = await floorDoc.reference.collection('slots').get();
         oldSlotCount += slotsSnap.docs.length;
       }
 
@@ -240,7 +247,8 @@ class MigrationService {
       final icon = match ? '✅' : '❌';
 
       debugPrint(
-          '  $icon ${doc.id}: old=$oldSlotCount  new=$newSlotCount  missingFloor=$missingFloor');
+        '  $icon ${doc.id}: old=$oldSlotCount  new=$newSlotCount  missingFloor=$missingFloor',
+      );
 
       if (!match) allGood = false;
       if (missingFloor > 0) {
@@ -258,15 +266,17 @@ class MigrationService {
     }.length;
 
     debugPrint(
-        '  📊 parking_locations: ${newLocSnap.docs.length} (expected ≥ $expectedCount)');
+      '  📊 parking_locations: ${newLocSnap.docs.length} (expected ≥ $expectedCount)',
+    );
 
     if (newLocSnap.docs.length < expectedCount) allGood = false;
 
     // ── Compute totalSlots and availableSlots for heatmap ──
     debugPrint('  🔢 Computing slot counts for heatmap...');
     for (final parkDoc in newLocSnap.docs) {
-      final parkData = parkDoc.data() as Map<String, dynamic>;
-      if (!parkData.containsKey('totalSlots') || !parkData.containsKey('availableSlots')) {
+      final parkData = parkDoc.data();
+      if (!parkData.containsKey('totalSlots') ||
+          !parkData.containsKey('availableSlots')) {
         final slotsSnap = await parkDoc.reference.collection('slots').get();
         final total = slotsSnap.docs.length;
 
@@ -288,9 +298,11 @@ class MigrationService {
       }
     }
 
-    debugPrint(allGood
-        ? '  ✅ ALL VERIFICATIONS PASSED'
-        : '  ❌ SOME VERIFICATIONS FAILED — see above');
+    debugPrint(
+      allGood
+          ? '  ✅ ALL VERIFICATIONS PASSED'
+          : '  ❌ SOME VERIFICATIONS FAILED — see above',
+    );
 
     return allGood;
   }
@@ -399,8 +411,7 @@ class MigrationService {
       final floorsSnap = await doc.reference.collection('floors').get();
       for (final floorDoc in floorsSnap.docs) {
         // Delete all slots in this floor
-        final slotsSnap =
-            await floorDoc.reference.collection('slots').get();
+        final slotsSnap = await floorDoc.reference.collection('slots').get();
         for (final slotDoc in slotsSnap.docs) {
           await slotDoc.reference.delete();
         }
@@ -425,16 +436,16 @@ class MigrationService {
       await doc.reference.delete();
     }
     if (parkSnap.docs.isNotEmpty) {
-      debugPrint(
-          '  🗑️ Deleted ${parkSnap.docs.length} old parking documents');
+      debugPrint('  🗑️ Deleted ${parkSnap.docs.length} old parking documents');
     }
 
     // ── Delete old user notification subcollections ──
     final usersSnap = await _fs.collection('users').get();
     int oldNotifsDeleted = 0;
     for (final userDoc in usersSnap.docs) {
-      final notifsSnap =
-          await userDoc.reference.collection('notifications').get();
+      final notifsSnap = await userDoc.reference
+          .collection('notifications')
+          .get();
       for (final notif in notifsSnap.docs) {
         await notif.reference.delete();
         oldNotifsDeleted++;
@@ -442,7 +453,8 @@ class MigrationService {
     }
     if (oldNotifsDeleted > 0) {
       debugPrint(
-          '  🗑️ Deleted $oldNotifsDeleted old user notification subcollection docs');
+        '  🗑️ Deleted $oldNotifsDeleted old user notification subcollection docs',
+      );
     }
 
     debugPrint('  ✅ Old collections deleted successfully');

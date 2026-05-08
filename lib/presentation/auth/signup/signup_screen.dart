@@ -367,7 +367,7 @@ class _SignupScreenState extends State<SignupScreen>
       }
 
       HapticFeedback.heavyImpact();
-      // AuthWrapper handles navigation automatically
+      if (mounted) safeShowAuthState(context);
     } on FirebaseAuthException catch (e) {
       showSnack(e.message ?? 'Signup failed');
     } finally {

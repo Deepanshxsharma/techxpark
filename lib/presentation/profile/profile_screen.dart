@@ -7,698 +7,649 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../theme/app_colors.dart';
-import '../../theme/app_spacing.dart';
-import '../../theme/app_text_styles.dart';
-import '../notifications/notifications_screen.dart';
-import '../vehicle/my_vehicle_screen.dart';
+import '../../theme/theme_controller.dart';
+import '../../services/google_auth_service.dart';
+import '../../utils/navigation_utils.dart';
 import '../booking/my_bookings_screen.dart';
-import 'edit_profile_screen.dart';
-import 'privacy_security_screen.dart';
-import 'saved_parkings_screen.dart';
-import 'settings_screen.dart';
+import '../settings/settings_screen.dart';
+import 'help_center_screen.dart';
+import 'loyalty_screen.dart';
+import 'my_vehicles_screen.dart';
+import 'payments_screen.dart';
+import 'personal_info_screen.dart';
+import 'saved_locations_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  final ValueChanged<int>? onTabSwitch;
+
+  const ProfileScreen({super.key, this.onTabSwitch});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class _ProfileScreenState extends State<ProfileScreen>
+    with AutomaticKeepAliveClientMixin {
   bool _isUploadingPhoto = false;
+  bool _notificationsEnabled = true;
+  bool _isDarkMode = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _isDarkMode = ThemeController.themeMode.value == ThemeMode.dark;
+    _ensureUserDocument();
+  }
+
+  Future<void> _ensureUserDocument() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+      'uid': user.uid,
+      'name': user.displayName ?? 'TechXPark User',
+      'email': user.email ?? '',
+      'phone': user.phoneNumber ?? '',
+      'photoUrl': user.photoURL ?? '',
+      'role': 'customer',
+      'totalBookings': 0,
+      'totalHours': 0,
+      'totalSpent': 0,
+      'notificationsEnabled': true,
+      'smsEnabled': true,
+      'isOnline': true,
+      'updatedAt': FieldValue.serverTimestamp(),
+      'createdAt': FieldValue.serverTimestamp(),
+      'fcmToken': null,
+      'banned': false,
+      'referralCode': _referralCodeFor(user.uid),
+    }, SetOptions(merge: true));
+  }
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final user = FirebaseAuth.instance.currentUser;
+
     if (user == null) {
       return Scaffold(
         backgroundColor: AppColors.bgLight,
         body: Center(
           child: Text(
             'Please log in to view your profile.',
-            style: AppTextStyles.body1.copyWith(
-              color: AppColors.textSecondaryLight,
-            ),
+            style: GoogleFonts.poppins(color: const Color(0xFF757686)),
           ),
         ),
       );
     }
 
     return Scaffold(
-      backgroundColor: AppColors.bgLight,
-      body: StreamBuilder<DocumentSnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData || !snapshot.data!.exists) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
-            );
-          }
-
-          final data = snapshot.data!.data() as Map<String, dynamic>;
-          final name = data['name'] ?? 'User';
-          final email = data['email'] ?? user.email ?? '';
-          final photoUrl = data['photoUrl'] as String?;
-
-          return CustomScrollView(
-            physics: const BouncingScrollPhysics(),
-            slivers: [
-              // ═══════════════════════════════════════
-              // TOP APP BAR
-              // ═══════════════════════════════════════
-              SliverAppBar(
-                pinned: true,
-                floating: false,
-                backgroundColor: AppColors.bgLight.withValues(alpha: 0.92),
-                surfaceTintColor: Colors.transparent,
-                elevation: 0,
-                automaticallyImplyLeading: false,
-                titleSpacing: 20,
-                flexibleSpace: ClipRect(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFBF8FF).withValues(alpha: 0.85),
-                    ),
+      backgroundColor: const Color(0xFFF7F8FC),
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          SliverAppBar(
+            pinned: true,
+            backgroundColor: const Color(0xFFF7F8FC).withValues(alpha: 0.92),
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            automaticallyImplyLeading: false,
+            titleSpacing: 20,
+            title: Row(
+              children: [
+                GestureDetector(
+                  onTap: () => Navigator.maybePop(context),
+                  child: const Icon(
+                    Icons.arrow_back,
+                    color: AppColors.primary,
+                    size: 24,
                   ),
                 ),
-                title: Row(
-                  children: [
-                    GestureDetector(
-                      onTap: () => Navigator.maybePop(context),
-                      child: const Icon(
-                        Icons.arrow_back,
-                        color: AppColors.primary,
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Text(
-                      'Profile',
-                      style: GoogleFonts.poppins(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimaryLight,
-                      ),
-                    ),
-                  ],
+                const SizedBox(width: 16),
+                Text(
+                  'Profile',
+                  style: GoogleFonts.poppins(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF181C20),
+                  ),
                 ),
-                actions: [
-                  Padding(
-                    padding: const EdgeInsets.only(right: 16),
-                    child: GestureDetector(
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const SettingsScreen(),
-                        ),
+              ],
+            ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.settings, color: AppColors.primary),
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
+          ),
+          SliverList(
+            delegate: SliverChildListDelegate([
+              _profileHeaderCard(user),
+              _referralCard(),
+              _menuCard(
+                title: 'Account',
+                items: [
+                  _menuItem(
+                    icon: Icons.person_rounded,
+                    iconBg: const Color(0xFFEEF2FF),
+                    iconColor: const Color(0xFF0029B9),
+                    title: 'Personal Info',
+                    subtitle: 'Name, email, phone number',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const PersonalInfoScreen(),
                       ),
-                      child: const Icon(
-                        Icons.settings,
-                        color: AppColors.primary,
-                        size: 24,
+                    ),
+                  ),
+                  _menuItem(
+                    icon: Icons.directions_car_rounded,
+                    iconBg: const Color(0xFFE8EAF6),
+                    iconColor: const Color(0xFF283593),
+                    title: 'My Vehicles',
+                    subtitle: 'Manage your saved vehicles',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const MyVehiclesScreen(),
+                      ),
+                    ),
+                  ),
+                  _menuItem(
+                    icon: Icons.calendar_today_rounded,
+                    iconBg: const Color(0xFFE8F5E9),
+                    iconColor: const Color(0xFF2E7D32),
+                    title: 'My Bookings',
+                    subtitle: 'Active, upcoming and past',
+                    onTap: _openBookings,
+                  ),
+                  _menuItem(
+                    icon: Icons.bookmark_rounded,
+                    iconBg: const Color(0xFFFFF8E1),
+                    iconColor: const Color(0xFFF57F17),
+                    title: 'Saved Locations',
+                    subtitle: 'Your favourite parking lots',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const SavedLocationsScreen(),
                       ),
                     ),
                   ),
                 ],
               ),
-
-              // ═══════════════════════════════════════
-              // BODY
-              // ═══════════════════════════════════════
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.screenPadding,
-                ),
-                sliver: SliverList(
-                  delegate: SliverChildListDelegate([
-                    const SizedBox(height: 8),
-
-                    // ── Profile Header ────────────────────
-                    _buildProfileHeader(name, email, photoUrl, user),
-
-                    const SizedBox(height: 32),
-
-                    // ── Stats Section ─────────────────────
-                    _buildStatsSection(user.uid),
-
-                    const SizedBox(height: 32),
-
-                    // ── Group 1: Quick Access ─────────────
-                    _buildMenuGroup([
-                      _ProfileMenuItem(
-                        icon: Icons.directions_car,
-                        label: 'My Vehicles',
-                        iconColor: AppColors.primary,
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const MyVehicleScreen(),
-                          ),
-                        ),
+              _menuCard(
+                title: 'Payments',
+                items: [
+                  _menuItem(
+                    icon: Icons.account_balance_wallet_rounded,
+                    iconBg: const Color(0xFFE8EAF6),
+                    iconColor: const Color(0xFF4527A0),
+                    title: 'Payments & Wallet',
+                    subtitle: 'Transaction history',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const PaymentsScreen()),
+                    ),
+                  ),
+                  _menuItem(
+                    icon: Icons.receipt_long_rounded,
+                    iconBg: const Color(0xFFF3E5F5),
+                    iconColor: const Color(0xFF7B1FA2),
+                    title: 'Receipts & Invoices',
+                    subtitle: 'Download PDF receipts',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const ReceiptsScreen()),
+                    ),
+                  ),
+                  _menuItem(
+                    icon: Icons.workspace_premium_rounded,
+                    iconBg: const Color(0xFFFFF3E0),
+                    iconColor: const Color(0xFFE65100),
+                    title: 'Loyalty Points',
+                    subtitle: 'Rewards and parking credits',
+                    trailing: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
                       ),
-                      _ProfileMenuItem(
-                        icon: Icons.calendar_today,
-                        label: 'My Bookings',
-                        iconColor: AppColors.primary,
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const MyBookingsScreen(),
-                          ),
-                        ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF3E0),
+                        borderRadius: BorderRadius.circular(99),
                       ),
-                      _ProfileMenuItem(
-                        icon: Icons.bookmark,
-                        label: 'Saved Locations',
-                        iconColor: AppColors.primary,
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const SavedParkingsScreen(),
-                          ),
-                        ),
-                      ),
-                    ]),
-
-                    const SizedBox(height: 20),
-
-                    // ── Refer & Earn Banner ───────────────
-                    _buildReferralBanner(),
-
-                    const SizedBox(height: 20),
-
-                    // ── Group 2: Account ──────────────────
-                    _buildMenuGroup([
-                      _ProfileMenuItem(
-                        icon: Icons.account_balance_wallet,
-                        label: 'Payments & Wallet',
-                        iconColor: const Color(0xFF505A96),
-                        onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Payments coming soon'),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        },
-                      ),
-                      _ProfileMenuItem(
-                        icon: Icons.notifications,
-                        label: 'Notifications',
-                        iconColor: const Color(0xFF505A96),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const NotificationsScreen(),
-                          ),
-                        ),
-                      ),
-                      _ProfileMenuItem(
-                        icon: Icons.security,
-                        label: 'Privacy & Security',
-                        iconColor: const Color(0xFF505A96),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const PrivacySecurityScreen(),
-                          ),
-                        ),
-                      ),
-                    ]),
-
-                    const SizedBox(height: 20),
-
-                    // ── Group 3: Support ──────────────────
-                    _buildMenuGroup([
-                      _ProfileMenuItem(
-                        icon: Icons.support_agent,
-                        label: 'Help & Support',
-                        iconColor: const Color(0xFF757686),
-                        onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Help center coming soon'),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        },
-                      ),
-                      _ProfileMenuItem(
-                        icon: Icons.info,
-                        label: 'About App',
-                        iconColor: const Color(0xFF757686),
-                        onTap: () {
-                          showAboutDialog(
-                            context: context,
-                            applicationName: 'TechXPark',
-                            applicationVersion: '2.4.1 (Build 108)',
-                            applicationLegalese:
-                                '© 2026 TechXPark. All rights reserved.',
-                          );
-                        },
-                      ),
-                    ]),
-
-                    const SizedBox(height: 40),
-
-                    // ── Sign Out Button ───────────────────
-                    _buildSignOutButton(context),
-
-                    const SizedBox(height: 20),
-
-                    // ── Version ───────────────────────────
-                    Center(
-                      child: Opacity(
-                        opacity: 0.6,
-                        child: Text(
-                          'Version 2.4.1 (Build 108)',
-                          style: AppTextStyles.caption.copyWith(
-                            color: const Color(0xFF757686),
-                            fontSize: 12,
-                          ),
+                      child: Text(
+                        '0 pts',
+                        style: GoogleFonts.poppins(
+                          color: const Color(0xFFE65100),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
-
-                    // Bottom padding for nav bar
-                    const SizedBox(height: 120),
-                  ]),
-                ),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════════════
-  // PROFILE HEADER — Avatar, Name, Email, Edit
-  // ═══════════════════════════════════════════════════════════════
-  Widget _buildProfileHeader(
-    String name,
-    String email,
-    String? photoUrl,
-    User user,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.borderLight),
-        boxShadow: AppColors.cardShadow,
-      ),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: () => _showPhotoBottomSheet(context, user),
-            child: Stack(
-              children: [
-                Container(
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: AppColors.primaryGradient,
-                  ),
-                  padding: const EdgeInsets.all(2),
-                  child: CircleAvatar(
-                    radius: 30,
-                    backgroundColor: AppColors.bgLight,
-                    backgroundImage: photoUrl != null
-                        ? NetworkImage(photoUrl)
-                        : null,
-                    child: _isUploadingPhoto
-                        ? const CircularProgressIndicator(
-                            color: AppColors.primary,
-                            strokeWidth: 2.5,
-                          )
-                        : (photoUrl == null
-                              ? Text(
-                                  name.isNotEmpty ? name[0].toUpperCase() : 'U',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 24,
-                                    color: AppColors.primary,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                )
-                              : null),
-                  ),
-                ),
-                Positioned(
-                  bottom: 0,
-                  right: 0,
-                  child: Container(
-                    padding: const EdgeInsets.all(3),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
-                    ),
-                    child: const Icon(
-                      Icons.verified,
-                      color: Colors.white,
-                      size: 12,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const LoyaltyScreen()),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimaryLight,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  email,
-                  style: GoogleFonts.poppins(
-                    fontSize: 13,
-                    color: AppColors.textSecondaryLight,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          OutlinedButton(
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const EditProfileScreen()),
-            ),
-            style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: AppColors.primary),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(999),
+                ],
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            ),
-            child: Text(
-              'Edit Profile',
-              style: GoogleFonts.poppins(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppColors.primary,
+              _preferencesCard(user.uid),
+              _menuCard(
+                title: 'Help & Support',
+                items: [
+                  _menuItem(
+                    icon: Icons.headset_mic_rounded,
+                    iconBg: const Color(0xFFE0F7FA),
+                    iconColor: const Color(0xFF00838F),
+                    title: 'Help Center',
+                    subtitle: 'FAQs and guides',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const HelpCenterScreen(),
+                      ),
+                    ),
+                  ),
+                  _menuItem(
+                    icon: Icons.chat_bubble_rounded,
+                    iconBg: const Color(0xFFE8F5E9),
+                    iconColor: const Color(0xFF2E7D32),
+                    title: 'Contact Support',
+                    subtitle: 'Chat with our team',
+                    onTap: _openMessages,
+                  ),
+                  _menuItem(
+                    icon: Icons.star_rounded,
+                    iconBg: const Color(0xFFFFF8E1),
+                    iconColor: const Color(0xFFF9A825),
+                    title: 'Rate TechXPark',
+                    subtitle: 'Share your experience',
+                    onTap: () => _openWebLink(
+                      'https://play.google.com/store/apps/details?id=com.techxpark.parking',
+                    ),
+                  ),
+                  _menuItem(
+                    icon: Icons.share_rounded,
+                    iconBg: const Color(0xFFEEF2FF),
+                    iconColor: const Color(0xFF0029B9),
+                    title: 'Share TechXPark',
+                    subtitle: 'Tell friends about us',
+                    onTap: () => SharePlus.instance.share(
+                      ShareParams(
+                        text:
+                            'Park smarter with TechXPark! Book parking in seconds. Download now: https://techxpark.in',
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
+              _menuCard(
+                title: 'Legal',
+                items: [
+                  _menuItem(
+                    icon: Icons.description_rounded,
+                    iconBg: const Color(0xFFF1F4F9),
+                    iconColor: const Color(0xFF444655),
+                    title: 'Terms of Service',
+                    subtitle: '',
+                    onTap: () => _openWebLink('https://techxpark.in/terms'),
+                  ),
+                  _menuItem(
+                    icon: Icons.privacy_tip_rounded,
+                    iconBg: const Color(0xFFF1F4F9),
+                    iconColor: const Color(0xFF444655),
+                    title: 'Privacy Policy',
+                    subtitle: '',
+                    onTap: () => _openWebLink('https://techxpark.in/privacy'),
+                  ),
+                  _menuItem(
+                    icon: Icons.info_rounded,
+                    iconBg: const Color(0xFFF1F4F9),
+                    iconColor: const Color(0xFF444655),
+                    title: 'About TechXPark',
+                    subtitle: 'Version 1.0.0',
+                    onTap: () => _showAboutDialog(context),
+                  ),
+                ],
+              ),
+              _signOutButton(),
+              _versionFooter(),
+              const SizedBox(height: 110),
+            ]),
           ),
         ],
       ),
     );
   }
 
-  // ═══════════════════════════════════════════════════════════════
-  // STATS SECTION — Bookings, Hours, Balance
-  // ═══════════════════════════════════════════════════════════════
-  Widget _buildStatsSection(String uid) {
-    return StreamBuilder<QuerySnapshot>(
+  Widget _profileHeaderCard(User user) {
+    return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
-          .collection('bookings')
-          .where('userId', isEqualTo: uid)
+          .collection('users')
+          .doc(user.uid)
           .snapshots(),
-      builder: (context, snapshot) {
-        int bookingCount = 0;
-        int totalHours = 0;
-        double balance = 0;
+      builder: (context, snap) {
+        final data = snap.data?.data() as Map<String, dynamic>? ?? {};
+        final name =
+            data['name']?.toString() ?? user.displayName ?? 'TechXPark User';
+        final email = data['email']?.toString() ?? user.email ?? '';
+        final phone = data['phone']?.toString() ?? '';
+        final photoUrl = data['photoUrl']?.toString() ?? user.photoURL ?? '';
+        final totalBookings = (data['totalBookings'] as num?)?.toInt() ?? 0;
+        final totalHours = (data['totalHours'] as num?)?.toInt() ?? 0;
+        final totalSpent = (data['totalSpent'] as num?)?.toInt() ?? 0;
+        final notifications =
+            data['notificationsEnabled'] as bool? ?? _notificationsEnabled;
 
-        if (snapshot.hasData) {
-          bookingCount = snapshot.data!.docs.length;
-          for (var doc in snapshot.data!.docs) {
-            final d = doc.data() as Map<String, dynamic>;
-            totalHours += ((d['durationHours'] as num?) ?? 1).toInt();
-          }
+        if (notifications != _notificationsEnabled) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) setState(() => _notificationsEnabled = notifications);
+          });
         }
 
-        // Fetch wallet balance from user doc
-        return StreamBuilder<DocumentSnapshot>(
-          stream: FirebaseFirestore.instance
-              .collection('users')
-              .doc(uid)
-              .snapshots(),
-          builder: (context, userSnap) {
-            if (userSnap.hasData && userSnap.data!.exists) {
-              final userData = userSnap.data!.data() as Map<String, dynamic>;
-              balance = ((userData['walletBalance'] as num?) ?? 0).toDouble();
-            }
-
-            return SizedBox(
-              height: 96,
-              child: Row(
+        return Container(
+          margin: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 20,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              Row(
                 children: [
-                  // Bookings card
+                  Stack(
+                    children: [
+                      Container(
+                        width: 72,
+                        height: 72,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [Color(0xFF0029B9), Color(0xFF2845D6)],
+                          ),
+                        ),
+                        child: _isUploadingPhoto
+                            ? const Center(
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : photoUrl.isNotEmpty
+                            ? ClipOval(
+                                child: Image.network(
+                                  photoUrl,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      _avatarInitial(name),
+                                ),
+                              )
+                            : _avatarInitial(name),
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: GestureDetector(
+                          onTap: () => _editPhoto(context),
+                          child: Container(
+                            width: 24,
+                            height: 24,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF0029B9),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.camera_alt_rounded,
+                              color: Colors.white,
+                              size: 13,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 16),
                   Expanded(
-                    child: _StatCard(
-                      label: 'BOOKINGS',
-                      value: '$bookingCount',
-                      isPrimary: false,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          name,
+                          style: GoogleFonts.poppins(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF181C20),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          email.isNotEmpty ? email : phone,
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            color: const Color(0xFF757686),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEEF2FF),
+                            borderRadius: BorderRadius.circular(99),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.verified_rounded,
+                                color: Color(0xFF0029B9),
+                                size: 12,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'TechXPark Member',
+                                style: GoogleFonts.poppins(
+                                  color: const Color(0xFF0029B9),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  // Hours card
-                  Expanded(
-                    child: _StatCard(
-                      label: 'HOURS',
-                      value: '$totalHours',
-                      isPrimary: false,
+                  GestureDetector(
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => PersonalInfoScreen(initialData: data),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  // Balance card — highlighted
-                  Expanded(
-                    child: _StatCard(
-                      label: 'BALANCE',
-                      value: '₹${balance.toInt()}',
-                      isPrimary: true,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEEF2FF),
+                        borderRadius: BorderRadius.circular(99),
+                        border: Border.all(color: const Color(0xFFC7D2FE)),
+                      ),
+                      child: Text(
+                        'Edit',
+                        style: GoogleFonts.poppins(
+                          color: const Color(0xFF0029B9),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
                   ),
                 ],
               ),
-            );
-          },
+              const SizedBox(height: 20),
+              const Divider(color: Color(0xFFF1F4F9)),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  _statItem(totalBookings.toString(), 'Bookings'),
+                  _dividerLine(),
+                  _statItem('${totalHours}h', 'Hours'),
+                  _dividerLine(),
+                  _statItem('₹$totalSpent', 'Spent'),
+                ],
+              ),
+            ],
+          ),
         );
       },
     );
   }
 
-  // ═══════════════════════════════════════════════════════════════
-  // MENU GROUP — Grouped menu items in a card
-  // ═══════════════════════════════════════════════════════════════
-  Widget _buildMenuGroup(List<_ProfileMenuItem> items) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.borderLight),
-        boxShadow: AppColors.cardShadow,
+  Widget _avatarInitial(String name) {
+    return Center(
+      child: Text(
+        name.isNotEmpty ? name[0].toUpperCase() : 'U',
+        style: GoogleFonts.poppins(
+          color: Colors.white,
+          fontSize: 28,
+          fontWeight: FontWeight.w700,
+        ),
       ),
+    );
+  }
+
+  Widget _statItem(String value, String label) {
+    return Expanded(
       child: Column(
-        children: items.asMap().entries.map((entry) {
-          final index = entry.key;
-          final item = entry.value;
-          return Column(
-            children: [
-              _buildMenuTile(item),
-              if (index < items.length - 1)
-                const Divider(
-                  height: 0.5,
-                  thickness: 0.5,
-                  color: AppColors.borderLight,
-                  indent: 64,
-                ),
-            ],
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  Widget _buildMenuTile(_ProfileMenuItem item) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          HapticFeedback.selectionClick();
-          item.onTap();
-        },
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            children: [
-              // Icon with tinted background
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: item.iconColor.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(item.icon, color: item.iconColor, size: 20),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Text(
-                  item.label,
-                  style: GoogleFonts.poppins(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textPrimaryLight,
-                  ),
-                ),
-              ),
-              Icon(
-                Icons.chevron_right,
-                color: AppColors.textTertiaryLight,
-                size: 22,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════════════
-  // REFER & EARN BANNER
-  // ═══════════════════════════════════════════════════════════════
-  Widget _buildReferralBanner() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppColors.primary, AppColors.primaryDark],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.2),
-            blurRadius: 32,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Stack(
         children: [
-          // Background gift icon
-          Positioned(
-            right: -12,
-            top: -12,
-            child: Opacity(
-              opacity: 0.2,
-              child: Icon(Icons.redeem, size: 90, color: Colors.white),
+          Text(
+            value,
+            style: GoogleFonts.poppins(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFF0029B9),
             ),
           ),
-
-          // Content
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Refer & Earn 🎁',
-                style: GoogleFonts.poppins(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 8),
-              SizedBox(
-                width: 200,
-                child: Text(
-                  'Invite friends and get ₹500 off your next parking session.',
-                  style: GoogleFonts.poppins(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w400,
-                    color: Colors.white.withValues(alpha: 0.8),
-                    height: 1.5,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              GestureDetector(
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Referral feature coming soon!'),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(999),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.08),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: const Text(
-                    'Invite Friends →',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+          Text(
+            label,
+            style: GoogleFonts.poppins(
+              fontSize: 11,
+              color: const Color(0xFF757686),
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),
     );
   }
 
-  // ═══════════════════════════════════════════════════════════════
-  // SIGN OUT BUTTON
-  // ═══════════════════════════════════════════════════════════════
-  Widget _buildSignOutButton(BuildContext context) {
+  Widget _dividerLine() =>
+      Container(width: 1, height: 36, color: const Color(0xFFF1F4F9));
+
+  Widget _referralCard() {
     return GestureDetector(
-      onTap: () => _confirmSignOut(context),
+      onTap: () => _shareReferral(context),
       child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        margin: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: AppColors.error.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.error),
+          gradient: const LinearGradient(
+            colors: [Color(0xFF0029B9), Color(0xFF1E3A8A)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(20),
         ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.logout, color: AppColors.error, size: 20),
-            const SizedBox(width: 10),
-            Text(
-              'Sign Out',
-              style: GoogleFonts.poppins(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                color: AppColors.error,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Refer & Earn',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Invite friends and get ₹100 off\nyour next parking session.',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white70,
+                      fontSize: 12,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.share_rounded,
+                          color: Color(0xFF0029B9),
+                          size: 14,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Invite Friends',
+                          style: GoogleFonts.poppins(
+                            color: const Color(0xFF0029B9),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
+            ),
+            const Icon(
+              Icons.card_giftcard_rounded,
+              color: Colors.white30,
+              size: 64,
             ),
           ],
         ),
@@ -706,99 +657,381 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // ─── Photo bottom sheet ────────────────────────────────────
-  Future<void> _showPhotoBottomSheet(BuildContext context, User user) async {
-    showModalBottomSheet(
+  Widget _preferencesCard(String uid) {
+    return _menuCard(
+      title: 'Preferences',
+      items: [
+        _menuItemWithToggle(
+          icon: Icons.notifications_rounded,
+          iconBg: const Color(0xFFE3F2FD),
+          iconColor: const Color(0xFF1565C0),
+          title: 'Notifications',
+          subtitle: 'Push, email & SMS alerts',
+          value: _notificationsEnabled,
+          onToggle: (val) async {
+            setState(() => _notificationsEnabled = val);
+            await FirebaseFirestore.instance.collection('users').doc(uid).set({
+              'notificationsEnabled': val,
+              'updatedAt': FieldValue.serverTimestamp(),
+            }, SetOptions(merge: true));
+          },
+        ),
+        _menuItemWithToggle(
+          icon: Icons.dark_mode_rounded,
+          iconBg: const Color(0xFFECECF4),
+          iconColor: const Color(0xFF181C20),
+          title: 'Dark Mode',
+          subtitle: 'Switch app appearance',
+          value: _isDarkMode,
+          onToggle: (val) async {
+            setState(() => _isDarkMode = val);
+            await ThemeController.toggle(val);
+          },
+        ),
+        _menuItem(
+          icon: Icons.language_rounded,
+          iconBg: const Color(0xFFE8F5E9),
+          iconColor: const Color(0xFF2E7D32),
+          title: 'Language',
+          subtitle: 'English (US)',
+          onTap: () => _showLanguagePicker(context),
+        ),
+      ],
+    );
+  }
+
+  Widget _menuCard({required String title, required List<Widget> items}) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 10),
+            child: Text(
+              title.toUpperCase(),
+              style: GoogleFonts.poppins(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF757686),
+                letterSpacing: 1,
+              ),
+            ),
+          ),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 12,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              children: items.asMap().entries.map((e) {
+                final isLast = e.key == items.length - 1;
+                return Column(
+                  children: [
+                    e.value,
+                    if (!isLast)
+                      const Divider(
+                        height: 1,
+                        indent: 64,
+                        color: Color(0xFFF1F4F9),
+                      ),
+                  ],
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _menuItem({
+    required IconData icon,
+    required Color iconBg,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+    Widget? trailing,
+  }) {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        onTap();
+      },
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: iconBg,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: iconColor, size: 20),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF181C20),
+                    ),
+                  ),
+                  if (subtitle.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        color: const Color(0xFF757686),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            trailing ??
+                const Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 14,
+                  color: Color(0xFFC5C5D7),
+                ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _menuItemWithToggle({
+    required IconData icon,
+    required Color iconBg,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onToggle,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: iconBg,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: iconColor, size: 20),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF181C20),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: const Color(0xFF757686),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch.adaptive(
+            value: value,
+            onChanged: onToggle,
+            activeThumbColor: const Color(0xFF0029B9),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _signOutButton() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+      child: GestureDetector(
+        onTap: () => _confirmSignOut(context),
+        child: Container(
+          width: double.infinity,
+          height: 52,
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFF1F1),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFFFCDD2)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.logout_rounded,
+                color: Color(0xFFBA1A1A),
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Sign Out',
+                style: GoogleFonts.poppins(
+                  color: const Color(0xFFBA1A1A),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _versionFooter() {
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          Text(
+            'TechXPark',
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF0029B9),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Version 1.0.0 · Build 1',
+            style: GoogleFonts.poppins(
+              fontSize: 12,
+              color: const Color(0xFFC5C5D7),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Made with love in India',
+            style: GoogleFonts.poppins(
+              fontSize: 11,
+              color: const Color(0xFFC5C5D7),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openBookings() {
+    if (widget.onTabSwitch != null) {
+      widget.onTabSwitch!(2);
+      return;
+    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const MyBookingsScreen()),
+    );
+  }
+
+  void _openMessages() {
+    if (widget.onTabSwitch != null) {
+      widget.onTabSwitch!(3);
+      return;
+    }
+    Navigator.pushNamed(context, '/messages');
+  }
+
+  Future<void> _editPhoto(BuildContext context) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    await showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (ctx) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 12),
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE3E1ED),
-                  borderRadius: BorderRadius.circular(2),
-                ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE3E1ED),
+                borderRadius: BorderRadius.circular(2),
               ),
-              const SizedBox(height: 24),
-              ListTile(
-                leading: const Icon(Icons.camera_alt, color: AppColors.primary),
-                title: const Text(
-                  'Take Photo',
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _pickAndUploadPhoto(context, user.uid, ImageSource.camera);
-                },
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(
+                Icons.camera_alt_rounded,
+                color: Color(0xFF0029B9),
               ),
-              ListTile(
-                leading: const Icon(
-                  Icons.photo_library,
-                  color: AppColors.primary,
-                ),
-                title: const Text(
-                  'Choose from Gallery',
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _pickAndUploadPhoto(context, user.uid, ImageSource.gallery);
-                },
+              title: Text('Take Photo', style: GoogleFonts.poppins()),
+              onTap: () {
+                Navigator.pop(ctx);
+                _pickAndUploadPhoto(user.uid, ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(
+                Icons.photo_library_rounded,
+                color: Color(0xFF0029B9),
               ),
-              if (user.photoURL != null) ...[
-                const Divider(),
-                ListTile(
-                  leading: const Icon(Icons.delete, color: Color(0xFFBA1A1A)),
-                  title: const Text(
-                    'Remove Photo',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFFBA1A1A),
-                    ),
-                  ),
-                  onTap: () async {
-                    Navigator.pop(ctx);
-                    setState(() => _isUploadingPhoto = true);
-                    try {
-                      await FirebaseFirestore.instance
-                          .collection('users')
-                          .doc(user.uid)
-                          .update({'photoUrl': FieldValue.delete()});
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Photo removed')),
-                        );
-                      }
-                    } finally {
-                      setState(() => _isUploadingPhoto = false);
-                    }
-                  },
-                ),
-              ],
-              const SizedBox(height: 16),
-            ],
-          ),
-        );
-      },
+              title: Text('Choose from Gallery', style: GoogleFonts.poppins()),
+              onTap: () {
+                Navigator.pop(ctx);
+                _pickAndUploadPhoto(user.uid, ImageSource.gallery);
+              },
+            ),
+            ListTile(
+              leading: const Icon(
+                Icons.delete_rounded,
+                color: Color(0xFFBA1A1A),
+              ),
+              title: Text(
+                'Remove Photo',
+                style: GoogleFonts.poppins(color: const Color(0xFFBA1A1A)),
+              ),
+              onTap: () async {
+                Navigator.pop(ctx);
+                await _removePhoto(user.uid);
+              },
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
     );
   }
 
-  Future<void> _pickAndUploadPhoto(
-    BuildContext context,
-    String uid,
-    ImageSource source,
-  ) async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(
+  Future<void> _pickAndUploadPhoto(String uid, ImageSource source) async {
+    final picked = await ImagePicker().pickImage(
       source: source,
       maxWidth: 512,
       imageQuality: 85,
@@ -806,231 +1039,166 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (picked == null) return;
 
     setState(() => _isUploadingPhoto = true);
-
     try {
+      final user = FirebaseAuth.instance.currentUser;
       final ref = FirebaseStorage.instance.ref('profile_photos/$uid.jpg');
       await ref.putFile(File(picked.path));
       final url = await ref.getDownloadURL();
-      await FirebaseFirestore.instance.collection('users').doc(uid).update({
+      await FirebaseFirestore.instance.collection('users').doc(uid).set({
         'photoUrl': url,
-      });
-
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Profile photo updated'),
-            backgroundColor: Color(0xFF10B981),
-          ),
-        );
-      }
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+      await user?.updatePhotoURL(url);
+      if (mounted) _showSnack('Profile photo updated');
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Upload failed: $e'),
-            backgroundColor: const Color(0xFFBA1A1A),
-          ),
-        );
-      }
+      if (mounted) _showSnack('Upload failed: $e', error: true);
     } finally {
-      setState(() => _isUploadingPhoto = false);
+      if (mounted) setState(() => _isUploadingPhoto = false);
     }
   }
 
-  // ─── Sign out dialog ───────────────────────────────────────
-  void _confirmSignOut(BuildContext context) {
-    HapticFeedback.lightImpact();
-    showGeneralDialog(
+  Future<void> _removePhoto(String uid) async {
+    setState(() => _isUploadingPhoto = true);
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(uid).set({
+        'photoUrl': '',
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+      await FirebaseAuth.instance.currentUser?.updatePhotoURL('');
+      if (mounted) _showSnack('Profile photo removed');
+    } catch (e) {
+      if (mounted) _showSnack('Could not remove photo: $e', error: true);
+    } finally {
+      if (mounted) setState(() => _isUploadingPhoto = false);
+    }
+  }
+
+  void _shareReferral(BuildContext context) {
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final referralCode = _referralCodeFor(uid);
+    final message =
+        'Join TechXPark and park smarter! Use my code $referralCode for ₹100 off your first booking. Download: https://techxpark.in';
+    SharePlus.instance.share(ShareParams(text: message));
+  }
+
+  String _referralCodeFor(String uid) {
+    if (uid.isEmpty) return 'TXPARK';
+    return uid.substring(0, uid.length < 6 ? uid.length : 6).toUpperCase();
+  }
+
+  Future<void> _openWebLink(String url) async {
+    final uri = Uri.parse(url);
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened && mounted) {
+      _showSnack('Could not open link. Please try again.', error: true);
+    }
+  }
+
+  void _showLanguagePicker(BuildContext context) {
+    const languages = ['English (US)', 'Hindi', 'Punjabi', 'Tamil', 'Telugu'];
+    showModalBottomSheet<void>(
       context: context,
-      barrierDismissible: true,
-      barrierLabel: '',
-      barrierColor: Colors.black54,
-      transitionDuration: const Duration(milliseconds: 300),
-      pageBuilder: (ctx, anim1, anim2) {
-        return Align(
-          alignment: Alignment.bottomCenter,
-          child: Container(
-            margin: const EdgeInsets.all(20),
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-            child: Material(
-              color: Colors.transparent,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.warning_amber_rounded,
-                    color: Colors.orange,
-                    size: 48,
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Sign Out',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF1A1B23),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Your bookings and vehicles will still be saved when you return.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Color(0xFF444655),
-                      fontSize: 14,
-                      height: 1.5,
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => Navigator.pop(ctx),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            side: const BorderSide(color: Color(0xFFC5C5D7)),
-                          ),
-                          child: const Text(
-                            'Cancel',
-                            style: TextStyle(
-                              color: Color(0xFF1A1B23),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            Navigator.pop(ctx);
-                            await FirebaseAuth.instance.signOut();
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFBA1A1A),
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            elevation: 0,
-                          ),
-                          child: const Text(
-                            'Sign Out',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+            const SizedBox(height: 12),
+            ...languages.map(
+              (language) => ListTile(
+                title: Text(language, style: GoogleFonts.poppins()),
+                trailing: language == 'English (US)'
+                    ? const Icon(Icons.check, color: Color(0xFF0029B9))
+                    : null,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showSnack('$language selected');
+                },
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showAboutDialog(BuildContext context) {
+    showAboutDialog(
+      context: context,
+      applicationName: 'TechXPark',
+      applicationVersion: '1.0.0 (Build 1)',
+      applicationLegalese: '© 2026 TechXPark. All rights reserved.',
+    );
+  }
+
+  void _confirmSignOut(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Sign Out?',
+          style: GoogleFonts.poppins(fontWeight: FontWeight.w700),
+        ),
+        content: Text(
+          'You will need to sign in again to access your bookings.',
+          style: GoogleFonts.poppins(color: const Color(0xFF757686)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.poppins(
+                color: const Color(0xFF757686),
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
-        );
-      },
-      transitionBuilder: (ctx, anim1, anim2, child) {
-        return SlideTransition(
-          position: Tween(
-            begin: const Offset(0, 1),
-            end: Offset.zero,
-          ).animate(anim1),
-          child: child,
-        );
-      },
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════
-// STAT CARD — Bookings / Hours / Balance
-// ═══════════════════════════════════════════════════════════════
-class _StatCard extends StatelessWidget {
-  final String label;
-  final String value;
-  final bool isPrimary;
-
-  const _StatCard({
-    required this.label,
-    required this.value,
-    required this.isPrimary,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isPrimary ? AppColors.primary : Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: isPrimary
-                ? const Color(0xFF2845D6).withValues(alpha: 0.2)
-                : const Color(0xFF1A1B23).withValues(alpha: 0.06),
-            blurRadius: 32,
-            offset: const Offset(0, 12),
-          ),
-        ],
-        border: isPrimary
-            ? null
-            : Border.all(color: const Color(0xFFC5C5D7).withValues(alpha: 0.1)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.5,
-              color: isPrimary
-                  ? Colors.white.withValues(alpha: 0.7)
-                  : const Color(0xFF444655),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await GoogleAuthService().signOut();
+              if (context.mounted) safeShowAuthState(context);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFBA1A1A),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(99),
+              ),
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: isPrimary ? Colors.white : AppColors.primary,
+            child: Text(
+              'Sign Out',
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
       ),
     );
   }
-}
 
-// ═══════════════════════════════════════════════════════════════
-// DATA CLASS — Profile Menu Item
-// ═══════════════════════════════════════════════════════════════
-class _ProfileMenuItem {
-  final IconData icon;
-  final String label;
-  final Color iconColor;
-  final VoidCallback onTap;
-
-  const _ProfileMenuItem({
-    required this.icon,
-    required this.label,
-    required this.iconColor,
-    required this.onTap,
-  });
+  void _showSnack(String message, {bool error = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: error ? const Color(0xFFBA1A1A) : AppColors.success,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
 }

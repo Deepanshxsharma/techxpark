@@ -52,7 +52,6 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     setState(() => _isSending = true);
     _controller.clear();
     HapticFeedback.lightImpact();
-    debugPrint('User: $text');
 
     try {
       await _service.sendMessage(text, chatId: widget.chatId);
@@ -92,6 +91,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   Future<void> _handleAction(SupportChatAction action) async {
     HapticFeedback.selectionClick();
     switch (action.type) {
+      case 'navigate':
       case 'navigate_parking':
         final lat = _readDouble(action.payload['latitude']);
         final lng = _readDouble(action.payload['longitude']);
@@ -127,6 +127,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
           ),
         );
         return;
+      case 'retry_payment':
       case 'open_wallet':
         if (!mounted) return;
         await Navigator.of(
@@ -290,14 +291,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
       }
       previousTime = currentTime ?? previousTime;
 
-      widgets.add(
-        _SupportBubble(
-          message: message,
-          onActionTap: message.action == null
-              ? null
-              : () => _handleAction(message.action!),
-        ),
-      );
+      widgets.add(_SupportBubble(message: message, onActionTap: _handleAction));
     }
 
     return widgets;
@@ -397,7 +391,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
 
 class _SupportBubble extends StatelessWidget {
   final SupportChatMessage message;
-  final VoidCallback? onActionTap;
+  final ValueChanged<SupportChatAction>? onActionTap;
 
   const _SupportBubble({required this.message, this.onActionTap});
 
@@ -486,31 +480,41 @@ class _SupportBubble extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (message.action != null && !isUser) ...[
+                if (message.actions.isNotEmpty && !isUser) ...[
                   const SizedBox(height: 8),
-                  TextButton.icon(
-                    onPressed: onActionTap,
-                    style: TextButton.styleFrom(
-                      backgroundColor: AppColors.primary.withValues(
-                        alpha: 0.08,
-                      ),
-                      foregroundColor: AppColors.primary,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 10,
-                      ),
-                    ),
-                    icon: const Icon(Icons.bolt_rounded, size: 16),
-                    label: Text(
-                      message.action!.label,
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: message.actions
+                        .map(
+                          (action) => TextButton.icon(
+                            onPressed: onActionTap == null
+                                ? null
+                                : () => onActionTap!(action),
+                            style: TextButton.styleFrom(
+                              backgroundColor: AppColors.primary.withValues(
+                                alpha: 0.08,
+                              ),
+                              foregroundColor: AppColors.primary,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 10,
+                              ),
+                            ),
+                            icon: const Icon(Icons.bolt_rounded, size: 16),
+                            label: Text(
+                              action.label,
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        )
+                        .toList(),
                   ),
                 ],
               ],

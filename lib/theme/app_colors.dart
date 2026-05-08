@@ -18,11 +18,11 @@ class AppColors {
     colors: [primary, primaryLight],
   );
 
-  static const Color bgLight = Color(0xFFF8F9FC);
-  static const Color bgDark = Color(0xFF0B1120);
+  static const Color bgLight = Color(0xFFF8F9FF);
+  static const Color bgDark = Color(0xFF0F0F1A);
 
   static const Color surfaceLight = Color(0xFFFFFFFF);
-  static const Color surfaceDark = Color(0xFF111B31);
+  static const Color surfaceDark = Color(0xFF1A1A2E);
 
   static const Color textPrimaryLight = Color(0xFF1A1A1A);
   static const Color textSecondaryLight = Color(0xFF6B7280);
@@ -55,7 +55,7 @@ class AppColors {
 
   static List<BoxShadow> get cardShadow => [
     BoxShadow(
-      color: Colors.black.withValues(alpha: 0.06),
+      color: const Color(0xFF000000).withValues(alpha: 0.06),
       blurRadius: 20,
       offset: const Offset(0, 4),
     ),

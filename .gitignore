@@ -24,6 +24,7 @@ ios/Pods/
 ios/.symlinks/
 ios/Flutter/Flutter.framework
 ios/Flutter/Flutter.podspec
+ios/Flutter/Secrets.xcconfig
 ios/Runner/GeneratedPluginRegistrant.*
 
 # ── IDE ───────────────────────────────────────────
@@ -58,6 +59,8 @@ node_modules/
 *.keystore
 **/key.properties
 **/serviceAccountKey.json
+google-services.json
+GoogleService-Info.plist
 
 # ── Seed & Test Data ─────────────────────────────
 gatex-seed/

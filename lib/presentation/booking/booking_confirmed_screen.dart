@@ -66,11 +66,20 @@ class _BookingConfirmedScreenState extends State<BookingConfirmedScreen>
     super.dispose();
   }
 
+  void _goHome() {
+    safePushAndRemoveUntil(context, const MainShell(initialIndex: 0));
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return AnnotatedRegion<SystemUiOverlayStyle>(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _goHome();
+      },
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
       value: isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
       child: Scaffold(
         backgroundColor: isDark ? AppColors.bgDark : const Color(0xFFF9F9FB),
@@ -118,10 +127,7 @@ class _BookingConfirmedScreenState extends State<BookingConfirmedScreen>
                           Icons.arrow_back_rounded,
                           color: isDark ? Colors.white : AppColors.primary,
                         ),
-                        onPressed: () => safePushAndRemoveUntil(
-                          context,
-                          const MainShell(initialIndex: 2),
-                        ),
+                        onPressed: _goHome,
                       ),
                       title: Text(
                         'Confirmation',
@@ -158,6 +164,8 @@ class _BookingConfirmedScreenState extends State<BookingConfirmedScreen>
                           _buildNavigateButton(booking),
                           const SizedBox(height: 12),
                           _buildViewBookingButton(isDark, booking),
+                          const SizedBox(height: 12),
+                          _buildGoHomeButton(isDark),
                           const SizedBox(height: 24),
                           _buildSecondaryActions(isDark, booking),
                           const SizedBox(height: 32),
@@ -194,6 +202,7 @@ class _BookingConfirmedScreenState extends State<BookingConfirmedScreen>
             );
           },
         ),
+      ),
       ),
     );
   }
@@ -651,6 +660,46 @@ class _BookingConfirmedScreenState extends State<BookingConfirmedScreen>
               color: isDark ? Colors.white : const Color(0xFF0F172A),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGoHomeButton(bool isDark) {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        _goHome();
+      },
+      child: Container(
+        height: 56,
+        decoration: BoxDecoration(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: AppColors.primary.withValues(alpha: 0.3),
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.home_rounded,
+              color: AppColors.primary,
+              size: 20,
+            ),
+            const SizedBox(width: 10),
+            Text(
+              'Go to Home',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primary,
+              ),
+            ),
+          ],
         ),
       ),
     );

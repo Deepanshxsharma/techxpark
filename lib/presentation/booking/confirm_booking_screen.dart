@@ -40,12 +40,9 @@ class ConfirmBookingScreen extends StatefulWidget {
 }
 
 class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
-  static const String _upi = 'upi';
-  static const String _card = 'card';
-  static const String _wallet = 'wallet';
   static const String _payAtParking = 'pay_at_parking';
 
-  String _selectedPaymentMethod = _upi;
+  String _selectedPaymentMethod = _payAtParking;
   bool _isProcessing = false;
 
   double get _pricePerHour => _readDouble(
@@ -60,8 +57,6 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
   double get _basePrice => _pricePerHour * _durationHours;
   double get _gst => _basePrice * 0.18;
   double get _total => _basePrice + _gst;
-  bool get _isOfflinePayment => _selectedPaymentMethod == _payAtParking;
-
   String get _vehicleNumber {
     final raw =
         widget.vehicle['number'] ??
@@ -78,8 +73,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
     return value.isEmpty ? 'Car' : value;
   }
 
-  String get _paymentButtonLabel =>
-      _isOfflinePayment ? 'Reserve Slot' : 'Pay Now';
+  String get _paymentButtonLabel => 'Reserve Slot';
 
   Future<bool> _hasInternetConnection() async {
     try {
@@ -162,14 +156,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
       return;
     }
 
-    debugPrint('Payment method: $_selectedPaymentMethod');
-    debugPrint('Total: $_total');
-
     try {
-      if (!_isOfflinePayment) {
-        await Future<void>.delayed(const Duration(seconds: 2));
-      }
-
       final result = await BookingService.instance
           .createBooking(
             parkingId: widget.parkingId,
@@ -190,14 +177,10 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
             bookingType: 'Standard',
             vehicle: _bookingVehiclePayload(),
             paymentMethod: _paymentMethodLabel(_selectedPaymentMethod),
-            paymentStatus: _isOfflinePayment ? 'pending' : 'paid',
-            paymentMode: _isOfflinePayment ? 'offline' : 'online',
-            paymentGateway: _isOfflinePayment
-                ? 'manual_collection'
-                : 'mock_gateway',
-            paymentReference: _isOfflinePayment
-                ? ''
-                : 'SIM-${DateTime.now().millisecondsSinceEpoch}',
+            paymentStatus: 'pending',
+            paymentMode: 'offline',
+            paymentGateway: 'manual_collection',
+            paymentReference: '',
           )
           .timeout(
             const Duration(seconds: 15),
@@ -253,11 +236,11 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
     } on TimeoutException catch (_) {
       if (!mounted) return;
       setState(() => _isProcessing = false);
-      _showSnack('Payment failed. Try again.', retry: _handlePayment);
+      _showSnack('Reservation failed. Try again.', retry: _handlePayment);
     } catch (_) {
       if (!mounted) return;
       setState(() => _isProcessing = false);
-      _showSnack('Payment failed. Try again.', retry: _handlePayment);
+      _showSnack('Reservation failed. Try again.', retry: _handlePayment);
     }
   }
 
@@ -314,8 +297,6 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                         _buildSummaryCard(),
                         const SizedBox(height: 20),
                         _buildBillingCard(),
-                        const SizedBox(height: 20),
-                        _buildOnlineSection(),
                         const SizedBox(height: 20),
                         _buildOfflineSection(),
                         const SizedBox(height: 18),
@@ -402,7 +383,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(
-                      _isOfflinePayment ? 'Reserve at Gate' : 'Ready to Pay',
+                      'Reserve at Gate',
                       style: GoogleFonts.poppins(
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
@@ -510,59 +491,6 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
     );
   }
 
-  Widget _buildOnlineSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'Online Payment',
-                style: GoogleFonts.poppins(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF1A1C1D),
-                ),
-              ),
-            ),
-            _SectionPill(label: 'Instant'),
-          ],
-        ),
-        const SizedBox(height: 14),
-        _PaymentMethodCard(
-          title: 'UPI Payments',
-          subtitle: 'Google Pay, PhonePe, Paytm',
-          icon: Icons.account_balance_wallet_rounded,
-          selected: _selectedPaymentMethod == _upi,
-          onTap: () => _selectPaymentMethod(_upi),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _CompactPaymentOption(
-                label: 'Card',
-                icon: Icons.credit_card_rounded,
-                selected: _selectedPaymentMethod == _card,
-                onTap: () => _selectPaymentMethod(_card),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _CompactPaymentOption(
-                label: 'Wallet',
-                icon: Icons.account_balance_wallet_outlined,
-                selected: _selectedPaymentMethod == _wallet,
-                onTap: () => _selectPaymentMethod(_wallet),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
   Widget _buildOfflineSection() {
     final selected = _selectedPaymentMethod == _payAtParking;
 
@@ -581,22 +509,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
                 ),
               ),
             ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFDAD2),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                'No online payment required',
-                style: GoogleFonts.poppins(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.4,
-                  color: const Color(0xFF8A1B00),
-                ),
-              ),
-            ),
+            const _SectionPill(label: 'Gate payment'),
           ],
         ),
         const SizedBox(height: 14),
@@ -708,7 +621,7 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
           const Icon(Icons.lock_rounded, size: 16, color: Color(0x66757687)),
           const SizedBox(width: 8),
           Text(
-            '100% secure payments',
+            'SECURE RESERVATION',
             style: GoogleFonts.poppins(
               fontSize: 11,
               fontWeight: FontWeight.w800,
@@ -728,15 +641,9 @@ class _ConfirmBookingScreenState extends State<ConfirmBookingScreen> {
 
   String _paymentMethodLabel(String method) {
     switch (method) {
-      case _card:
-        return 'Card';
-      case _wallet:
-        return 'Wallet';
       case _payAtParking:
-        return 'Pay at Parking';
-      case _upi:
       default:
-        return 'UPI';
+        return 'Pay at Parking';
     }
   }
 
@@ -915,150 +822,6 @@ class _SectionPill extends StatelessWidget {
           fontWeight: FontWeight.w800,
           letterSpacing: 0.6,
           color: const Color(0xFF303C9A),
-        ),
-      ),
-    );
-  }
-}
-
-class _PaymentMethodCard extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _PaymentMethodCard({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        width: double.infinity,
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: selected ? AppColors.primary : const Color(0x00FFFFFF),
-            width: 2,
-          ),
-          boxShadow: selected
-              ? [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.14),
-                    blurRadius: 18,
-                    offset: const Offset(0, 8),
-                  ),
-                ]
-              : AppColors.cardShadow,
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              alignment: Alignment.center,
-              child: Icon(icon, color: AppColors.primary),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: GoogleFonts.poppins(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF1A1C1D),
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      color: const Color(0xFF757687),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            _RadioIndicator(selected: selected),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CompactPaymentOption extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _CompactPaymentOption({
-    required this.label,
-    required this.icon,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: selected ? AppColors.primary : const Color(0x00FFFFFF),
-            width: 1.5,
-          ),
-          boxShadow: AppColors.cardShadow,
-        ),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              size: 20,
-              color: selected ? AppColors.primary : const Color(0xFF4955B3),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                label,
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF1A1C1D),
-                ),
-              ),
-            ),
-            if (selected)
-              const Icon(
-                Icons.done_rounded,
-                size: 18,
-                color: AppColors.primary,
-              ),
-          ],
         ),
       ),
     );

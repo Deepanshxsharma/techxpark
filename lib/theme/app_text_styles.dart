@@ -112,7 +112,7 @@ class AppTextStyles {
     fontFamily: 'Poppins',
     fontSize: 15,
     fontWeight: FontWeight.w700,
-    color: Colors.white,
+    color: Color(0xFFFFFFFF),
   );
 
   static const TextStyle textButton = TextStyle(

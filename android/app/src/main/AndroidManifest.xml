@@ -3,13 +3,18 @@
     <!-- ✅ Push Notification Permissions (Android 13+) -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-permission android:name="android.permission.CAMERA"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.VIBRATE"/>
 
     <application
-        android:label="Techxpark"
+        android:label="TechXPark"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:usesCleartextTraffic="false">
 
         <!-- ✅ FCM Default Notification Channel -->
         <meta-data
@@ -27,7 +32,7 @@
         <!-- ✅ Google Maps API Key -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyC1s15SNBpRhFp5NGBeH63rKB2yKVV6gyU"/>
+            android:value="${googleMapsApiKey}"/>
 
         <!-- ✅ FCM Service Declaration -->
         <service

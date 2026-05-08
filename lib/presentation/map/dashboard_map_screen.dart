@@ -12,12 +12,14 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../theme/app_colors.dart';
+import '../../services/map_service.dart';
 import '../../services/parking_filter_service.dart';
 import '../booking/my_bookings_screen.dart';
 import '../booking/parking_timer_screen.dart';
 import '../notifications/notifications_screen.dart';
 import '../parking_details/lot_detail_navigation.dart';
 import '../search/search_parking_screen.dart';
+import '../../widgets/welcome_poster_modal.dart';
 
 const Color _surfaceLow = AppColors.activeBlueLight;
 const Color _onSurface = AppColors.textPrimary;
@@ -33,7 +35,8 @@ class DashboardMapScreen extends StatefulWidget {
   State<DashboardMapScreen> createState() => _DashboardMapScreenState();
 }
 
-class _DashboardMapScreenState extends State<DashboardMapScreen> {
+class _DashboardMapScreenState extends State<DashboardMapScreen>
+    with AutomaticKeepAliveClientMixin {
   static const Color _primary = AppColors.primary;
   static const Color _primaryContainer = AppColors.primaryLight;
   static const Color _background = AppColors.background;
@@ -59,14 +62,82 @@ class _DashboardMapScreenState extends State<DashboardMapScreen> {
   String? _locationName;
   LatLng? _userPosition;
   bool _isLocating = true;
+  bool _hasLoadedPosition = false;
+  bool _showWelcomePoster = false;
+  GoogleMapController? _homeMapController;
+
+  static bool _hasShownPoster = false;
+
+  late final Stream<QuerySnapshot<Map<String, dynamic>>> _notificationsStream;
+  late final Stream<QuerySnapshot<Map<String, dynamic>>> _activeBookingsStream;
+  late final Stream<QuerySnapshot<Map<String, dynamic>>> _recentBookingsStream;
+  late final Stream<QuerySnapshot<Map<String, dynamic>>> _evLotsStream;
+  late final Stream<QuerySnapshot<Map<String, dynamic>>> _nearbyLotsStream;
 
   @override
   void initState() {
     super.initState();
-    _fetchLocation();
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+
+    _notificationsStream = userId == null
+        ? const Stream<QuerySnapshot<Map<String, dynamic>>>.empty()
+        : FirebaseFirestore.instance
+              .collection('notifications')
+              .where('userId', isEqualTo: userId)
+              .where('read', isEqualTo: false)
+              .snapshots();
+
+    _activeBookingsStream = userId == null
+        ? const Stream<QuerySnapshot<Map<String, dynamic>>>.empty()
+        : FirebaseFirestore.instance
+              .collection('bookings')
+              .where('userId', isEqualTo: userId)
+              .snapshots();
+
+    _recentBookingsStream = userId == null
+        ? const Stream<QuerySnapshot<Map<String, dynamic>>>.empty()
+        : FirebaseFirestore.instance
+              .collection('bookings')
+              .where('userId', isEqualTo: userId)
+              .limit(20)
+              .snapshots();
+
+    _evLotsStream = FirebaseFirestore.instance
+        .collection('parking_locations')
+        .where('has_ev', isEqualTo: true)
+        .limit(50)
+        .snapshots();
+
+    _nearbyLotsStream = ParkingFilterService.streamParking(
+      ParkingFilterService.allFilterLabel,
+    );
+
+    MapService.loadMarkerIcons().then((_) {
+      if (mounted) setState(() {});
+    });
+    _loadUserPosition();
+
+    if (!_hasShownPoster) {
+      _hasShownPoster = true;
+      Future<void>.delayed(const Duration(milliseconds: 1200), () {
+        if (!mounted) return;
+        setState(() => _showWelcomePoster = true);
+      });
+    }
   }
 
-  Future<void> _fetchLocation() async {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  void dispose() {
+    _homeMapController?.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadUserPosition({bool forceRefresh = false}) async {
+    if (_hasLoadedPosition && !forceRefresh) return;
+    _hasLoadedPosition = true;
     if (!mounted) return;
     setState(() {
       _isLocating = true;
@@ -201,6 +272,7 @@ class _DashboardMapScreenState extends State<DashboardMapScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: Scaffold(
@@ -212,6 +284,7 @@ class _DashboardMapScreenState extends State<DashboardMapScreen> {
               slivers: [
                 SliverToBoxAdapter(child: _buildHeroHeader()),
                 SliverToBoxAdapter(child: _buildFilterPills()),
+                SliverToBoxAdapter(child: _buildHomeMapPreview()),
                 SliverToBoxAdapter(child: _buildActiveTicket()),
                 SliverToBoxAdapter(child: _buildQuickActions()),
                 SliverToBoxAdapter(child: _buildNearbySection()),
@@ -219,6 +292,16 @@ class _DashboardMapScreenState extends State<DashboardMapScreen> {
                 const SliverToBoxAdapter(child: SizedBox(height: 100)),
               ],
             ),
+            if (_showWelcomePoster)
+              Positioned.fill(
+                child: WelcomePosterModal(
+                  initialUserPosition: _userPosition,
+                  onClose: () {
+                    if (!mounted) return;
+                    setState(() => _showWelcomePoster = false);
+                  },
+                ),
+              ),
           ],
         ),
       ),
@@ -251,7 +334,7 @@ class _DashboardMapScreenState extends State<DashboardMapScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   GestureDetector(
-                    onTap: _fetchLocation,
+                    onTap: () => _loadUserPosition(forceRefresh: true),
                     child: Container(
                       constraints: BoxConstraints(
                         maxWidth: MediaQuery.of(context).size.width * 0.65,
@@ -319,11 +402,7 @@ class _DashboardMapScreenState extends State<DashboardMapScreen> {
                         ),
                         if (userId != null)
                           StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                            stream: FirebaseFirestore.instance
-                                .collection('notifications')
-                                .where('userId', isEqualTo: userId)
-                                .where('read', isEqualTo: false)
-                                .snapshots(),
+                            stream: _notificationsStream,
                             builder: (context, snapshot) {
                               final count = snapshot.data?.docs.length ?? 0;
                               if (count == 0) {
@@ -523,20 +602,166 @@ class _DashboardMapScreenState extends State<DashboardMapScreen> {
     );
   }
 
+  Widget _buildHomeMapPreview() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 18, 24, 0),
+      child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: _nearbyLotsStream,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting &&
+              !snapshot.hasData) {
+            return Container(
+              height: 220,
+              decoration: BoxDecoration(
+                color: _surfaceLow,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              alignment: Alignment.center,
+              child: const CircularProgressIndicator(
+                strokeWidth: 2,
+                color: AppColors.primary,
+              ),
+            );
+          }
+
+          if (snapshot.hasError) {
+            return const _InfoBlock(
+              icon: Icons.map_outlined,
+              text: 'Unable to load map data',
+            );
+          }
+
+          final lots =
+              (snapshot.data?.docs ?? const [])
+                  .map(_DashboardParkingLot.fromFirestore)
+                  .where((lot) => lot.latitude != 0 || lot.longitude != 0)
+                  .toList()
+                ..sort((a, b) => a.compareDistance(b, _userPosition));
+
+          final center =
+              _userPosition ??
+              (lots.isNotEmpty
+                  ? LatLng(lots.first.latitude, lots.first.longitude)
+                  : const LatLng(28.6139, 77.2090));
+          final markers = lots
+              .take(30)
+              .map((lot) {
+                return MapService.createSmartMarker(
+                  id: 'home_${lot.id}',
+                  data: lot.toRouteMap(_userPosition),
+                  onTap: () => _openSlotSelection(lot),
+                );
+              })
+              .whereType<Marker>()
+              .toSet();
+
+          return Container(
+            height: 220,
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 24,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                GoogleMap(
+                  initialCameraPosition: CameraPosition(
+                    target: center,
+                    zoom: _userPosition == null ? 12 : 14,
+                  ),
+                  markers: markers,
+                  myLocationEnabled: _userPosition != null,
+                  myLocationButtonEnabled: false,
+                  mapToolbarEnabled: false,
+                  zoomControlsEnabled: false,
+                  compassEnabled: false,
+                  onMapCreated: (controller) {
+                    _homeMapController = controller;
+                    controller.animateCamera(
+                      CameraUpdate.newLatLngZoom(
+                        center,
+                        _userPosition == null ? 12 : 14,
+                      ),
+                    );
+                  },
+                ),
+                Positioned(
+                  left: 14,
+                  right: 14,
+                  bottom: 14,
+                  child: GestureDetector(
+                    onTap: _openSearch,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.94),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.map_rounded,
+                            color: AppColors.primary,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              lots.isEmpty
+                                  ? 'Open live parking map'
+                                  : '${lots.length} parking locations on map',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.poppins(
+                                color: _onSurface,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          const Icon(
+                            Icons.arrow_forward_rounded,
+                            color: AppColors.primary,
+                            size: 18,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   Widget _buildActiveTicket() {
     final userId = FirebaseAuth.instance.currentUser?.uid;
     if (userId == null) return const SizedBox.shrink();
 
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance
-          .collection('bookings')
-          .where('userId', isEqualTo: userId)
-          .where('status', whereIn: const ['active', 'upcoming'])
-          .limit(5)
-          .snapshots(),
+      stream: _activeBookingsStream,
       builder: (context, snapshot) {
+        debugPrint(
+          '[DashTicket] connState=${snapshot.connectionState} '
+          'hasData=${snapshot.hasData} hasError=${snapshot.hasError} '
+          'docCount=${snapshot.data?.docs.length ?? 0}',
+        );
+
         if (snapshot.hasError) {
-          debugPrint('Active ticket error: ${snapshot.error}');
+          debugPrint('[DashTicket] ERROR: ${snapshot.error}');
           return const SizedBox.shrink();
         }
 
@@ -549,6 +774,9 @@ class _DashboardMapScreenState extends State<DashboardMapScreen> {
         }
 
         final booking = _bestBooking(snapshot.data?.docs ?? const []);
+        debugPrint(
+          '[DashTicket] resolved booking: ${booking?.parkingName ?? 'NONE'}',
+        );
 
         if (booking == null) {
           return const SizedBox.shrink();
@@ -623,8 +851,6 @@ class _DashboardMapScreenState extends State<DashboardMapScreen> {
   }
 
   Widget _buildQuickActions() {
-    final userId = FirebaseAuth.instance.currentUser?.uid;
-
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 32, 24, 0),
       child: Column(
@@ -644,11 +870,7 @@ class _DashboardMapScreenState extends State<DashboardMapScreen> {
             children: [
               Expanded(
                 child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                  stream: FirebaseFirestore.instance
-                      .collection('parking_locations')
-                      .where('has_ev', isEqualTo: true)
-                      .limit(50)
-                      .snapshots(),
+                  stream: _evLotsStream,
                   builder: (context, snapshot) {
                     final evCount = (snapshot.data?.docs ?? const [])
                         .map(_DashboardParkingLot.fromFirestore)
@@ -672,21 +894,7 @@ class _DashboardMapScreenState extends State<DashboardMapScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                  stream: userId == null
-                      ? const Stream.empty()
-                      : FirebaseFirestore.instance
-                            .collection('bookings')
-                            .where('userId', isEqualTo: userId)
-                            .where(
-                              'status',
-                              whereIn: const [
-                                'completed',
-                                'active',
-                                'upcoming',
-                              ],
-                            )
-                            .limit(10)
-                            .snapshots(),
+                  stream: _recentBookingsStream,
                   builder: (context, snapshot) {
                     final count = snapshot.data?.docs.length ?? 0;
                     return _QuickActionCard(
@@ -783,7 +991,7 @@ class _DashboardMapScreenState extends State<DashboardMapScreen> {
           ),
           const SizedBox(height: 20),
           StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-            stream: ParkingFilterService.streamParking(_activeFilter),
+            stream: _nearbyLotsStream,
             builder: (context, snapshot) {
               // ── 🔍 DEBUG: trace the full data pipeline ──
               debugPrint(
@@ -1098,7 +1306,7 @@ class _DashboardTicketCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isUpcoming = booking.status == 'upcoming';
+    final isUpcoming = booking.isUpcomingAt(DateTime.now());
     final accent = isUpcoming ? AppColors.warning : AppColors.primary;
 
     return DecoratedBox(
@@ -1376,7 +1584,7 @@ class _TicketCountdownState extends State<_TicketCountdown> {
 
   @override
   Widget build(BuildContext context) {
-    final isUpcoming = widget.booking.status == 'upcoming';
+    final isUpcoming = widget.booking.isUpcomingAt(_now);
     final remaining = widget.booking.remainingAt(_now);
     final elapsed = widget.booking.elapsedAt(_now);
     final total = widget.booking.totalDuration;
@@ -2150,6 +2358,8 @@ class _DashboardBooking {
     return end.isAfter(now);
   }
 
+  bool isUpcomingAt(DateTime now) => start.isAfter(now);
+
   Duration remainingAt(DateTime now) {
     final remaining = end.difference(now);
     return remaining.isNegative ? Duration.zero : remaining;
@@ -2163,7 +2373,7 @@ class _DashboardBooking {
   }
 
   double progressAt(DateTime now) {
-    if (status == 'upcoming') return 0;
+    if (isUpcomingAt(now)) return 0;
     final totalSeconds = totalDuration.inSeconds;
     if (totalSeconds <= 0) return 1;
     return (elapsedAt(now).inSeconds / totalSeconds).clamp(0, 1);
@@ -2369,10 +2579,26 @@ _DashboardBooking? _bestBooking(
   List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
 ) {
   final now = DateTime.now();
-  final bookings = docs
-      .map(_DashboardBooking.fromFirestore)
-      .where((booking) => booking.isCurrent(now))
-      .toList();
+  debugPrint('[DashTicket] _bestBooking: ${docs.length} raw docs, now=$now');
+
+  final parsed = <_DashboardBooking>[];
+  for (final doc in docs) {
+    try {
+      final b = _DashboardBooking.fromFirestore(doc);
+      debugPrint(
+        '[DashTicket]   doc=${doc.id} status=${b.status} '
+        'start=${b.start} end=${b.end} '
+        'isBookable=${b.isBookableStatus} isCurrent=${b.isCurrent(now)}',
+      );
+      parsed.add(b);
+    } catch (e) {
+      debugPrint('[DashTicket]   ERROR parsing doc ${doc.id}: $e');
+    }
+  }
+
+  final bookings = parsed.where((b) => b.isCurrent(now)).toList();
+  debugPrint('[DashTicket] _bestBooking: ${bookings.length} current bookings');
+
   if (bookings.isEmpty) return null;
 
   bookings.sort((a, b) {

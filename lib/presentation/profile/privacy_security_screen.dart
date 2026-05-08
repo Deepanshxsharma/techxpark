@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
+import '../../config/legal_links.dart';
 import '../../theme/app_colors.dart';
 
 /// Privacy & Security Screen — Stitch design.
@@ -35,6 +36,18 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
       });
     } catch (e) {
       setState(() => _appVersion = 'TechXPark v2.4.1');
+    }
+  }
+
+  Future<void> _openExternalLink(Future<bool> Function() opener) async {
+    final opened = await opener();
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not open this link. Please try again.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
@@ -253,18 +266,20 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
                     _tile(
                       icon: Icons.visibility_off_outlined,
                       iconBg: AppColors.primary,
-                      title: 'Data Privacy',
-                      subtitle: 'Manage your data preferences',
+                      title: 'Privacy Policy',
+                      subtitle: 'How TechXPark handles your data',
                       isDark: isDark,
-                      onTap: () {},
+                      onTap: () =>
+                          _openExternalLink(LegalLinks.openPrivacyPolicy),
                     ),
                     _tile(
-                      icon: Icons.cookie_outlined,
+                      icon: Icons.description_outlined,
                       iconBg: Colors.orange,
-                      title: 'Cookie Settings',
-                      subtitle: 'Manage tracking preferences',
+                      title: 'Terms of Service',
+                      subtitle: 'Review app usage terms',
                       isDark: isDark,
-                      onTap: () {},
+                      onTap: () =>
+                          _openExternalLink(LegalLinks.openTermsOfService),
                     ),
                   ]),
 

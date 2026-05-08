@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 class AdminRevenueScreen extends StatefulWidget {
   const AdminRevenueScreen({super.key});
@@ -9,7 +8,8 @@ class AdminRevenueScreen extends StatefulWidget {
   State<AdminRevenueScreen> createState() => _AdminRevenueScreenState();
 }
 
-class _AdminRevenueScreenState extends State<AdminRevenueScreen> with SingleTickerProviderStateMixin {
+class _AdminRevenueScreenState extends State<AdminRevenueScreen>
+    with SingleTickerProviderStateMixin {
   // State
   bool _isMonthly = false;
 
@@ -31,17 +31,27 @@ class _AdminRevenueScreenState extends State<AdminRevenueScreen> with SingleTick
     return Scaffold(
       backgroundColor: _bgLight,
       appBar: AppBar(
-        title: Text("Revenue Analytics", style: TextStyle(color: _darkHeader, fontWeight: FontWeight.w900, fontSize: 20)),
+        title: Text(
+          "Revenue Analytics",
+          style: TextStyle(
+            color: _darkHeader,
+            fontWeight: FontWeight.w900,
+            fontSize: 20,
+          ),
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: false,
         iconTheme: IconThemeData(color: _darkHeader),
       ),
-      
+
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection("bookings")
-            .where("created_at", isGreaterThanOrEqualTo: Timestamp.fromDate(_startDate))
+            .where(
+              "created_at",
+              isGreaterThanOrEqualTo: Timestamp.fromDate(_startDate),
+            )
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -56,12 +66,16 @@ class _AdminRevenueScreenState extends State<AdminRevenueScreen> with SingleTick
 
           for (final d in docs) {
             final data = d.data() as Map<String, dynamic>;
-            
+
             // Skip cancelled/refunded
-            if (data["status"] == "cancelled" || data["status"] == "refunded") continue;
+            if (data["status"] == "cancelled" || data["status"] == "refunded")
+              continue;
 
             final price = (data["total_price"] ?? 0).toDouble();
-            final parking = data["parkingName"] ?? data["parking_name"] ?? "Unknown Location";
+            final parking =
+                data["parkingName"] ??
+                data["parking_name"] ??
+                "Unknown Location";
 
             totalRevenue += price;
             transactionCount++;
@@ -92,8 +106,22 @@ class _AdminRevenueScreenState extends State<AdminRevenueScreen> with SingleTick
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text("Performance", style: TextStyle(color: _darkHeader, fontSize: 18, fontWeight: FontWeight.bold)),
-                          Text("Top Earner First", style: TextStyle(color: Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.w600)),
+                          Text(
+                            "Performance",
+                            style: TextStyle(
+                              color: _darkHeader,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            "Top Earner First",
+                            style: TextStyle(
+                              color: Colors.grey.shade500,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 15),
@@ -109,18 +137,21 @@ class _AdminRevenueScreenState extends State<AdminRevenueScreen> with SingleTick
                 SliverPadding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final entry = sortedParking[index];
-                        // Calculate percentage for progress bar
-                        final percent = totalRevenue == 0 ? 0.0 : (entry.value / totalRevenue);
-                        return _buildPerformanceRow(entry.key, entry.value, percent);
-                      },
-                      childCount: sortedParking.length,
-                    ),
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      final entry = sortedParking[index];
+                      // Calculate percentage for progress bar
+                      final percent = totalRevenue == 0
+                          ? 0.0
+                          : (entry.value / totalRevenue);
+                      return _buildPerformanceRow(
+                        entry.key,
+                        entry.value,
+                        percent,
+                      );
+                    }, childCount: sortedParking.length),
                   ),
                 ),
-                
+
               const SliverPadding(padding: EdgeInsets.only(bottom: 50)),
             ],
           );
@@ -159,7 +190,14 @@ class _AdminRevenueScreenState extends State<AdminRevenueScreen> with SingleTick
           decoration: BoxDecoration(
             color: isSelected ? Colors.white : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
-            boxShadow: isSelected ? [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4)] : [],
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 4,
+                    ),
+                  ]
+                : [],
           ),
           child: Center(
             child: Text(
@@ -182,20 +220,35 @@ class _AdminRevenueScreenState extends State<AdminRevenueScreen> with SingleTick
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [const Color(0xFF10B981), const Color(0xFF059669)], // Emerald Gradient
+          colors: [
+            const Color(0xFF10B981),
+            const Color(0xFF059669),
+          ], // Emerald Gradient
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(color: const Color(0xFF10B981).withValues(alpha: 0.4), blurRadius: 20, offset: const Offset(0, 10)),
+          BoxShadow(
+            color: const Color(0xFF10B981).withValues(alpha: 0.4),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
         ],
       ),
       child: Stack(
         children: [
           // Background Decor
-          Positioned(right: -20, top: -20, child: Icon(Icons.currency_rupee, size: 120, color: Colors.white.withValues(alpha: 0.1))),
-          
+          Positioned(
+            right: -20,
+            top: -20,
+            child: Icon(
+              Icons.currency_rupee,
+              size: 120,
+              color: Colors.white.withValues(alpha: 0.1),
+            ),
+          ),
+
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -203,18 +256,28 @@ class _AdminRevenueScreenState extends State<AdminRevenueScreen> with SingleTick
                 children: [
                   Container(
                     padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(10)),
-                    child: const Icon(Icons.auto_graph_rounded, color: Colors.white, size: 18),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.auto_graph_rounded,
+                      color: Colors.white,
+                      size: 18,
+                    ),
                   ),
                   const SizedBox(width: 10),
                   Text(
                     _isMonthly ? "Monthly Income" : "Daily Income",
-                    style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ),
               const SizedBox(height: 20),
-              
+
               // Animated Counter
               TweenAnimationBuilder<double>(
                 tween: Tween<double>(begin: 0, end: total),
@@ -223,14 +286,22 @@ class _AdminRevenueScreenState extends State<AdminRevenueScreen> with SingleTick
                 builder: (context, value, child) {
                   return Text(
                     "₹${value.toStringAsFixed(0)}",
-                    style: const TextStyle(fontSize: 42, fontWeight: FontWeight.w900, color: Colors.white, height: 1.0),
+                    style: const TextStyle(
+                      fontSize: 42,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      height: 1.0,
+                    ),
                   );
                 },
               ),
               const SizedBox(height: 8),
               Text(
                 "$txCount successful transactions",
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 13),
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.8),
+                  fontSize: 13,
+                ),
               ),
             ],
           ),
@@ -246,7 +317,13 @@ class _AdminRevenueScreenState extends State<AdminRevenueScreen> with SingleTick
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -257,15 +334,32 @@ class _AdminRevenueScreenState extends State<AdminRevenueScreen> with SingleTick
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: _darkHeader)),
+                    Text(
+                      name,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                        color: _darkHeader,
+                      ),
+                    ),
                     const SizedBox(height: 4),
-                    Text("${(percent * 100).toStringAsFixed(1)}% of total", style: TextStyle(color: Colors.grey.shade400, fontSize: 11)),
+                    Text(
+                      "${(percent * 100).toStringAsFixed(1)}% of total",
+                      style: TextStyle(
+                        color: Colors.grey.shade400,
+                        fontSize: 11,
+                      ),
+                    ),
                   ],
                 ),
               ),
               Text(
                 "₹${amount.toStringAsFixed(0)}",
-                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: _moneyGreen),
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 18,
+                  color: _moneyGreen,
+                ),
               ),
             ],
           ),
@@ -293,7 +387,13 @@ class _AdminRevenueScreenState extends State<AdminRevenueScreen> with SingleTick
           children: [
             Icon(Icons.savings_outlined, size: 60, color: Colors.grey.shade300),
             const SizedBox(height: 10),
-            Text("No revenue yet", style: TextStyle(color: Colors.grey.shade400, fontWeight: FontWeight.bold)),
+            Text(
+              "No revenue yet",
+              style: TextStyle(
+                color: Colors.grey.shade400,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ],
         ),
       ),

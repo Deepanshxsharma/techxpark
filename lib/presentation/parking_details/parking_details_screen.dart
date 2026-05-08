@@ -12,7 +12,6 @@ import '../../services/map_service.dart';
 import '../../services/navigation_service.dart';
 import '../../theme/app_colors.dart';
 import '../booking/booking_time_screen.dart';
-import '../parking_map/parking_map_screen.dart';
 
 class ParkingDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> data;
@@ -32,6 +31,7 @@ class _ParkingDetailsScreenState extends State<ParkingDetailsScreen> {
   late final String _parkingId;
   bool _isSaved = false;
   bool _isSaveLoading = true;
+  bool _showLiveAvailability = false;
   double? _distanceMeters;
 
   @override
@@ -122,21 +122,9 @@ class _ParkingDetailsScreenState extends State<ParkingDetailsScreen> {
     );
   }
 
-  void _openLiveAvailability(Map<String, dynamic> data) {
-    final lat = _readDouble(data['latitude'] ?? data['lat']);
-    final lng = _readDouble(data['longitude'] ?? data['lng']);
-    if (lat == null || lng == null) return;
-
+  void _toggleLiveAvailability() {
     HapticFeedback.selectionClick();
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => ParkingMapScreen(
-          lat: lat,
-          lng: lng,
-          name: _readString(data['name'], fallback: 'Parking'),
-        ),
-      ),
-    );
+    setState(() => _showLiveAvailability = !_showLiveAvailability);
   }
 
   void _openBooking(Map<String, dynamic> data, {required bool isAvailable}) {
@@ -175,12 +163,32 @@ class _ParkingDetailsScreenState extends State<ParkingDetailsScreen> {
           if (liveData != null) ...liveData,
           'id': _parkingId,
         };
-        return _buildScaffold(merged);
+        return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+          stream: FirebaseFirestore.instance
+              .collection(widget.collectionName)
+              .doc(_parkingId)
+              .collection('slots')
+              .snapshots(),
+          builder: (context, slotSnapshot) {
+            final slotAvailability = _LiveSlotAvailability.fromDocs(
+              slotSnapshot.data?.docs ?? const [],
+            );
+            return _buildScaffold(
+              merged,
+              liveAvailability: slotAvailability.hasSlots
+                  ? slotAvailability
+                  : null,
+            );
+          },
+        );
       },
     );
   }
 
-  Widget _buildScaffold(Map<String, dynamic> data) {
+  Widget _buildScaffold(
+    Map<String, dynamic> data, {
+    _LiveSlotAvailability? liveAvailability,
+  }) {
     final topInset = MediaQuery.of(context).padding.top;
     final appBarHeight = topInset + 72.0;
 
@@ -198,10 +206,15 @@ class _ParkingDetailsScreenState extends State<ParkingDetailsScreen> {
           data['price_per_hour'] ?? data['pricePerHour'] ?? data['price'],
         ) ??
         0;
-    final availableSlots = _readInt(
+    final fallbackAvailableSlots = _readInt(
       data['available_slots'] ?? data['availableSlots'],
     );
-    final totalSlots = _readInt(data['total_slots'] ?? data['totalSlots']);
+    final fallbackTotalSlots = _readInt(
+      data['total_slots'] ?? data['totalSlots'],
+    );
+    final availableSlots =
+        liveAvailability?.availableSlots ?? fallbackAvailableSlots;
+    final totalSlots = liveAvailability?.totalSlots ?? fallbackTotalSlots;
     final rating =
         _readDouble(
           data['ratingAverage'] ?? data['averageRating'] ?? data['rating'],
@@ -224,6 +237,13 @@ class _ParkingDetailsScreenState extends State<ParkingDetailsScreen> {
         ? '$availableSlots slots available'
         : 'No slots available';
     final latLng = MapService.getLatLng(data);
+    final displayData = <String, dynamic>{
+      ...data,
+      'availableSlots': availableSlots,
+      'available_slots': availableSlots,
+      'totalSlots': totalSlots,
+      'total_slots': totalSlots,
+    };
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark,
@@ -282,9 +302,16 @@ class _ParkingDetailsScreenState extends State<ParkingDetailsScreen> {
                             cctv: cctv,
                           ),
                           const SizedBox(height: 28),
+                          if (_showLiveAvailability &&
+                              liveAvailability != null &&
+                              liveAvailability.hasSlots)
+                            _buildLiveAvailabilitySection(
+                              liveAvailability,
+                              displayData,
+                            ),
                           _buildSectionLabel('Location Map'),
                           const SizedBox(height: 12),
-                          _buildMapCard(data, latLng),
+                          _buildMapCard(displayData, latLng),
                           const SizedBox(height: 24),
                           Row(
                             children: [
@@ -294,17 +321,22 @@ class _ParkingDetailsScreenState extends State<ParkingDetailsScreen> {
                                   label: 'Navigate',
                                   onTap: latLng == null
                                       ? null
-                                      : () => _navigateToLot(data),
+                                      : () => _navigateToLot(displayData),
                                 ),
                               ),
                               const SizedBox(width: 14),
                               Expanded(
                                 child: _ActionButton(
-                                  icon: Icons.analytics_outlined,
-                                  label: 'Live Availability',
-                                  onTap: latLng == null
-                                      ? null
-                                      : () => _openLiveAvailability(data),
+                                  icon: _showLiveAvailability
+                                      ? Icons.analytics_rounded
+                                      : Icons.analytics_outlined,
+                                  label: _showLiveAvailability
+                                      ? 'Hide Availability'
+                                      : 'Live Availability',
+                                  onTap: (liveAvailability != null &&
+                                          liveAvailability.hasSlots)
+                                      ? _toggleLiveAvailability
+                                      : null,
                                 ),
                               ),
                             ],
@@ -320,7 +352,7 @@ class _ParkingDetailsScreenState extends State<ParkingDetailsScreen> {
             _TopBar(
               title: 'Lot Details',
               onBack: () => Navigator.of(context).maybePop(),
-              onShare: () => _shareLot(data),
+              onShare: () => _shareLot(displayData),
             ),
           ],
         ),
@@ -397,7 +429,10 @@ class _ParkingDetailsScreenState extends State<ParkingDetailsScreen> {
                       ),
                       child: ElevatedButton(
                         onPressed: isAvailable
-                            ? () => _openBooking(data, isAvailable: isAvailable)
+                            ? () => _openBooking(
+                                displayData,
+                                isAvailable: isAvailable,
+                              )
                             : null,
                         style: ElevatedButton.styleFrom(
                           elevation: 0,
@@ -669,6 +704,212 @@ class _ParkingDetailsScreenState extends State<ParkingDetailsScreen> {
     );
   }
 
+  Widget _buildLiveAvailabilitySection(
+    _LiveSlotAvailability availability,
+    Map<String, dynamic> data,
+  ) {
+    const freeColor = Color(0xFF22C55E);
+    const occupiedColor = Color(0xFFE2E2E4);
+    const occupiedText = Color(0xFF757687);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            _buildSectionLabel('Live Availability'),
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: freeColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(99),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 7,
+                    height: 7,
+                    decoration: const BoxDecoration(
+                      color: freeColor,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'LIVE',
+                    style: GoogleFonts.poppins(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.2,
+                      color: const Color(0xFF047857),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        // Summary bar
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFE7E8EC)),
+          ),
+          child: Row(
+            children: [
+              _availabilityStat(
+                  '${availability.availableSlots}', 'Free', freeColor),
+              Container(
+                  width: 1,
+                  height: 32,
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                  color: const Color(0xFFE2E2E4)),
+              _availabilityStat(
+                '${availability.totalSlots - availability.availableSlots}',
+                'Occupied',
+                AppColors.error,
+              ),
+              Container(
+                  width: 1,
+                  height: 32,
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                  color: const Color(0xFFE2E2E4)),
+              _availabilityStat(
+                  '${availability.totalSlots}', 'Total', AppColors.primary),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        // Slot grid
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: AppColors.cardShadow,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  _gridLegend(freeColor, 'Free'),
+                  const SizedBox(width: 18),
+                  _gridLegend(occupiedColor, 'Occupied'),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: availability.slots.map((slot) {
+                  final isFree = !slot.isOccupied;
+                  return Container(
+                    width: 72,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: isFree
+                          ? freeColor.withValues(alpha: 0.1)
+                          : occupiedColor,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isFree
+                            ? freeColor.withValues(alpha: 0.3)
+                            : const Color(0xFFD5D5D8),
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(
+                          isFree
+                              ? Icons.check_circle_rounded
+                              : Icons.cancel_rounded,
+                          size: 18,
+                          color: isFree ? freeColor : occupiedText,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          slot.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.poppins(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: isFree
+                                ? const Color(0xFF047857)
+                                : occupiedText,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 28),
+      ],
+    );
+  }
+
+  Widget _availabilityStat(String value, String label, Color color) {
+    return Expanded(
+      child: Column(
+        children: [
+          Text(
+            value,
+            style: GoogleFonts.poppins(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: color,
+            ),
+          ),
+          Text(
+            label,
+            style: GoogleFonts.poppins(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF757687),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _gridLegend(Color color, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(3),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: GoogleFonts.poppins(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF757687),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildMapCard(Map<String, dynamic> data, LatLng? latLng) {
     return Container(
       height: 220,
@@ -815,6 +1056,98 @@ class _ParkingDetailsScreenState extends State<ParkingDetailsScreen> {
     if (meters >= 1000) return '${(meters / 1000).toStringAsFixed(1)} km away';
     return '${meters.round()} m away';
   }
+}
+
+class _LiveSlotAvailability {
+  final int totalSlots;
+  final int availableSlots;
+  final bool hasSlots;
+  final List<_SlotEntry> slots;
+
+  const _LiveSlotAvailability({
+    required this.totalSlots,
+    required this.availableSlots,
+    required this.hasSlots,
+    required this.slots,
+  });
+
+  static _LiveSlotAvailability fromDocs(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  ) {
+    var total = 0;
+    var available = 0;
+    final entries = <_SlotEntry>[];
+
+    for (final doc in docs) {
+      final data = doc.data();
+      final status = data['status']?.toString().trim().toLowerCase() ?? '';
+      final type = data['type']?.toString().trim().toLowerCase() ?? '';
+      final slotType = data['slotType']?.toString().trim().toLowerCase() ?? '';
+
+      final disabled =
+          data['enabled'] == false ||
+          type == 'disabled' ||
+          slotType == 'disabled' ||
+          status == 'disabled' ||
+          status == 'unavailable' ||
+          status == 'blocked';
+      if (disabled) continue;
+
+      total += 1;
+
+      final occupied =
+          _readBool(data['occupied']) ||
+          _readBool(data['isOccupied']) ||
+          _readBool(data['taken']) ||
+          _readBool(data['isReserved']) ||
+          status == 'reserved' ||
+          status == 'occupied' ||
+          status == 'active' ||
+          status == 'taken' ||
+          status == 'live';
+
+      if (!occupied) available += 1;
+
+      final label = (data['label'] ?? data['slotNumber'] ?? data['name'] ?? doc.id)
+          .toString();
+      entries.add(_SlotEntry(id: doc.id, label: label, isOccupied: occupied));
+    }
+
+    entries.sort((a, b) => a.label.compareTo(b.label));
+
+    return _LiveSlotAvailability(
+      totalSlots: total,
+      availableSlots: available,
+      hasSlots: docs.isNotEmpty,
+      slots: entries,
+    );
+  }
+
+  static bool _readBool(dynamic value) {
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    if (value is String) {
+      final normalized = value.trim().toLowerCase();
+      return normalized == 'true' ||
+          normalized == 'yes' ||
+          normalized == '1' ||
+          normalized == 'reserved' ||
+          normalized == 'occupied';
+    }
+    return false;
+  }
+}
+
+class _SlotEntry {
+  final String id;
+  final String label;
+  final bool isOccupied;
+
+  const _SlotEntry({
+    required this.id,
+    required this.label,
+    required this.isOccupied,
+  });
 }
 
 class _TopBar extends StatelessWidget {

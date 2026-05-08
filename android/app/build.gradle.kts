@@ -14,6 +14,23 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
+val googleMapsApiKeyProvider = providers.gradleProperty("GOOGLE_MAPS_API_KEY")
+    .orElse(providers.environmentVariable("GOOGLE_MAPS_API_KEY"))
+    .orElse("")
+val googleMapsApiKey =
+    (keystoreProperties["googleMapsApiKey"] as String?) ?: googleMapsApiKeyProvider.get()
+val hasReleaseKeystore = listOf("keyAlias", "keyPassword", "storeFile", "storePassword")
+    .all { (keystoreProperties[it] as String?)?.isNotBlank() == true }
+val isReleaseBuild = gradle.startParameter.taskNames.any { taskName ->
+    taskName.lowercase().contains("release") || taskName.lowercase().contains("bundle")
+}
+
+if (isReleaseBuild && googleMapsApiKey.isBlank()) {
+    throw GradleException(
+        "GOOGLE_MAPS_API_KEY is required for release builds. Add it to android/key.properties, a Gradle property, or the environment."
+    )
+}
+
 android {
     namespace = "com.techxpark.app"
     compileSdk = 36
@@ -21,10 +38,11 @@ android {
 
     defaultConfig {
         applicationId = "com.techxpark.app"
-        minSdk = flutter.minSdkVersion
+        minSdk = maxOf(21, flutter.minSdkVersion)
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        manifestPlaceholders["googleMapsApiKey"] = googleMapsApiKey
     }
 
     compileOptions {
@@ -41,15 +59,22 @@ android {
 
     signingConfigs {
         create("release") {
-            keyAlias = keystoreProperties["keyAlias"] as String
-            keyPassword = keystoreProperties["keyPassword"] as String
-            storeFile = file(keystoreProperties["storeFile"] as String)
-            storePassword = keystoreProperties["storePassword"] as String
+            if (hasReleaseKeystore) {
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+                storeFile = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+            }
         }
     }
 
     buildTypes {
         release {
+            if (isReleaseBuild && !hasReleaseKeystore) {
+                throw GradleException(
+                    "android/key.properties must define keyAlias, keyPassword, storeFile, and storePassword for release builds."
+                )
+            }
             signingConfig = signingConfigs.getByName("release")
         }
     }

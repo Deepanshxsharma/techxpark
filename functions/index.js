@@ -138,17 +138,26 @@ exports.onBookingCreated = functions
       { bookingId: context.params.bookingId }
     );
 
+    const bookingAction = {
+      type: 'open_bookings',
+      label: 'View Bookings',
+      payload: {
+        bookingId: context.params.bookingId,
+      },
+    };
+    const bookingAiMessage = await buildProactiveSupportText({
+      db,
+      userId: booking.userId,
+      userMessage:
+        'A parking booking was just created. Send a short confirmation with the most useful next step.',
+      fallbackText: `Slot confirmed successfully for ${booking.parkingName}. Your booking is ready to use.`,
+    });
+
     await appendAutoSupportMessage({
       db,
       userId: booking.userId,
-      text: `Slot confirmed successfully for ${booking.parkingName}. Your booking is ready to use.`,
-      action: {
-        type: 'open_bookings',
-        label: 'View Bookings',
-        payload: {
-          bookingId: context.params.bookingId,
-        },
-      },
+      text: bookingAiMessage,
+      action: bookingAction,
     });
   });
 
@@ -183,15 +192,24 @@ exports.bookingExpiryReminder = functions
         { bookingId: doc.id }
       );
 
+      const expiryAction = await buildExpirySupportAction({
+        db,
+        bookingId: doc.id,
+        booking,
+      });
+      const expiryAiMessage = await buildProactiveSupportText({
+        db,
+        userId: booking.userId,
+        userMessage:
+          'The active parking booking expires in about 10 minutes. Send a short reminder and suggest extending.',
+        fallbackText: `Your parking ends in 10 mins at ${booking.parkingName}. Extend now if you need more time.`,
+      });
+
       await appendAutoSupportMessage({
         db,
         userId: booking.userId,
-        text: `Your parking ends in 10 mins at ${booking.parkingName}. Extend now if you need more time.`,
-        action: await buildExpirySupportAction({
-          db,
-          bookingId: doc.id,
-          booking,
-        }),
+        text: expiryAiMessage,
+        action: expiryAction,
       });
       
       batch.update(doc.ref, { expirySent: true });
@@ -778,9 +796,9 @@ exports.createSmartParkingBooking = functions
         totalAmount: 0,
         paymentMethod: 'No Payment Required',
         paymentStatus: 'skipped',
-        paymentMode: 'demo',
-        paymentGateway: 'bypass',
-        paymentReference: 'SKIPPED',
+        paymentMode: 'not_required',
+        paymentGateway: 'none',
+        paymentReference: 'NOT_REQUIRED',
         entryCode,
         qrData,
         entryInstructions,
@@ -1376,9 +1394,9 @@ exports.createSmartParkingBooking = functions
         totalAmount: 0,
         paymentMethod: 'No Payment Required',
         paymentStatus: 'skipped',
-        paymentMode: 'demo',
-        paymentGateway: 'bypass',
-        paymentReference: 'SKIPPED',
+        paymentMode: 'not_required',
+        paymentGateway: 'none',
+        paymentReference: 'NOT_REQUIRED',
         entryCode,
         qrData,
         entryInstructions,
@@ -1790,6 +1808,66 @@ exports.checkGodrejNonCollection = functions
     return null;
   });
 
+exports.verifyVehicleInfo = functions
+  .region('asia-south1')
+  .https.onCall(async (data, context) => {
+    if (!context.auth) {
+      throw new functions.https.HttpsError(
+        'unauthenticated',
+        'Please sign in to continue.'
+      );
+    }
+
+    const vehicleNumber = String(data?.vehicleNumber || '')
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, '')
+      .trim();
+    if (vehicleNumber.length < 6) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'Enter a valid vehicle number.'
+      );
+    }
+
+    const apiKey =
+      process.env.RAPIDAPI_KEY ||
+      (functions.config().rapidapi && functions.config().rapidapi.key) ||
+      '';
+    if (!apiKey) {
+      throw new functions.https.HttpsError(
+        'failed-precondition',
+        'Vehicle verification is not configured.'
+      );
+    }
+
+    const host =
+      process.env.RAPIDAPI_RTO_HOST ||
+      'rto-vehicle-information-verification-india.p.rapidapi.com';
+    const response = await fetch(`https://${host}/api/v1/vehicle_info`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-RapidAPI-Key': apiKey,
+        'X-RapidAPI-Host': host,
+      },
+      body: JSON.stringify({
+        reg_no: vehicleNumber,
+        consent: 'Y',
+        consent_text: 'I hereby declare my consent',
+      }),
+    });
+
+    if (!response.ok) {
+      throw new functions.https.HttpsError(
+        'unavailable',
+        'Vehicle verification is temporarily unavailable.'
+      );
+    }
+
+    const payload = await response.json();
+    return {result: payload.result || null};
+  });
+
 const SUPPORT_CHAT_ID = 'ai_support';
 const SUPPORT_SYSTEM_PROMPT = `You are TechXPark AI Assistant.
 
@@ -1803,9 +1881,23 @@ You help users with:
 Rules:
 - Be short and helpful
 - Give direct answers
-- Suggest actions (e.g., "Tap Extend Booking")
+- Suggest actions when useful
+- Respond with JSON only
 - Never say "contact support"
 - Assume real-time parking context
+- Do not invent bookings, payments, slots, prices, or times
+
+Response JSON schema:
+{
+  "text": "short helpful response",
+  "actions": [
+    {
+      "type": "extend_booking|navigate_parking|open_wallet|open_bookings",
+      "label": "button label",
+      "payload": {}
+    }
+  ]
+}
 
 Tone:
 - Friendly
@@ -1852,6 +1944,7 @@ async function saveSupportChatMessage({
   text,
   sender,
   action = null,
+  actions = null,
   incrementUnread = false,
   isSystem = false,
 }) {
@@ -1869,8 +1962,10 @@ async function saveSupportChatMessage({
     isRead: sender === 'user',
     isSystem,
   };
-  if (action) {
-    messagePayload.action = action;
+  const safeActions = normalizeSupportActions(actions || (action ? [action] : []));
+  if (safeActions.length > 0) {
+    messagePayload.actions = safeActions;
+    messagePayload.action = safeActions[0];
   }
 
   const chatPayload = {
@@ -1910,7 +2005,7 @@ async function appendAutoSupportMessage({
     chatId,
     text,
     sender: 'ai',
-    action,
+    actions: action ? [action] : [],
     incrementUnread: true,
     isSystem: true,
   });
@@ -2090,6 +2185,46 @@ function detectSupportAction(userMessage, context) {
   return null;
 }
 
+function normalizeSupportActions(rawActions) {
+  const actions = Array.isArray(rawActions) ? rawActions : [];
+  const allowedTypes = new Set([
+    'extend_booking',
+    'navigate_parking',
+    'open_wallet',
+    'open_bookings',
+  ]);
+
+  return actions
+    .map((action) => {
+      if (!action || typeof action !== 'object') return null;
+      let type = String(action.type || '').trim();
+      if (type === 'navigate') type = 'navigate_parking';
+      if (type === 'retry_payment') type = 'open_wallet';
+      const label = chatPreview(action.label || '');
+      if (!allowedTypes.has(type) || !label) return null;
+      const payload =
+        action.payload && typeof action.payload === 'object' && !Array.isArray(action.payload)
+          ? action.payload
+          : {};
+      return {type, label, payload};
+    })
+    .filter(Boolean)
+    .slice(0, 3);
+}
+
+function mergeSupportActions(aiActions, deterministicAction) {
+  const merged = normalizeSupportActions(aiActions);
+  if (deterministicAction) {
+    const normalized = normalizeSupportActions([deterministicAction]);
+    for (const action of normalized) {
+      if (!merged.some((item) => item.type === action.type)) {
+        merged.unshift(action);
+      }
+    }
+  }
+  return merged.slice(0, 3);
+}
+
 async function buildExpirySupportAction({db, bookingId, booking}) {
   if (!booking) return null;
 
@@ -2122,38 +2257,57 @@ async function buildExpirySupportAction({db, bookingId, booking}) {
   };
 }
 
-function extractResponseText(payload) {
-  if (typeof payload?.output_text === 'string' && payload.output_text.trim()) {
-    return payload.output_text.trim();
-  }
-
-  const output = Array.isArray(payload?.output) ? payload.output : [];
-  for (const item of output) {
-    if (!item || item.type !== 'message' || !Array.isArray(item.content)) continue;
-    for (const part of item.content) {
-      if (part?.type === 'output_text' && typeof part.text === 'string' && part.text.trim()) {
-        return part.text.trim();
-      }
-    }
-  }
-
-  return '';
+function extractGeminiText(payload) {
+  return (
+    payload?.candidates?.[0]?.content?.parts
+      ?.map((part) => part?.text || '')
+      .join('')
+      .trim() || ''
+  );
 }
 
-async function requestOpenAiSupportReply({userMessage, context, history}) {
+function stripJsonFence(text) {
+  const trimmed = String(text || '').trim();
+  if (!trimmed.startsWith('```')) return trimmed;
+  return trimmed
+    .replace(/^```(?:json)?/i, '')
+    .replace(/```$/i, '')
+    .trim();
+}
+
+function parseAiSupportJson(text) {
+  const cleaned = stripJsonFence(text);
+  try {
+    const parsed = JSON.parse(cleaned);
+    return {
+      text: chatPreview(parsed.text || ''),
+      actions: normalizeSupportActions(parsed.actions),
+    };
+  } catch (error) {
+    console.error('Gemini support returned invalid JSON:', cleaned);
+    return {
+      text: chatPreview(cleaned),
+      actions: [],
+    };
+  }
+}
+
+async function requestGeminiSupportReply({userMessage, context, history}) {
   const apiKey =
-    process.env.OPENAI_API_KEY ||
-    (functions.config().openai && functions.config().openai.key) ||
+    process.env.GEMINI_API_KEY ||
+    (functions.config().gemini && functions.config().gemini.key) ||
     '';
   if (!apiKey) {
     throw new functions.https.HttpsError(
       'failed-precondition',
-      'OPENAI_API_KEY is not configured.'
+      'Gemini API key is not configured.'
     );
   }
 
-  const model = process.env.OPENAI_SUPPORT_MODEL || 'gpt-5.4-mini';
+  const model = process.env.GEMINI_SUPPORT_MODEL || 'gemini-1.5-flash';
   const prompt = [
+    SUPPORT_SYSTEM_PROMPT,
+    '',
     'Current TechXPark context:',
     JSON.stringify(context, null, 2),
     '',
@@ -2164,28 +2318,34 @@ async function requestOpenAiSupportReply({userMessage, context, history}) {
     '',
     `Latest user message: ${userMessage}`,
     '',
-    'Reply to the latest user message only. Keep the answer under 80 words.',
+    'Return JSON only. Keep text under 80 words. Use actions only from the schema.',
   ].join('\n');
 
-  const response = await fetch('https://api.openai.com/v1/responses', {
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+    {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model,
-      instructions: SUPPORT_SYSTEM_PROMPT,
-      input: prompt,
-      max_output_tokens: 220,
-      temperature: 0.4,
-      store: false,
+      contents: [
+        {
+          role: 'user',
+          parts: [{text: prompt}],
+        },
+      ],
+      generationConfig: {
+        temperature: 0.35,
+        maxOutputTokens: 320,
+        responseMimeType: 'application/json',
+      },
     }),
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('OpenAI support request failed:', errorText);
+    console.error('Gemini support request failed:', errorText);
     throw new functions.https.HttpsError(
       'internal',
       'Failed to generate AI support response.'
@@ -2193,14 +2353,29 @@ async function requestOpenAiSupportReply({userMessage, context, history}) {
   }
 
   const payload = await response.json();
-  const reply = extractResponseText(payload);
-  if (!reply) {
+  const text = extractGeminiText(payload);
+  if (!text) {
     throw new functions.https.HttpsError(
       'internal',
       'AI support returned an empty response.'
     );
   }
-  return reply;
+  return parseAiSupportJson(text);
+}
+
+async function buildProactiveSupportText({db, userId, userMessage, fallbackText}) {
+  try {
+    const context = await buildAiSupportContext(db, userId);
+    const response = await requestGeminiSupportReply({
+      userMessage,
+      context,
+      history: [],
+    });
+    return chatPreview(response.text) || fallbackText;
+  } catch (error) {
+    console.error('Proactive Gemini support error:', error);
+    return fallbackText;
+  }
 }
 
 exports.sendAiSupportMessage = functions
@@ -2236,15 +2411,28 @@ exports.sendAiSupportMessage = functions
 
     const supportContext = await buildAiSupportContext(db, userId);
     const history = await getSupportHistory(db, userId, chatId);
-    const action = detectSupportAction(message, supportContext);
-    const aiReply = await requestOpenAiSupportReply({
-      userMessage: message,
-      context: supportContext,
-      history,
-    });
+    const deterministicAction = detectSupportAction(message, supportContext);
+    let aiResponse;
+    try {
+      aiResponse = await requestGeminiSupportReply({
+        userMessage: message,
+        context: supportContext,
+        history,
+      });
+    } catch (error) {
+      console.error('Gemini support error:', error);
+      aiResponse = {
+        text: "Something went wrong. Please try again.",
+        actions: [],
+      };
+    }
+    const actions = mergeSupportActions(aiResponse.actions, deterministicAction);
+    const aiReply =
+      chatPreview(aiResponse.text) ||
+      "I checked your parking context. What would you like to do next?";
 
     console.log('Support AI user:', message);
-    console.log('Support AI reply:', aiReply);
+    console.log('AI RESPONSE:', JSON.stringify({text: aiReply, actions}));
 
     await saveSupportChatMessage({
       db,
@@ -2252,13 +2440,15 @@ exports.sendAiSupportMessage = functions
       chatId,
       text: aiReply,
       sender: 'ai',
-      action,
+      actions,
       incrementUnread: true,
     });
 
     return {
+      text: aiReply,
+      actions,
       reply: aiReply,
-      action,
+      action: actions[0] || null,
       chatId,
     };
   });

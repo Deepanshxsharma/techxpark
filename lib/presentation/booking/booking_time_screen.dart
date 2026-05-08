@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import '../../theme/app_colors.dart';
 import 'select_vehicle_screen.dart';
 
-/// Booking Time Screen — Stitch design.
-/// Horizontal date carousel, time picker card, duration slider,
-/// dark summary card, and gradient proceed CTA with dark mode.
 class BookingTimeScreen extends StatefulWidget {
   final Map<String, dynamic> parking;
   final String parkingId;
@@ -23,38 +21,120 @@ class BookingTimeScreen extends StatefulWidget {
 }
 
 class _BookingTimeScreenState extends State<BookingTimeScreen> {
+  bool _isNow = true;
   DateTime _selectedDate = DateTime.now();
-  TimeOfDay _startTime = TimeOfDay.now();
-  double _durationHours = 2;
+  late TimeOfDay _startTime;
+  int _durationHours = 1;
 
-  DateTime get _startDateTime => DateTime(
-    _selectedDate.year,
-    _selectedDate.month,
-    _selectedDate.day,
-    _startTime.hour,
-    _startTime.minute,
-  );
+  @override
+  void initState() {
+    super.initState();
+    _startTime = _nextRoundedTime();
+  }
+
+  /// Returns the next rounded 30-min time slot in the future.
+  TimeOfDay _nextRoundedTime() {
+    final now = DateTime.now().add(const Duration(minutes: 5));
+    final minute = now.minute < 30 ? 30 : 0;
+    final hour = now.minute < 30 ? now.hour : now.hour + 1;
+    return TimeOfDay(hour: hour % 24, minute: minute);
+  }
+
+  String get _parkingName =>
+      (widget.parking['name'] ?? 'Parking').toString();
+  String get _slotLabel =>
+      (widget.parking['slotNumber'] ?? widget.parking['slot'] ?? '').toString();
+  double get _pricePerHour {
+    final p = widget.parking['pricePerHour'] ??
+        widget.parking['price_per_hour'] ??
+        widget.parking['price'] ??
+        0;
+    if (p is num) return p.toDouble();
+    return double.tryParse(p.toString()) ?? 0;
+  }
+
+  String? get _imageUrl =>
+      (widget.parking['imageUrl'] ?? widget.parking['image'] ?? '')
+          .toString()
+          .isNotEmpty
+          ? (widget.parking['imageUrl'] ?? widget.parking['image']).toString()
+          : null;
+
+  DateTime get _startDateTime => _isNow
+      ? DateTime.now()
+      : DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day,
+          _startTime.hour, _startTime.minute);
 
   DateTime get _endDateTime =>
-      _startDateTime.add(Duration(minutes: (_durationHours * 60).toInt()));
+      _startDateTime.add(Duration(hours: _durationHours));
+
+  double get _totalPrice => _pricePerHour * _durationHours;
 
   Future<void> _pickStartTime() async {
     HapticFeedback.selectionClick();
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: _startTime,
-    );
-    if (picked != null) setState(() => _startTime = picked);
+    final picked =
+        await showTimePicker(context: context, initialTime: _startTime);
+    if (picked != null) {
+      // Ensure picked time is not in the past for today
+      final now = DateTime.now();
+      final pickedDt = DateTime(_selectedDate.year, _selectedDate.month,
+          _selectedDate.day, picked.hour, picked.minute);
+      if (_isToday(_selectedDate) && pickedDt.isBefore(now)) {
+        _showError('Please select a future time.');
+        return;
+      }
+      setState(() => _startTime = picked);
+    }
   }
 
-  void _continue() {
+  bool _isToday(DateTime date) {
     final now = DateTime.now();
-    if (_startDateTime.isBefore(now)) {
-      _showError('Start time must be in the future.');
+    return date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day;
+  }
+
+  Future<void> _pickDate() async {
+    HapticFeedback.selectionClick();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 30)),
+    );
+    if (picked != null) setState(() => _selectedDate = picked);
+  }
+
+  void _confirm() {
+    final now = DateTime.now();
+
+    // For 'Now' mode, use current time with a small buffer
+    if (_isNow) {
+      final start = now.add(const Duration(seconds: 30));
+      final end = start.add(Duration(hours: _durationHours));
+      HapticFeedback.mediumImpact();
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => SelectVehicleScreen(
+            parkingId: widget.parkingId,
+            parking: widget.parking,
+            start: start,
+            end: end,
+          ),
+        ),
+      );
       return;
     }
-    if (_durationHours < 0.5) {
-      _showError('Minimum booking duration is 30 minutes.');
+
+    // For 'Schedule Later', validate the chosen time
+    if (_startDateTime.isBefore(now)) {
+      // Auto-correct: bump to next round time
+      setState(() {
+        _selectedDate = now;
+        _startTime = _nextRoundedTime();
+      });
+      _showError('Time was in the past — updated to the next available slot.');
       return;
     }
 
@@ -85,275 +165,572 @@ class _BookingTimeScreenState extends State<BookingTimeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
-      child: Scaffold(
-        backgroundColor: isDark ? AppColors.bgDark : const Color(0xFFF9F9FB),
-        appBar: AppBar(
-          title: Text(
-            'Select Time',
-            style: TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              color: isDark ? Colors.white : const Color(0xFF0F172A),
-            ),
-          ),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          surfaceTintColor: Colors.transparent,
-          centerTitle: true,
-          leading: GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: const Icon(Icons.arrow_back_ios_new, size: 20),
-          ),
-        ),
-        body: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHorizontalCalendar(isDark),
-            Expanded(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _sectionTitle('Start Time', isDark),
-                    _buildTimeCard(isDark),
-                    const SizedBox(height: 28),
-                    _sectionTitle('Parking Duration', isDark),
-                    _buildDurationSlider(isDark),
-                    const SizedBox(height: 28),
-                    _buildSummaryCard(isDark),
-                  ],
+    return Scaffold(
+      backgroundColor: const Color(0xFFF9F9FB),
+      body: Column(
+        children: [
+          // ─── APP BAR ───
+          Container(
+            padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.7),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF1A1C1D).withValues(alpha: 0.04),
+                  blurRadius: 30,
+                  offset: const Offset(0, 8),
                 ),
-              ),
+              ],
             ),
-            _buildBottomAction(isDark),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════════════
-  // HORIZONTAL CALENDAR
-  // ═══════════════════════════════════════════════════════════════
-  Widget _buildHorizontalCalendar(bool isDark) {
-    return SizedBox(
-      height: 100,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: 14,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        itemBuilder: (context, index) {
-          final date = DateTime.now().add(Duration(days: index));
-          final isSelected =
-              date.day == _selectedDate.day &&
-              date.month == _selectedDate.month;
-
-          return GestureDetector(
-            onTap: () {
-              HapticFeedback.selectionClick();
-              setState(() => _selectedDate = date);
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 64,
-              margin: const EdgeInsets.symmetric(horizontal: 5),
-              decoration: BoxDecoration(
-                gradient: isSelected ? AppColors.primaryGradient : null,
-                color: isSelected
-                    ? null
-                    : (isDark ? AppColors.surfaceDark : Colors.white),
-                borderRadius: BorderRadius.circular(18),
-                border: isSelected
-                    ? null
-                    : Border.all(
-                        color: isDark
-                            ? Colors.white10
-                            : const Color(0xFFE2E8F0),
-                      ),
-                boxShadow: isSelected
-                    ? [
-                        BoxShadow(
-                          color: AppColors.primary.withValues(alpha: 0.2),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ]
-                    : [],
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+            child: SizedBox(
+              height: 56,
+              child: Row(
                 children: [
-                  Text(
-                    DateFormat('EEE').format(date),
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: isSelected
-                          ? Colors.white70
-                          : (isDark ? Colors.white54 : const Color(0xFF94A3B8)),
-                    ),
+                  const SizedBox(width: 6),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.arrow_back_rounded,
+                        color: Color(0xFF1565C0)),
                   ),
-                  const SizedBox(height: 4),
+                  const Spacer(),
                   Text(
-                    date.day.toString(),
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
+                    'Select Time',
+                    style: GoogleFonts.plusJakartaSans(
                       fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: isSelected
-                          ? Colors.white
-                          : (isDark ? Colors.white : const Color(0xFF0F172A)),
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF1565C0),
                     ),
                   ),
+                  const Spacer(),
+                  const SizedBox(width: 48),
                 ],
               ),
             ),
-          );
-        },
+          ),
+          // ─── CONTENT ───
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildBookingSummary(),
+                  const SizedBox(height: 32),
+                  _buildStartTimeSection(),
+                  const SizedBox(height: 32),
+                  _buildDurationSection(),
+                  const SizedBox(height: 32),
+                  _buildTimeline(),
+                  const SizedBox(height: 32),
+                  _buildPricing(),
+                  const SizedBox(height: 100),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
+      bottomSheet: _buildBottomBar(),
     );
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // TIME CARD
+  // BOOKING SUMMARY
   // ═══════════════════════════════════════════════════════════════
-  Widget _buildTimeCard(bool isDark) {
-    return GestureDetector(
-      onTap: _pickStartTime,
-      child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.surfaceDark : Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: const Icon(
-                Icons.access_time_rounded,
-                color: AppColors.primary,
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Column(
+  Widget _buildBookingSummary() {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF1A1C1D).withValues(alpha: 0.04),
+            blurRadius: 30,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Arriving At',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
+                  _parkingName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF1A1C1D),
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  _startTime.format(context),
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    if (_slotLabel.isNotEmpty) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFBDC2FF),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          'Slot $_slotLabel',
+                          style: GoogleFonts.manrope(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF000964),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text('•',
+                          style: GoogleFonts.manrope(
+                              color: const Color(0xFF454655))),
+                      const SizedBox(width: 8),
+                    ],
+                    Text(
+                      '₹${_pricePerHour.toStringAsFixed(0)}/hr',
+                      style: GoogleFonts.manrope(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF454655),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: SizedBox(
+              width: 60,
+              height: 60,
+              child: _imageUrl != null
+                  ? Image.network(_imageUrl!, fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => _imagePlaceholder())
+                  : _imagePlaceholder(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _imagePlaceholder() {
+    return Container(
+      color: const Color(0xFFEDEEF0),
+      child: const Icon(Icons.local_parking_rounded,
+          color: AppColors.primary, size: 28),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // START TIME
+  // ═══════════════════════════════════════════════════════════════
+  Widget _buildStartTimeSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionLabel('START TIME'),
+        const SizedBox(height: 12),
+        // Toggle: Now / Schedule Later
+        Container(
+          padding: const EdgeInsets.all(5),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF3F3F5),
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Row(
+            children: [
+              _toggleButton('Now', _isNow, () {
+                setState(() => _isNow = true);
+              }),
+              _toggleButton('Schedule Later', !_isNow, () {
+                setState(() {
+                  _isNow = false;
+                  // Ensure start time is in the future when switching
+                  _selectedDate = DateTime.now();
+                  _startTime = _nextRoundedTime();
+                });
+              }),
+            ],
+          ),
+        ),
+        // Date/Time picker (visible when scheduled)
+        if (!_isNow) ...[
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: _pickDate,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('DATE',
+                            style: GoogleFonts.manrope(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF94A3B8),
+                              letterSpacing: 1,
+                            )),
+                        const SizedBox(height: 4),
+                        Text(
+                          DateFormat('MMM dd, yyyy').format(_selectedDate),
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF1A1C1D),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                Container(
+                    width: 1, height: 32, color: const Color(0xFFE2E2E4)),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: _pickStartTime,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('TIME',
+                            style: GoogleFonts.manrope(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF94A3B8),
+                              letterSpacing: 1,
+                            )),
+                        const SizedBox(height: 4),
+                        Text(
+                          _startTime.format(context),
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF1A1C1D),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
             ),
-            const Spacer(),
-            Icon(Icons.edit_rounded, color: AppColors.primary, size: 22),
-          ],
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _toggleButton(String label, bool active, VoidCallback onTap) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onTap();
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: active ? Colors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(999),
+            boxShadow: active
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : [],
+          ),
+          child: Center(
+            child: Text(
+              label,
+              style: GoogleFonts.manrope(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: active
+                    ? AppColors.primary
+                    : const Color(0xFF64748B),
+              ),
+            ),
+          ),
         ),
       ),
     );
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // DURATION SLIDER
+  // DURATION
   // ═══════════════════════════════════════════════════════════════
-  Widget _buildDurationSlider(bool isDark) {
+  Widget _buildDurationSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _sectionLabel('DURATION'),
+            Text(
+              '$_durationHours Hour${_durationHours > 1 ? 's' : ''}',
+              style: GoogleFonts.manrope(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primary,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        // Quick chips
+        SizedBox(
+          height: 48,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            children: [1, 2, 3, 4].map((h) {
+              final selected = _durationHours == h;
+              return Padding(
+                padding: const EdgeInsets.only(right: 10),
+                child: GestureDetector(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    setState(() => _durationHours = h);
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? AppColors.primary
+                          : const Color(0xFFF3F3F5),
+                      borderRadius: BorderRadius.circular(999),
+                      boxShadow: selected
+                          ? [
+                              BoxShadow(
+                                color: AppColors.primary
+                                    .withValues(alpha: 0.25),
+                                blurRadius: 14,
+                                offset: const Offset(0, 4),
+                              ),
+                            ]
+                          : [],
+                    ),
+                    child: Center(
+                      child: Text(
+                        '$h Hour${h > 1 ? 's' : ''}',
+                        style: GoogleFonts.manrope(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: selected
+                              ? Colors.white
+                              : const Color(0xFF454655),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        const SizedBox(height: 16),
+        // Custom stepper
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF3F3F5),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _stepperButton(Icons.remove_rounded, () {
+                if (_durationHours > 1) {
+                  setState(() => _durationHours--);
+                }
+              }),
+              Column(
+                children: [
+                  Text(
+                    _durationHours.toString().padLeft(2, '0'),
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF1A1C1D),
+                    ),
+                  ),
+                  Text(
+                    'HOURS TOTAL',
+                    style: GoogleFonts.manrope(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF94A3B8),
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+              _stepperButton(Icons.add_rounded, () {
+                if (_durationHours < 12) {
+                  setState(() => _durationHours++);
+                }
+              }),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _stepperButton(IconData icon, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        onTap();
+      },
+      child: Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Icon(icon, color: AppColors.primary, size: 24),
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // VISUAL TIMELINE
+  // ═══════════════════════════════════════════════════════════════
+  Widget _buildTimeline() {
+    final arrivalStr = _isNow
+        ? 'Now'
+        : DateFormat('hh:mm a').format(_startDateTime);
+    final departureStr = DateFormat('hh:mm a').format(_endDateTime);
+
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceDark : Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
+            color: const Color(0xFF1A1C1D).withValues(alpha: 0.02),
+            blurRadius: 30,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
       child: Column(
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Stay Length',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+              // Arrival
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('ARRIVAL',
+                        style: GoogleFonts.manrope(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF94A3B8),
+                          letterSpacing: 1,
+                        )),
+                    const SizedBox(height: 4),
+                    Text(
+                      arrivalStr,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF1A1C1D),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 5,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  '${_durationHours.toInt()} Hours',
-                  style: const TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primary,
+              // Progress bar
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(99),
+                    child: LinearProgressIndicator(
+                      value: 0.33,
+                      minHeight: 4,
+                      backgroundColor: const Color(0xFFE2E2E4),
+                      color: AppColors.primary,
+                    ),
                   ),
                 ),
               ),
+              // Departure
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text('DEPARTURE',
+                        style: GoogleFonts.manrope(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF94A3B8),
+                          letterSpacing: 1,
+                        )),
+                    const SizedBox(height: 4),
+                    Text(
+                      departureStr,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF1A1C1D),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
-          SliderTheme(
-            data: SliderThemeData(
-              activeTrackColor: AppColors.primary,
-              inactiveTrackColor: AppColors.primary.withValues(alpha: 0.1),
-              thumbColor: AppColors.primary,
-              overlayColor: AppColors.primary.withValues(alpha: 0.1),
-            ),
-            child: Slider(
-              value: _durationHours,
-              min: 1,
-              max: 12,
-              divisions: 11,
-              onChanged: (v) => setState(() => _durationHours = v),
-            ),
+          const SizedBox(height: 14),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.info_outline_rounded,
+                  size: 14, color: const Color(0xFF94A3B8)),
+              const SizedBox(width: 6),
+              Text(
+                'You can extend your parking anytime from the app',
+                style: GoogleFonts.manrope(
+                  fontSize: 11,
+                  color: const Color(0xFF94A3B8),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -361,65 +738,49 @@ class _BookingTimeScreenState extends State<BookingTimeScreen> {
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // SUMMARY CARD — Dark gradient
+  // LIVE PRICING
   // ═══════════════════════════════════════════════════════════════
-  Widget _buildSummaryCard(bool isDark) {
+  Widget _buildPricing() {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: const Color(0xFFC5C5D8),
+          style: BorderStyle.solid,
         ),
-        borderRadius: BorderRadius.circular(18),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Leaving At',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white.withValues(alpha: 0.5),
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                DateFormat('hh:mm a').format(_endDateTime),
-                style: const TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                ),
-              ),
-            ],
+          _priceRow('Price per hour',
+              '₹${_pricePerHour.toStringAsFixed(2)}'),
+          const SizedBox(height: 10),
+          _priceRow('Duration',
+              '$_durationHours Hour${_durationHours > 1 ? 's' : ''}'),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Divider(
+                height: 1, color: const Color(0xFFE2E2E4)),
           ),
-          Container(height: 40, width: 1, color: Colors.white12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Parking Fee',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white.withValues(alpha: 0.5),
+                'Total Price',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.primary,
                 ),
               ),
-              const SizedBox(height: 6),
-              const Text(
-                'FREE',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 20,
+              Text(
+                _totalPrice > 0
+                    ? '₹${_totalPrice.toStringAsFixed(2)}'
+                    : 'FREE',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 17,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.success,
+                  color: AppColors.primary,
                 ),
               ),
             ],
@@ -429,67 +790,134 @@ class _BookingTimeScreenState extends State<BookingTimeScreen> {
     );
   }
 
+  Widget _priceRow(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label,
+            style: GoogleFonts.manrope(
+              fontSize: 13,
+              color: const Color(0xFF454655),
+            )),
+        Text(value,
+            style: GoogleFonts.manrope(
+              fontSize: 13,
+              color: const Color(0xFF454655),
+            )),
+      ],
+    );
+  }
+
   // ═══════════════════════════════════════════════════════════════
-  // BOTTOM ACTION — Gradient next step
+  // BOTTOM BAR
   // ═══════════════════════════════════════════════════════════════
-  Widget _buildBottomAction(bool isDark) {
+  Widget _buildBottomBar() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
+      padding: EdgeInsets.fromLTRB(
+          24, 16, 24, MediaQuery.of(context).padding.bottom + 16),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceDark : Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        color: Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 24,
+            color: const Color(0xFF1A1C1D).withValues(alpha: 0.06),
+            blurRadius: 30,
             offset: const Offset(0, -8),
           ),
         ],
       ),
-      child: SafeArea(
-        child: GestureDetector(
-          onTap: _continue,
-          child: Container(
-            height: 56,
-            decoration: BoxDecoration(
-              gradient: AppColors.primaryGradient,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.3),
-                  blurRadius: 16,
-                  offset: const Offset(0, 6),
+      child: Row(
+        children: [
+          // Left: total cost
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'TOTAL COST',
+                  style: GoogleFonts.manrope(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF94A3B8),
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    Text(
+                      _totalPrice > 0
+                          ? '₹${_totalPrice.toStringAsFixed(2)}'
+                          : 'FREE',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF1A1C1D),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '• $_durationHours Hr',
+                      style: GoogleFonts.manrope(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF94A3B8),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-            child: const Center(
-              child: Text(
-                'Next Step',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                ),
+          ),
+          // Right: confirm button
+          GestureDetector(
+            onTap: _confirm,
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(999),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.25),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Confirm Booking',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  const Icon(Icons.bolt_rounded,
+                      color: Colors.white, size: 20),
+                ],
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
 
-  Widget _sectionTitle(String title, bool isDark) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14, left: 4),
-      child: Text(
-        title,
-        style: TextStyle(
-          fontFamily: 'Poppins',
-          fontSize: 18,
-          fontWeight: FontWeight.w800,
-          color: isDark ? Colors.white : const Color(0xFF0F172A),
-        ),
+  Widget _sectionLabel(String text) {
+    return Text(
+      text,
+      style: GoogleFonts.manrope(
+        fontSize: 12,
+        fontWeight: FontWeight.w800,
+        color: const Color(0xFF94A3B8),
+        letterSpacing: 2,
       ),
     );
   }

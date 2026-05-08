@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../config/legal_links.dart';
 import '../../../services/google_auth_service.dart';
 import '../../../theme/app_colors.dart';
+import '../../../utils/navigation_utils.dart';
 import 'email_login_screen.dart';
 import 'phone_login_screen.dart';
 
@@ -54,6 +56,7 @@ class _LoginScreenState extends State<LoginScreen>
       );
       if (userCredential != null) {
         HapticFeedback.heavyImpact();
+        if (mounted) safeShowAuthState(context);
       }
     } finally {
       if (mounted) setState(() => _isGoogleLoading = false);
@@ -69,9 +72,22 @@ class _LoginScreenState extends State<LoginScreen>
       final userCredential = await GoogleAuthService().signInWithApple(context);
       if (userCredential != null) {
         HapticFeedback.heavyImpact();
+        if (mounted) safeShowAuthState(context);
       }
     } finally {
       if (mounted) setState(() => _isAppleLoading = false);
+    }
+  }
+
+  Future<void> _openLegalLink(Future<bool> Function() opener) async {
+    final opened = await opener();
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not open this link. Please try again.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
@@ -109,7 +125,7 @@ class _LoginScreenState extends State<LoginScreen>
                               Image.asset(
                                 'assets/images/login_skyline.jpg',
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) =>
+                                errorBuilder: (_, _, _) =>
                                     Container(color: AppColors.primaryDark),
                               ),
                               Container(
@@ -130,19 +146,21 @@ class _LoginScreenState extends State<LoginScreen>
                                 child: Row(
                                   children: [
                                     Container(
-                                      width: 34,
-                                      height: 34,
+                                      width: 40,
+                                      height: 40,
                                       decoration: BoxDecoration(
                                         color: Colors.white,
-                                        borderRadius: BorderRadius.circular(10),
+                                        borderRadius: BorderRadius.circular(12),
                                       ),
                                       alignment: Alignment.center,
-                                      child: Text(
-                                        'P',
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w800,
+                                      clipBehavior: Clip.antiAlias,
+                                      child: Image.asset(
+                                        'assets/icons/app_icon.png',
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, _, _) => const Icon(
+                                          Icons.local_parking_rounded,
                                           color: AppColors.primary,
+                                          size: 22,
                                         ),
                                       ),
                                     ),
@@ -261,36 +279,41 @@ class _LoginScreenState extends State<LoginScreen>
                               ),
                               const SizedBox(height: 24),
                               Center(
-                                child: Text.rich(
-                                  TextSpan(
-                                    text: 'By continuing, you agree to our ',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 12,
-                                      color: isDark
-                                          ? AppColors.textTertiaryDark
-                                          : AppColors.textTertiaryLight,
+                                child: Wrap(
+                                  alignment: WrapAlignment.center,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    Text(
+                                      'By continuing, you agree to our ',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 12,
+                                        color: isDark
+                                            ? AppColors.textTertiaryDark
+                                            : AppColors.textTertiaryLight,
+                                      ),
                                     ),
-                                    children: [
-                                      TextSpan(
-                                        text: 'Terms of Service',
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: AppColors.primary,
-                                        ),
+                                    _LegalTextButton(
+                                      label: 'Terms of Service',
+                                      onTap: () => _openLegalLink(
+                                        LegalLinks.openTermsOfService,
                                       ),
-                                      const TextSpan(text: ' and '),
-                                      TextSpan(
-                                        text: 'Privacy Policy',
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: AppColors.primary,
-                                        ),
+                                    ),
+                                    Text(
+                                      ' and ',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 12,
+                                        color: isDark
+                                            ? AppColors.textTertiaryDark
+                                            : AppColors.textTertiaryLight,
                                       ),
-                                    ],
-                                  ),
-                                  textAlign: TextAlign.center,
+                                    ),
+                                    _LegalTextButton(
+                                      label: 'Privacy Policy',
+                                      onTap: () => _openLegalLink(
+                                        LegalLinks.openPrivacyPolicy,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
@@ -308,42 +331,34 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  // ═══════════════════════════════════════════════════════════════
-  // HERO ILLUSTRATION — Image
-  // ═══════════════════════════════════════════════════════════════
-  Widget _buildHeroIllustration(bool isDark) {
-    return AspectRatio(
-      aspectRatio: 1.0,
-      child: Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          image: const DecorationImage(
-            image: AssetImage('assets/images/login_skyline.jpg'),
-            fit: BoxFit.cover,
-          ),
-        ),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            gradient: LinearGradient(
-              begin: Alignment.bottomCenter,
-              end: Alignment.topCenter,
-              colors: [
-                (isDark ? const Color(0xFF111321) : const Color(0xFFF6F6F8))
-                    .withValues(alpha: 0.8),
-                Colors.transparent,
-              ],
-              stops: const [0.0, 0.5],
-            ),
+  Widget _appleIcon() {
+    return const Icon(Icons.apple, size: 22);
+  }
+}
+
+class _LegalTextButton extends StatelessWidget {
+  const _LegalTextButton({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(4),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Text(
+          label,
+          style: GoogleFonts.poppins(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppColors.primary,
           ),
         ),
       ),
     );
-  }
-
-  Widget _appleIcon() {
-    return const Icon(Icons.apple, size: 22);
   }
 }
 
@@ -456,33 +471,4 @@ class _AuthButtonState extends State<_AuthButton> {
       ),
     );
   }
-}
-
-// ═══════════════════════════════════════════════════════════════
-// GRID PATTERN PAINTER — Subtle background decoration
-// ═══════════════════════════════════════════════════════════════
-class _GridPatternPainter extends CustomPainter {
-  final Color color;
-
-  _GridPatternPainter({required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 0.5;
-
-    const spacing = 30.0;
-
-    for (double x = 0; x < size.width; x += spacing) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
-    }
-
-    for (double y = 0; y < size.height; y += spacing) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
