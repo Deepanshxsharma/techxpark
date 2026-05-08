@@ -59,7 +59,10 @@ class GoogleAuthService {
         user,
         provider: 'google',
       );
-      return allowed ? userCredential : null;
+      if (allowed || _auth.currentUser?.uid == user.uid) {
+        return userCredential;
+      }
+      return null;
     } on FirebaseAuthException catch (e) {
       if (!context.mounted) return null;
       _handleAuthError(context, e.code);
@@ -125,7 +128,10 @@ class GoogleAuthService {
             '${appleCredential.givenName ?? ''} ${appleCredential.familyName ?? ''}'
                 .trim(),
       );
-      return allowed ? userCredential : null;
+      if (allowed || _auth.currentUser?.uid == user.uid) {
+        return userCredential;
+      }
+      return null;
     } on SignInWithAppleAuthorizationException catch (e) {
       if (!context.mounted) return null;
       if (e.code != AuthorizationErrorCode.canceled) {

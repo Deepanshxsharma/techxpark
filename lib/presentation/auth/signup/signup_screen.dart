@@ -363,7 +363,9 @@ class _SignupScreenState extends State<SignupScreen>
           provider: 'email',
           fallbackName: name,
         );
-        if (!synced) return;
+        if (!synced && FirebaseAuth.instance.currentUser?.uid != user.uid) {
+          return;
+        }
       }
 
       HapticFeedback.heavyImpact();

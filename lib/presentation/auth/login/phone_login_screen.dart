@@ -131,7 +131,9 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
           user,
           provider: 'phone',
         );
-        if (!synced) return;
+        if (!synced && FirebaseAuth.instance.currentUser?.uid != user.uid) {
+          return;
+        }
 
         HapticFeedback.heavyImpact();
         if (mounted) safeShowAuthState(context);
@@ -666,7 +668,11 @@ class _OTPVerificationScreenState extends State<_OTPVerificationScreen> {
               user,
               provider: 'phone',
             );
-            if (synced && mounted) safeShowAuthState(context);
+            if ((synced ||
+                    FirebaseAuth.instance.currentUser?.uid == user.uid) &&
+                mounted) {
+              safeShowAuthState(context);
+            }
           }
         },
         verificationFailed: (e) {

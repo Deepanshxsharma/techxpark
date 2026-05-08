@@ -92,7 +92,10 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
           cred.user!,
           provider: 'email',
         );
-        if (!synced) return;
+        if (!synced &&
+            FirebaseAuth.instance.currentUser?.uid != cred.user!.uid) {
+          return;
+        }
       }
 
       HapticFeedback.heavyImpact();
