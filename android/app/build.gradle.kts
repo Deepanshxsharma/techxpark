@@ -32,16 +32,17 @@ if (isReleaseBuild && googleMapsApiKey.isBlank()) {
 }
 
 android {
-    namespace = "com.techxpark.app"
-    compileSdk = 36
+    namespace = "com.techxpark.parking"
+    compileSdk = 35
     ndkVersion = flutter.ndkVersion
 
     defaultConfig {
-        applicationId = "com.techxpark.app"
-        minSdk = maxOf(21, flutter.minSdkVersion)
-        targetSdk = flutter.targetSdkVersion
+        applicationId = "com.techxpark.parking"
+        minSdk = 23
+        targetSdk = 35
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        multiDexEnabled = true
         manifestPlaceholders["googleMapsApiKey"] = googleMapsApiKey
     }
 
@@ -76,6 +77,12 @@ android {
                 )
             }
             signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 }
@@ -86,4 +93,5 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    implementation("androidx.multidex:multidex:2.0.1")
 }

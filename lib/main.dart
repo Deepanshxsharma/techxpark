@@ -333,7 +333,7 @@ class _TechxParkAppState extends State<TechxParkApp>
           navigatorKey: navigatorKey,
           debugShowCheckedModeBanner: false,
           title: 'TechXPark',
-          themeMode: ThemeMode.light,
+          themeMode: mode,
           theme: AppTheme.lightTheme,
           home: const AuthWrapper(),
           routes: {
